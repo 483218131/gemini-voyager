@@ -63,6 +63,7 @@ const POPUP_SECTION_IDS = [
   'folderTreeIndent',
   'chatWidth',
   'chatFontSize',
+  'chatLineHeight',
   'editInputWidth',
   'sidebarWidth',
   'sidebarBehavior',
@@ -266,6 +267,7 @@ const FOLDER_SPACING = { min: 0, max: 16, defaultValue: 2 };
 const FOLDER_TREE_INDENT = { min: -8, max: 32, defaultValue: -8 };
 const CHAT_PERCENT = { min: 30, max: 100, defaultValue: 70, legacyBaselinePx: LEGACY_BASELINE_PX };
 const CHAT_FONT_SIZE = { min: 80, max: 150, defaultValue: 100 };
+const CHAT_LINE_HEIGHT = { min: 120, max: 220, defaultValue: 160 };
 const EDIT_PERCENT = { min: 30, max: 100, defaultValue: 60, legacyBaselinePx: LEGACY_BASELINE_PX };
 const SIDEBAR_PERCENT = {
   min: 15,
@@ -459,6 +461,7 @@ export default function Popup() {
   const [forkEnabled, setForkEnabled] = useState<boolean>(false);
   const [chatWidthEnabled, setChatWidthEnabled] = useState<boolean>(false);
   const [chatFontSizeEnabled, setChatFontSizeEnabled] = useState<boolean>(false);
+  const [chatLineHeightEnabled, setChatLineHeightEnabled] = useState<boolean>(false);
   const [editInputWidthEnabled, setEditInputWidthEnabled] = useState<boolean>(false);
   const [sidebarWidthEnabled, setSidebarWidthEnabled] = useState<boolean>(false);
   const [accountIsolationEnabledGemini, setAccountIsolationEnabledGemini] =
@@ -664,6 +667,19 @@ export default function Popup() {
       const clamped = clampNumber(value, CHAT_FONT_SIZE.min, CHAT_FONT_SIZE.max);
       try {
         chrome.storage?.sync?.set({ [StorageKeys.CHAT_FONT_SIZE]: clamped });
+      } catch {}
+    }, []),
+  });
+
+  // Line height adjuster for chat messages
+  const chatLineHeightAdjuster = useWidthAdjuster({
+    storageKey: StorageKeys.CHAT_LINE_HEIGHT,
+    defaultValue: CHAT_LINE_HEIGHT.defaultValue,
+    normalize: (v) => clampNumber(v, CHAT_LINE_HEIGHT.min, CHAT_LINE_HEIGHT.max),
+    onApply: useCallback((value: number) => {
+      const clamped = clampNumber(value, CHAT_LINE_HEIGHT.min, CHAT_LINE_HEIGHT.max);
+      try {
+        chrome.storage?.sync?.set({ [StorageKeys.CHAT_LINE_HEIGHT]: clamped });
       } catch {}
     }, []),
   });
@@ -918,8 +934,10 @@ export default function Popup() {
           [StorageKeys.GV_ACCOUNT_ISOLATION_ENABLED_AISTUDIO]: null,
           [StorageKeys.GV_AISTUDIO_ENABLED]: true,
           gvChatWidthEnabled: false,
-          gvChatFontSizeEnabled: false,
+          [StorageKeys.CHAT_FONT_SIZE_ENABLED]: false,
           [StorageKeys.CHAT_FONT_SIZE]: CHAT_FONT_SIZE.defaultValue,
+          [StorageKeys.CHAT_LINE_HEIGHT_ENABLED]: false,
+          [StorageKeys.CHAT_LINE_HEIGHT]: CHAT_LINE_HEIGHT.defaultValue,
           gvEditInputWidthEnabled: false,
           gvSidebarWidthEnabled: false,
           geminiChatWidth: CHAT_PERCENT.defaultValue,
@@ -996,7 +1014,8 @@ export default function Popup() {
                 typeof res?.geminiChatWidth === 'number' &&
                 res.geminiChatWidth !== CHAT_PERCENT.defaultValue),
           );
-          setChatFontSizeEnabled(res?.gvChatFontSizeEnabled === true);
+          setChatFontSizeEnabled(res?.[StorageKeys.CHAT_FONT_SIZE_ENABLED] === true);
+          setChatLineHeightEnabled(res?.[StorageKeys.CHAT_LINE_HEIGHT_ENABLED] === true);
           setEditInputWidthEnabled(
             res?.gvEditInputWidthEnabled === true ||
               (res?.gvEditInputWidthEnabled === false &&
@@ -1923,7 +1942,29 @@ export default function Popup() {
             onToggle={(v) => {
               setChatFontSizeEnabled(v);
               try {
-                chrome.storage?.sync?.set({ gvChatFontSizeEnabled: v });
+                chrome.storage?.sync?.set({ [StorageKeys.CHAT_FONT_SIZE_ENABLED]: v });
+              } catch {}
+            }}
+          />,
+        )}
+        {/* Chat Line Height */}
+        {wrapSection(
+          'chatLineHeight',
+          <WidthSlider
+            label={t('chatLineHeight')}
+            value={chatLineHeightAdjuster.width}
+            min={CHAT_LINE_HEIGHT.min}
+            max={CHAT_LINE_HEIGHT.max}
+            step={5}
+            narrowLabel={t('chatLineHeightTight')}
+            wideLabel={t('chatLineHeightLoose')}
+            onChange={chatLineHeightAdjuster.handleChange}
+            onChangeComplete={chatLineHeightAdjuster.handleChangeComplete}
+            enabled={chatLineHeightEnabled}
+            onToggle={(v) => {
+              setChatLineHeightEnabled(v);
+              try {
+                chrome.storage?.sync?.set({ [StorageKeys.CHAT_LINE_HEIGHT_ENABLED]: v });
               } catch {}
             }}
           />,

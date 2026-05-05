@@ -399,6 +399,18 @@
     "message": "大",
     "description": "Large font size label"
   },
+  "chatLineHeight": {
+    "message": "チャットの行間",
+    "description": "Chat message line spacing adjustment label"
+  },
+  "chatLineHeightTight": {
+    "message": "狭め",
+    "description": "Tight chat line spacing label"
+  },
+  "chatLineHeightLoose": {
+    "message": "広め",
+    "description": "Loose chat line spacing label"
+  },
   "sidebarWidth": {
     "message": "サイドバーの幅",
     "description": "Sidebar width adjustment label"

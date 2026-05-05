@@ -29,6 +29,7 @@ describe('SettingsBackupService', () => {
       data: expect.objectContaining({
         [StorageKeys.CHAT_WIDTH]: 88,
         [StorageKeys.CHAT_FONT_SIZE]: 100,
+        [StorageKeys.CHAT_LINE_HEIGHT]: 160,
       }),
     });
     expect(payload.data).not.toHaveProperty('unknownKey');

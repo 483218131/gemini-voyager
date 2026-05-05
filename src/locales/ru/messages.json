@@ -399,6 +399,18 @@
     "message": "Крупный",
     "description": "Large font size label"
   },
+  "chatLineHeight": {
+    "message": "Межстрочный интервал чата",
+    "description": "Chat message line spacing adjustment label"
+  },
+  "chatLineHeightTight": {
+    "message": "Плотный",
+    "description": "Tight chat line spacing label"
+  },
+  "chatLineHeightLoose": {
+    "message": "Свободный",
+    "description": "Loose chat line spacing label"
+  },
   "sidebarWidth": {
     "message": "Ширина боковой панели",
     "description": "Sidebar width adjustment label"

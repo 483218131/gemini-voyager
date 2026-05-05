@@ -12,6 +12,7 @@ import { startCanvasExport } from './canvasExport/index';
 import { startChangelog } from './changelog/index';
 import { startChatFontSizeAdjuster } from './chatFontSize/index';
 import { startInputVimMode } from './chatInput/vimMode';
+import { startChatLineHeightAdjuster } from './chatLineHeight/index';
 import { startChatWidthAdjuster } from './chatWidth/index';
 import { startContextSync } from './contextSync';
 import { startDeepResearchExport } from './deepResearch/index';
@@ -188,6 +189,9 @@ async function initializeFeatures(): Promise<void> {
       await delay(LIGHT_FEATURE_INIT_DELAY);
 
       startChatFontSizeAdjuster();
+      await delay(LIGHT_FEATURE_INIT_DELAY);
+
+      startChatLineHeightAdjuster();
       await delay(LIGHT_FEATURE_INIT_DELAY);
 
       startEditInputWidthAdjuster();

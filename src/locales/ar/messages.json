@@ -399,6 +399,18 @@
     "message": "كبير",
     "description": "Large font size label"
   },
+  "chatLineHeight": {
+    "message": "تباعد أسطر الدردشة",
+    "description": "Chat message line spacing adjustment label"
+  },
+  "chatLineHeightTight": {
+    "message": "ضيق",
+    "description": "Tight chat line spacing label"
+  },
+  "chatLineHeightLoose": {
+    "message": "واسع",
+    "description": "Loose chat line spacing label"
+  },
   "sidebarWidth": {
     "message": "عرض الشريط الجانبي",
     "description": "Sidebar width adjustment label"

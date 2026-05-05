@@ -399,6 +399,18 @@
     "message": "Grande",
     "description": "Large font size label"
   },
+  "chatLineHeight": {
+    "message": "Interlineado del chat",
+    "description": "Chat message line spacing adjustment label"
+  },
+  "chatLineHeightTight": {
+    "message": "Ajustado",
+    "description": "Tight chat line spacing label"
+  },
+  "chatLineHeightLoose": {
+    "message": "Amplio",
+    "description": "Loose chat line spacing label"
+  },
   "sidebarWidth": {
     "message": "Ancho de la barra lateral",
     "description": "Sidebar width adjustment label"
