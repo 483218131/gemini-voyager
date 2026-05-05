@@ -40,9 +40,6 @@ Discord サーバーに参加して、他の Voyager ユーザーと交流しま
   <a href="https://space.bilibili.com/312249633" target="_blank" style="text-decoration: none;">
     <img src="https://img.shields.io/badge/Bilibili-@卡普迪姆-FB7299?style=for-the-badge&logo=bilibili&logoColor=white" alt="Bilibili">
   </a>
-  <a href="https://www.zhihu.com/people/bu-xue-hao-shu-xue-wu-li-bu-gai-ming" target="_blank" style="text-decoration: none;">
-    <img src="https://img.shields.io/badge/知乎-@Nagi--ovo-0066FF?style=for-the-badge&logo=zhihu&logoColor=white" alt="知乎">
-  </a>
 </div>
 
 ## 🐙 GitHub Issues

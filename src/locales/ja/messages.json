@@ -1567,10 +1567,6 @@
     "message": "小紅書",
     "description": "Xiaohongshu platform name for social links"
   },
-  "changelog_social_zhihu": {
-    "message": "知乎",
-    "description": "Zhihu platform name for social links"
-  },
   "changelog_docs_hint": {
     "message": "詳細はドキュメントへ",
     "description": "Changelog annotation pointing to docs icon"

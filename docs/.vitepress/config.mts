@@ -688,7 +688,6 @@ export default defineConfig({
         link: 'https://www.xiaohongshu.com/user/profile/5d366136000000001101950a',
         ariaLabel: 'Xiaohongshu',
       },
-      { icon: 'zhihu', link: 'https://www.zhihu.com/people/bu-xue-hao-shu-xue-wu-li-bu-gai-ming' },
     ],
     search: {
       provider: 'local',

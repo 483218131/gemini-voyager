@@ -1567,10 +1567,6 @@
     "message": "Xiaohongshu",
     "description": "Xiaohongshu platform name for social links"
   },
-  "changelog_social_zhihu": {
-    "message": "Zhihu",
-    "description": "Zhihu platform name for social links"
-  },
   "changelog_docs_hint": {
     "message": "Подробности в документации",
     "description": "Changelog annotation pointing to docs icon"
