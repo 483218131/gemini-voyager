@@ -44,6 +44,7 @@ import { createFolderStorageAdapter } from '../folder/storage/FolderStorageAdapt
 import { expandInputCollapseIfNeeded } from '../inputCollapse/index';
 import { extractPlainTitle } from './compactTitle';
 import { parsePromptImportPayload } from './importPayload';
+import { loadFolderDataForLocalBackup } from './localBackup';
 import { activatePromptText } from './promptClickAction';
 import { getScrollHintState } from './scrollHint';
 
@@ -1881,12 +1882,13 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
           items: prompts,
         };
 
-        // Read folders (Safari-compatible: uses storage adapter)
+        // Read folders for the current platform (Safari-compatible: uses storage adapter)
         const folderStorage = createFolderStorageAdapter();
-        const folderData = (await folderStorage.loadData('gvFolderData')) || {
-          folders: [],
-          folderContents: {},
-        };
+        const folderData = await loadFolderDataForLocalBackup(
+          folderStorage,
+          window.location.href,
+          document,
+        );
 
         // Create folder export payload with correct format
         const folderPayload = {
