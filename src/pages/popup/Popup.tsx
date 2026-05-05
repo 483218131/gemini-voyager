@@ -336,6 +336,7 @@ interface SettingsUpdate {
   mermaidEnabled?: boolean;
   quoteReplyEnabled?: boolean;
   ctrlEnterSendEnabled?: boolean;
+  aiStudioEnterSendEnabled?: boolean;
   safariEnterFixEnabled?: boolean;
   draftAutoSaveEnabled?: boolean;
   sidebarAutoHideEnabled?: boolean;
@@ -452,6 +453,7 @@ export default function Popup() {
   const [quoteReplyEnabled, setQuoteReplyEnabled] = useState<boolean>(true);
   const [folderProjectEnabled, setFolderProjectEnabled] = useState<boolean>(false);
   const [ctrlEnterSendEnabled, setCtrlEnterSendEnabled] = useState<boolean>(false);
+  const [aiStudioEnterSendEnabled, setAiStudioEnterSendEnabled] = useState<boolean>(false);
   const [safariEnterFixEnabled, setSafariEnterFixEnabled] = useState<boolean>(false);
   const [draftAutoSaveEnabled, setDraftAutoSaveEnabled] = useState<boolean>(false);
   const [sidebarAutoHideEnabled, setSidebarAutoHideEnabled] = useState<boolean>(false);
@@ -476,7 +478,7 @@ export default function Popup() {
   const [sectionOrder, setSectionOrder] = useState<PopupSectionId[]>([...DEFAULT_SECTION_ORDER]);
 
   const isAIStudio = activeAccountPlatform === 'aistudio';
-  const currentIsolationPlatformLabel = isAIStudio ? t('platformAIStudio') : t('platformGemini');
+  const currentPlatformLabel = isAIStudio ? t('platformAIStudio') : t('platformGemini');
 
   useEffect(() => {
     browser.tabs
@@ -566,6 +568,8 @@ export default function Popup() {
         payload[StorageKeys.FOLDER_PROJECT_ENABLED] = settings.folderProjectEnabled;
       if (typeof settings.ctrlEnterSendEnabled === 'boolean')
         payload.gvCtrlEnterSend = settings.ctrlEnterSendEnabled;
+      if (typeof settings.aiStudioEnterSendEnabled === 'boolean')
+        payload[StorageKeys.AISTUDIO_ENTER_SEND] = settings.aiStudioEnterSendEnabled;
       if (typeof settings.safariEnterFixEnabled === 'boolean')
         payload[StorageKeys.SAFARI_ENTER_FIX] = settings.safariEnterFixEnabled;
       if (typeof settings.draftAutoSaveEnabled === 'boolean')
@@ -921,6 +925,7 @@ export default function Popup() {
           gvQuoteReplyEnabled: true,
           [StorageKeys.FOLDER_PROJECT_ENABLED]: false,
           gvCtrlEnterSend: false,
+          [StorageKeys.AISTUDIO_ENTER_SEND]: false,
           [StorageKeys.SAFARI_ENTER_FIX]: false,
           [StorageKeys.DRAFT_AUTO_SAVE]: false,
           gvSidebarAutoHide: false,
@@ -986,6 +991,7 @@ export default function Popup() {
           setQuoteReplyEnabled(res?.gvQuoteReplyEnabled !== false);
           setFolderProjectEnabled(res?.[StorageKeys.FOLDER_PROJECT_ENABLED] === true);
           setCtrlEnterSendEnabled(res?.gvCtrlEnterSend === true);
+          setAiStudioEnterSendEnabled(res?.[StorageKeys.AISTUDIO_ENTER_SEND] === true);
           setSafariEnterFixEnabled(res?.[StorageKeys.SAFARI_ENTER_FIX] === true);
           setDraftAutoSaveEnabled(res?.[StorageKeys.DRAFT_AUTO_SAVE] === true);
           setSidebarAutoHideEnabled(res?.gvSidebarAutoHide === true);
@@ -1790,7 +1796,7 @@ export default function Popup() {
                   <div className="mt-1 flex items-center gap-2 text-xs">
                     <span className="text-muted-foreground">{t('currentPlatform')}:</span>
                     <span className="bg-secondary text-foreground rounded px-1.5 py-0.5 font-medium">
-                      {currentIsolationPlatformLabel}
+                      {currentPlatformLabel}
                     </span>
                   </div>
                 </div>
@@ -2329,21 +2335,37 @@ export default function Popup() {
               <div className="group flex items-center justify-between">
                 <div className="flex-1">
                   <Label
-                    htmlFor="ctrl-enter-send"
+                    htmlFor={isAIStudio ? 'aistudio-enter-send' : 'ctrl-enter-send'}
                     className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
                   >
-                    {t('ctrlEnterSend').replace('{modifier}', getModifierKey())}
+                    {isAIStudio
+                      ? t('aistudioEnterSend').replace('{modifier}', getModifierKey())
+                      : t('ctrlEnterSend').replace('{modifier}', getModifierKey())}
                   </Label>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    {t('ctrlEnterSendHint').replace('{modifier}', getModifierKey())}
+                    {(isAIStudio ? t('aistudioEnterSendHint') : t('ctrlEnterSendHint')).replace(
+                      '{modifier}',
+                      getModifierKey(),
+                    )}
                   </p>
+                  <div className="mt-1 flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">{t('currentPlatform')}:</span>
+                    <span className="bg-secondary text-foreground rounded px-1.5 py-0.5 font-medium">
+                      {currentPlatformLabel}
+                    </span>
+                  </div>
                 </div>
                 <Switch
-                  id="ctrl-enter-send"
-                  checked={ctrlEnterSendEnabled}
+                  id={isAIStudio ? 'aistudio-enter-send' : 'ctrl-enter-send'}
+                  checked={isAIStudio ? aiStudioEnterSendEnabled : ctrlEnterSendEnabled}
                   onChange={(e) => {
-                    setCtrlEnterSendEnabled(e.target.checked);
-                    apply({ ctrlEnterSendEnabled: e.target.checked });
+                    if (isAIStudio) {
+                      setAiStudioEnterSendEnabled(e.target.checked);
+                      apply({ aiStudioEnterSendEnabled: e.target.checked });
+                    } else {
+                      setCtrlEnterSendEnabled(e.target.checked);
+                      apply({ ctrlEnterSendEnabled: e.target.checked });
+                    }
                   }}
                 />
               </div>

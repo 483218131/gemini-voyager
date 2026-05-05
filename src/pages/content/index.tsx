@@ -252,7 +252,7 @@ async function initializeFeatures(): Promise<void> {
       await delay(LIGHT_FEATURE_INIT_DELAY);
 
       // Send behavior (Ctrl+Enter to send)
-      sendBehaviorCleanup = await startSendBehavior();
+      sendBehaviorCleanup = await startSendBehavior('gemini');
       await delay(LIGHT_FEATURE_INIT_DELAY);
 
       // Draft auto-save
@@ -334,6 +334,10 @@ async function initializeFeatures(): Promise<void> {
 
       // Formula copy support for AI Studio
       startFormulaCopy();
+      await delay(LIGHT_FEATURE_INIT_DELAY);
+
+      // Send behavior (Enter to send)
+      sendBehaviorCleanup = await startSendBehavior('aistudio');
       await delay(LIGHT_FEATURE_INIT_DELAY);
     }
   } catch (e) {

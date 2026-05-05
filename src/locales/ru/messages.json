@@ -1215,6 +1215,14 @@
     "message": "Нажмите {modifier}+Enter для отправки сообщений, Enter для новой строки",
     "description": "Modifier+Enter to send feature hint. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
   },
+  "aistudioEnterSend": {
+    "message": "Enter для отправки в AI Studio",
+    "description": "AI Studio Enter to send toggle label. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
+  },
+  "aistudioEnterSendHint": {
+    "message": "Нажмите Enter для отправки сообщений, {modifier}+Enter для новой строки",
+    "description": "AI Studio Enter to send feature hint. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
+  },
   "safariEnterFix": {
     "message": "Исправить клавишу Enter в Safari",
     "description": "Toggle label for Safari Enter key fix feature"

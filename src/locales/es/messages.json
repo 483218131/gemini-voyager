@@ -1215,6 +1215,14 @@
     "message": "Presiona {modifier}+Enter para enviar mensajes, Enter para agregar una nueva línea",
     "description": "Modifier+Enter to send feature hint. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
   },
+  "aistudioEnterSend": {
+    "message": "Enter para enviar en AI Studio",
+    "description": "AI Studio Enter to send toggle label. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
+  },
+  "aistudioEnterSendHint": {
+    "message": "Presiona Enter para enviar mensajes, {modifier}+Enter para agregar una nueva línea",
+    "description": "AI Studio Enter to send feature hint. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
+  },
   "safariEnterFix": {
     "message": "Corregir tecla Enter en Safari",
     "description": "Toggle label for Safari Enter key fix feature"

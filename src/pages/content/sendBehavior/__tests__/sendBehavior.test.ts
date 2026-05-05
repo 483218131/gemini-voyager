@@ -361,6 +361,110 @@ describe('sendBehavior', () => {
   });
 });
 
+describe('aiStudioEnterSend', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+
+    (chrome.storage.sync.get as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_defaults: Record<string, unknown>, callback: (result: Record<string, unknown>) => void) => {
+        callback({
+          [StorageKeys.CTRL_ENTER_SEND]: true,
+          [StorageKeys.AISTUDIO_ENTER_SEND]: true,
+          [StorageKeys.SAFARI_ENTER_FIX]: false,
+        });
+      },
+    );
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+    vi.unstubAllGlobals();
+  });
+
+  it('clicks the AI Studio run button on plain Enter', async () => {
+    const inputContainer = document.createElement('ms-prompt-input-wrapper');
+
+    const input = document.createElement('textarea');
+
+    const runButton = document.createElement('button');
+    runButton.setAttribute('aria-label', 'Run prompt');
+    markElementVisible(runButton);
+
+    inputContainer.append(input, runButton);
+    document.body.append(inputContainer);
+
+    const runClickSpy = vi.spyOn(runButton, 'click');
+
+    const { startSendBehavior } = await import('../index');
+    const cleanup = await startSendBehavior('aistudio');
+
+    const event = firePlainEnter(input);
+
+    expect(runClickSpy).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+
+    cleanup();
+  });
+
+  it('turns Ctrl+Enter into a newline on AI Studio', async () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = 'hello';
+    textarea.selectionStart = 5;
+    textarea.selectionEnd = 5;
+    document.body.append(textarea);
+
+    const execCommand = mockExecCommand((command, _showUI, value) => {
+      if (command !== 'insertText') return false;
+      textarea.setRangeText(value ?? '', textarea.selectionStart, textarea.selectionEnd, 'end');
+      return true;
+    });
+
+    const { startSendBehavior } = await import('../index');
+    const cleanup = await startSendBehavior('aistudio');
+
+    const event = fireCtrlEnter(textarea);
+
+    expect(execCommand).toHaveBeenCalledWith('insertText', false, '\n');
+    expect(textarea.value).toBe('hello\n');
+    expect(event.defaultPrevented).toBe(true);
+
+    cleanup();
+  });
+
+  it('does not reuse the Gemini Ctrl+Enter setting on AI Studio', async () => {
+    (chrome.storage.sync.get as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_defaults: Record<string, unknown>, callback: (result: Record<string, unknown>) => void) => {
+        callback({
+          [StorageKeys.CTRL_ENTER_SEND]: true,
+          [StorageKeys.AISTUDIO_ENTER_SEND]: false,
+        });
+      },
+    );
+
+    const inputContainer = document.createElement('ms-prompt-input-wrapper');
+    const input = document.createElement('textarea');
+    const runButton = document.createElement('button');
+    runButton.setAttribute('aria-label', 'Run prompt');
+    markElementVisible(runButton);
+    inputContainer.append(input, runButton);
+    document.body.append(inputContainer);
+
+    const runClickSpy = vi.spyOn(runButton, 'click');
+
+    const { startSendBehavior } = await import('../index');
+    const cleanup = await startSendBehavior('aistudio');
+
+    const event = firePlainEnter(input);
+
+    expect(runClickSpy).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+
+    cleanup();
+  });
+});
+
 describe('safariEnterFix', () => {
   beforeEach(() => {
     vi.resetModules();

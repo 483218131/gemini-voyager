@@ -1215,6 +1215,14 @@
     "message": "Appuyez sur {modifier}+Entrée pour envoyer, Entrée pour un saut de ligne",
     "description": "Modifier+Enter to send feature hint. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
   },
+  "aistudioEnterSend": {
+    "message": "Entrée pour envoyer dans AI Studio",
+    "description": "AI Studio Enter to send toggle label. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
+  },
+  "aistudioEnterSendHint": {
+    "message": "Appuyez sur Entrée pour envoyer, {modifier}+Entrée pour un saut de ligne",
+    "description": "AI Studio Enter to send feature hint. {modifier} is replaced with ⌘ on macOS and Ctrl on other platforms"
+  },
   "safariEnterFix": {
     "message": "Corriger la touche Entrée sur Safari",
     "description": "Toggle label for Safari Enter key fix feature"

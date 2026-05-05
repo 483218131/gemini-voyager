@@ -1215,6 +1215,14 @@
     "message": "按 {modifier}+Enter 发送消息，Enter 键仅换行",
     "description": "Modifier+Enter 发送功能提示。{modifier} 在 macOS 上替换为 ⌘，其他平台替换为 Ctrl"
   },
+  "aistudioEnterSend": {
+    "message": "AI Studio Enter 发送",
+    "description": "AI Studio Enter 发送开关标签。{modifier} 在 macOS 上替换为 ⌘，其他平台替换为 Ctrl"
+  },
+  "aistudioEnterSendHint": {
+    "message": "在 AI Studio 中按 Enter 发送消息，{modifier}+Enter 换行",
+    "description": "AI Studio Enter 发送功能提示。{modifier} 在 macOS 上替换为 ⌘，其他平台替换为 Ctrl"
+  },
   "safariEnterFix": {
     "message": "修复 Safari 回车键",
     "description": "Safari 回车键修复功能的开关标签"

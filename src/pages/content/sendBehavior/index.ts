@@ -1,19 +1,24 @@
 /**
  * Send Behavior Module
  *
- * Modifies Gemini's input behavior with two independent modes:
+ * Modifies Gemini/AI Studio input behavior with platform-scoped modes:
  *
- * 1. Ctrl+Enter Send (all browsers):
+ * 1. Gemini Ctrl+Enter Send (all browsers):
  *    - Enter key inserts a newline instead of sending
  *    - Ctrl+Enter sends the message
  *    - Controlled by `gvCtrlEnterSend` storage setting
  *
- * 2. Safari Enter Fix (Safari only):
+ * 2. AI Studio Enter Send:
+ *    - Enter sends the message
+ *    - Ctrl+Enter inserts a newline
+ *    - Controlled by `gvAIStudioEnterSend` storage setting
+ *
+ * 3. Safari Enter Fix (Safari only):
  *    - Fixes Gemini's double-Enter-to-send bug on Safari
  *    - Single Enter directly clicks the send button
  *    - Controlled by `gvSafariEnterFix` storage setting
  *
- * If both are enabled, Ctrl+Enter Send takes priority (Enter → newline).
+ * If both Gemini modes are enabled, Ctrl+Enter Send takes priority (Enter → newline).
  *
  * ARCHITECTURE:
  * - Observer and listeners are ONLY active when at least one mode is enabled
@@ -35,9 +40,16 @@ const SEND_BUTTON_SELECTORS = [
   '.update-button', // Explicit class for Edit mode (User provided)
   'button[aria-label*="Send"]',
   'button[aria-label*="send"]',
+  'button[aria-label*="Run"]',
+  'button[aria-label*="run"]',
   'button[data-tooltip*="Send"]',
   'button[data-tooltip*="send"]',
+  'button[data-tooltip*="Run"]',
+  'button[data-tooltip*="run"]',
+  'button[mattooltip*="Run"]',
+  'button[mattooltip*="run"]',
   'button mat-icon[fonticon="send"]',
+  'button mat-icon[fonticon="play_arrow"]',
   '[data-send-button]',
   '.send-button',
   // Fallback selectors
@@ -52,13 +64,17 @@ const EDITABLE_SELECTORS = '[contenteditable="true"], [role="textbox"], textarea
 /** Log prefix for consistent logging */
 const LOG_PREFIX = '[SendBehavior]';
 
+type SendBehaviorPlatform = 'gemini' | 'aistudio';
+
 // ============================================================================
 // State
 // ============================================================================
 
 let isCtrlEnterSendEnabled = false;
+let isAIStudioEnterSendEnabled = false;
 let isSafariEnterFixEnabled = false;
 let isListenersActive = false;
+let currentPlatform: SendBehaviorPlatform = 'gemini';
 let observer: MutationObserver | null = null;
 let cleanupFns: (() => void)[] = [];
 let storageListener:
@@ -81,10 +97,17 @@ const attachedElements = new WeakSet<HTMLElement>();
  */
 function findSendButton(inputElement: HTMLElement): HTMLElement | null {
   // 1. First, find a cohesive container wrapper that holds BOTH the input and its corresponding button
-  //    Gemini provides distinct containers for the main input and edit inputs
+  //    Gemini/AI Studio provide distinct containers for the main input and edit inputs
   const containerSelectors = [
     // Global/main chat input wrapper
     '.text-input-field',
+    // AI Studio prompt input wrappers
+    'ms-prompt-input-wrapper',
+    'ms-prompt-input',
+    'ms-chat-turn-input',
+    'ms-autosize-textarea',
+    '.prompt-input-wrapper',
+    '.prompt-input-container',
     // Active conversation edit container
     'chat-message',
     'form',
@@ -127,10 +150,8 @@ function findSendButton(inputElement: HTMLElement): HTMLElement | null {
     const allButtons = container.querySelectorAll('button');
     for (const button of allButtons) {
       const iconElement = button.querySelector('.material-symbols-outlined, mat-icon');
-      if (
-        iconElement?.textContent?.trim().toLowerCase() === 'send' &&
-        button.offsetParent !== null
-      ) {
+      const iconName = iconElement?.textContent?.trim().toLowerCase();
+      if ((iconName === 'send' || iconName === 'play_arrow') && button.offsetParent !== null) {
         return button;
       }
     }
@@ -221,15 +242,16 @@ function insertNewlineInTextarea(textarea: HTMLTextAreaElement): void {
 /**
  * Handle keydown events on the input area
  *
- * Two modes:
- * - Ctrl+Enter Send: Enter → newline, Ctrl/Cmd+Enter → send
+ * Platform modes:
+ * - Gemini Ctrl+Enter Send: Enter → newline, Ctrl/Cmd+Enter → send
+ * - AI Studio Enter Send: Enter → send, Ctrl/Cmd+Enter → newline
  * - Safari Enter Fix: Plain Enter → directly click send button (bypasses Safari double-Enter bug)
  *
- * If both modes are enabled, Ctrl+Enter Send takes priority.
+ * If both Gemini modes are enabled, Ctrl+Enter Send takes priority.
  */
 function handleKeyDown(event: KeyboardEvent): void {
   // Early exit if no mode is active (should not happen, but defensive check)
-  if (!isCtrlEnterSendEnabled && !isSafariEnterFixEnabled) return;
+  if (!isCtrlEnterSendEnabled && !isAIStudioEnterSendEnabled && !isSafariEnterFixEnabled) return;
 
   // Fix for Issue 260: Ignore events during IME composition
   if (event.isComposing) return;
@@ -248,8 +270,8 @@ function handleKeyDown(event: KeyboardEvent): void {
   // and pressing Enter there should trigger the default submit action
   if (!isContentEditable && !isTextarea) return;
 
-  // --- Ctrl+Enter Send mode ---
-  if (isCtrlEnterSendEnabled) {
+  // --- Gemini Ctrl+Enter Send mode ---
+  if (currentPlatform === 'gemini' && isCtrlEnterSendEnabled) {
     // Ctrl+Enter or Cmd+Enter: Send the message
     if (event.ctrlKey || event.metaKey) {
       const sendButton = findSendButton(target);
@@ -276,9 +298,37 @@ function handleKeyDown(event: KeyboardEvent): void {
     return;
   }
 
+  // --- AI Studio Enter Send mode ---
+  if (currentPlatform === 'aistudio' && isAIStudioEnterSendEnabled) {
+    // Ctrl+Enter or Cmd+Enter: Insert a newline instead of AI Studio's native send action
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (isContentEditable) {
+        insertNewlineInContentEditable(target);
+      } else if (isTextarea) {
+        insertNewlineInTextarea(target as HTMLTextAreaElement);
+      }
+      return;
+    }
+
+    // Shift+Enter remains the native newline behavior
+    if (event.shiftKey || event.altKey) return;
+
+    // Plain Enter: Send the message
+    const sendButton = findSendButton(target);
+    if (sendButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      sendButton.click();
+    }
+    return;
+  }
+
   // --- Safari Enter Fix mode ---
-  // Only active when Ctrl+Enter Send is NOT enabled and we're on Safari
-  if (isSafariEnterFixEnabled && isSafari()) {
+  // Only active on Gemini when Ctrl+Enter Send is NOT enabled and we're on Safari
+  if (currentPlatform === 'gemini' && isSafariEnterFixEnabled && isSafari()) {
     // Only handle plain Enter (no modifiers)
     if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -381,6 +431,10 @@ function disconnectObserver(): void {
  * overhead on Chrome/Firefox (e.g. when the setting is synced from Safari).
  */
 function shouldBeActive(): boolean {
+  if (currentPlatform === 'aistudio') {
+    return isAIStudioEnterSendEnabled;
+  }
+
   return isCtrlEnterSendEnabled || (isSafariEnterFixEnabled && isSafari());
 }
 
@@ -446,10 +500,12 @@ async function loadSettings(): Promise<void> {
       chrome.storage.sync.get(
         {
           [StorageKeys.CTRL_ENTER_SEND]: false,
+          [StorageKeys.AISTUDIO_ENTER_SEND]: false,
           [StorageKeys.SAFARI_ENTER_FIX]: false,
         },
         (result) => {
           isCtrlEnterSendEnabled = result?.[StorageKeys.CTRL_ENTER_SEND] === true;
+          isAIStudioEnterSendEnabled = result?.[StorageKeys.AISTUDIO_ENTER_SEND] === true;
           isSafariEnterFixEnabled = result?.[StorageKeys.SAFARI_ENTER_FIX] === true;
           resolve();
         },
@@ -477,12 +533,16 @@ function setupStorageListener(): void {
     if (areaName !== 'sync') return;
 
     const hasCtrlEnterChange = StorageKeys.CTRL_ENTER_SEND in changes;
+    const hasAIStudioEnterChange = StorageKeys.AISTUDIO_ENTER_SEND in changes;
     const hasSafariFixChange = StorageKeys.SAFARI_ENTER_FIX in changes;
 
-    if (!hasCtrlEnterChange && !hasSafariFixChange) return;
+    if (!hasCtrlEnterChange && !hasAIStudioEnterChange && !hasSafariFixChange) return;
 
     if (hasCtrlEnterChange) {
       isCtrlEnterSendEnabled = changes[StorageKeys.CTRL_ENTER_SEND].newValue === true;
+    }
+    if (hasAIStudioEnterChange) {
+      isAIStudioEnterSendEnabled = changes[StorageKeys.AISTUDIO_ENTER_SEND].newValue === true;
     }
     if (hasSafariFixChange) {
       isSafariEnterFixEnabled = changes[StorageKeys.SAFARI_ENTER_FIX].newValue === true;
@@ -506,7 +566,9 @@ function setupStorageListener(): void {
  */
 function cleanup(): void {
   isCtrlEnterSendEnabled = false;
+  isAIStudioEnterSendEnabled = false;
   isSafariEnterFixEnabled = false;
+  currentPlatform = 'gemini';
   deactivateListeners();
 
   if (storageListener) {
@@ -529,7 +591,11 @@ function cleanup(): void {
  * Initialize the send behavior module
  * @returns A cleanup function to be called on unmount
  */
-export async function startSendBehavior(): Promise<() => void> {
+export async function startSendBehavior(
+  platform: SendBehaviorPlatform = 'gemini',
+): Promise<() => void> {
+  currentPlatform = platform;
+
   // Always setup storage listener first (to respond to setting changes)
   setupStorageListener();
 
