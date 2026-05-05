@@ -89,6 +89,19 @@ export function calculateFolderDialogPaddingLeft(level: number): number {
   return level * FOLDER_DIALOG_INDENT_PER_LEVEL + 12;
 }
 
+interface FolderDialogOption {
+  folder: Folder;
+  level: number;
+  path: string;
+}
+
+function normalizeFolderDialogSearchText(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/\s*\/\s*/g, '/');
+}
+
 /**
  * Validate folder data structure
  */
@@ -4674,18 +4687,52 @@ export class FolderManager {
     dialogTitle.className = 'gv-folder-dialog-title';
     dialogTitle.textContent = this.t('conversation_move_to_folder_title');
 
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.className = 'gv-folder-dialog-search';
+    searchInput.placeholder = this.t('timelinePreviewSearch');
+    searchInput.setAttribute('aria-label', this.t('timelinePreviewSearch'));
+
     // Folder list
     const folderList = document.createElement('div');
     folderList.className = 'gv-folder-dialog-list';
 
-    // Helper function to add folder options recursively
-    const addFolderOptions = (parentId: string | null, level: number = 0) => {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'gv-folder-dialog-empty';
+    emptyState.textContent = this.t('timelinePreviewNoResults');
+
+    const folderOptions: FolderDialogOption[] = [];
+
+    const collectFolderOptions = (
+      parentId: string | null,
+      level: number = 0,
+      parentPath: string = '',
+    ) => {
       const folders = this.data.folders.filter((f) => f.parentId === parentId);
       const sortedFolders = this.sortFolders(folders); // Apply same sorting as sidebar
       sortedFolders.forEach((folder) => {
+        const path = parentPath ? `${parentPath} / ${folder.name}` : folder.name;
+        folderOptions.push({ folder, level, path });
+        collectFolderOptions(folder.id, level + 1, path);
+      });
+    };
+
+    const renderFolderOptions = (query: string = '') => {
+      folderList.innerHTML = '';
+      const normalizedQuery = normalizeFolderDialogSearchText(query);
+      const visibleOptions = normalizedQuery
+        ? folderOptions.filter((option) =>
+            normalizeFolderDialogSearchText(option.path).includes(normalizedQuery),
+          )
+        : folderOptions;
+
+      visibleOptions.forEach(({ folder, level, path }) => {
         const folderItem = document.createElement('button');
         folderItem.className = 'gv-folder-dialog-item';
         folderItem.style.paddingLeft = `${calculateFolderDialogPaddingLeft(level)}px`;
+        folderItem.dataset.folderId = folder.id;
+        folderItem.dataset.folderPath = path;
+        folderItem.setAttribute('aria-label', path);
 
         // Folder icon
         const icon = document.createElement('mat-icon');
@@ -4696,10 +4743,16 @@ export class FolderManager {
 
         // Folder name
         const name = document.createElement('span');
+        name.className = 'gv-folder-dialog-item-text';
         name.textContent = folder.name;
+
+        const pathLabel = document.createElement('span');
+        pathLabel.className = 'gv-folder-dialog-item-path';
+        pathLabel.textContent = `/${normalizeFolderDialogSearchText(path)}`;
 
         folderItem.appendChild(icon);
         folderItem.appendChild(name);
+        folderItem.appendChild(pathLabel);
 
         folderItem.addEventListener('click', () => {
           this.addConversationToFolderFromNative(
@@ -4714,14 +4767,19 @@ export class FolderManager {
         });
 
         folderList.appendChild(folderItem);
-
-        // Add subfolders recursively
-        addFolderOptions(folder.id, level + 1);
       });
+
+      if (visibleOptions.length === 0) {
+        folderList.appendChild(emptyState);
+      }
     };
 
-    // Add root folders and their children
-    addFolderOptions(null);
+    collectFolderOptions(null);
+    renderFolderOptions();
+
+    searchInput.addEventListener('input', () => {
+      renderFolderOptions(searchInput.value);
+    });
 
     // Cancel button
     const cancelBtn = document.createElement('button');
@@ -4731,6 +4789,7 @@ export class FolderManager {
 
     // Assemble dialog
     dialog.appendChild(dialogTitle);
+    dialog.appendChild(searchInput);
     dialog.appendChild(folderList);
     dialog.appendChild(cancelBtn);
     overlay.appendChild(dialog);
