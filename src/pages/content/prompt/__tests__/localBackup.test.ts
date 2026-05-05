@@ -52,9 +52,7 @@ describe('local backup folder data', () => {
       routeUserId: null,
       email: 'user@example.com',
     });
-    expect(key).toBe(
-      buildScopedStorageKey(StorageKeys.FOLDER_DATA_AISTUDIO, 'email:test-account'),
-    );
+    expect(key).toBe(buildScopedStorageKey(StorageKeys.FOLDER_DATA_AISTUDIO, 'email:test-account'));
   });
 
   it('loads AI Studio folder data instead of Gemini folder data on AI Studio pages', async () => {
