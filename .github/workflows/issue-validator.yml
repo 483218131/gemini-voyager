@@ -8,82 +8,15 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       issues: write
     steps:
-      - name: Auto-fix empty issue titles
+      - name: Checkout validator
+        uses: actions/checkout@v4
+
+      - name: Validate issue metadata
         uses: actions/github-script@v7
         with:
           script: |
-            const issue = context.payload.issue;
-            const title = issue.title.trim();
-            const body = issue.body || '';
-
-            // Detect titles that are just the template prefix with nothing meaningful
-            const EMPTY_TITLE_PATTERNS = [
-              /^\[Bug\]\s*$/i,
-              /^\[Feature\]\s*$/i,
-            ];
-
-            const isEmpty = EMPTY_TITLE_PATTERNS.some(p => p.test(title));
-            if (!isEmpty) return;
-
-            // --- Try to generate a title from the body ---
-            function extractSection(text, headerPattern) {
-              const match = text.match(new RegExp(`${headerPattern}\\s+([\\s\\S]*?)(?=\\n###|$)`));
-              return match ? match[1].trim() : '';
-            }
-
-            // Determine prefix
-            const prefix = title.match(/^\[(\w+)\]/)?.[0] || '';
-
-            // Try to extract a summary from body fields
-            const description =
-              extractSection(body, '### 🐛 问题描述 \\| Bug Description') ||
-              extractSection(body, '### 🥰 需求描述 \\| Feature Description') ||
-              '';
-
-            let generated = '';
-            if (description) {
-              // Take the first sentence or first line, whichever is shorter
-              generated = description
-                .split(/[\n。.!！？?]/)[0]
-                .trim()
-                .slice(0, 80);
-            }
-
-            const newTitle = generated
-              ? `${prefix} ${generated}`
-              : title; // keep as-is if nothing to extract
-
-            // --- Apply ---
-            // Add label
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              labels: ['missing-title']
-            });
-
-            if (generated) {
-              // Update title
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                title: newTitle
-              });
-
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: `📝 Your issue title was empty — auto-generated from the description. Feel free to edit it if needed.`
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: `📝 Your issue title appears to be empty. Please edit it to add a brief summary — it helps with triage and search.`
-              });
-            }
+            const { validateIssue } = require('./scripts/issue-validator.cjs');
+            await validateIssue({ github, context });
