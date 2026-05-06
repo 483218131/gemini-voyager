@@ -574,8 +574,31 @@ export class TimelineManager {
     return true;
   }
 
+  private buildPreviewMarkers(): ReadonlyArray<{
+    id: string;
+    summary: string;
+    index: number;
+    starred: boolean;
+    starredAt?: number;
+  }> {
+    return this.markers.map((m, i) => ({
+      id: m.id,
+      summary: m.summary,
+      index: i,
+      starred: m.starred,
+      starredAt: m.starred ? this.starredAtMap.get(m.id) : undefined,
+    }));
+  }
+
+  private updatePreviewMarkers(): void {
+    this.previewPanel?.updateMarkers(this.buildPreviewMarkers());
+  }
+
   private applyStarredIdSet(nextSet: Set<string>, persistLocal = true): void {
-    if (this.areStarredSetsEqual(this.starred, nextSet)) return;
+    if (this.areStarredSetsEqual(this.starred, nextSet)) {
+      this.updatePreviewMarkers();
+      return;
+    }
 
     // Clean up starredAtMap for removed entries
     for (const id of this.starred) {
@@ -596,6 +619,7 @@ export class TimelineManager {
         }
       }
     }
+    this.updatePreviewMarkers();
 
     if (this.ui.tooltip?.classList.contains('visible')) {
       const currentDot = this.ui.timelineBar?.querySelector(
@@ -1532,15 +1556,7 @@ export class TimelineManager {
     this.updateVirtualRangeAndRender();
     this.updateActiveDotUI();
     this.scheduleScrollSync();
-    this.previewPanel?.updateMarkers(
-      this.markers.map((m, i) => ({
-        id: m.id,
-        summary: m.summary,
-        index: i,
-        starred: m.starred,
-        starredAt: m.starred ? this.starredAtMap.get(m.id) : undefined,
-      })),
-    );
+    this.updatePreviewMarkers();
     // Inject timestamps after markers are ready
     this.injectMessageTimestamps().catch(() => {});
   };
@@ -1989,6 +2005,7 @@ export class TimelineManager {
             marker.dotElement.setAttribute('aria-pressed', 'false');
           }
 
+          this.updatePreviewMarkers();
           console.log('[Timeline] Starred removed via EventBus:', turnId);
         }
       }),
@@ -2013,6 +2030,7 @@ export class TimelineManager {
             marker.dotElement.setAttribute('aria-pressed', 'true');
           }
 
+          this.updatePreviewMarkers();
           console.log('[Timeline] Starred added via EventBus:', turnId);
         }
       }),
@@ -2928,6 +2946,7 @@ export class TimelineManager {
         }
       }
     });
+    this.updatePreviewMarkers();
   }
 
   /**
