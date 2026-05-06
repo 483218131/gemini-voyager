@@ -2,15 +2,57 @@ import {
   GitChangelog,
   GitChangelogMarkdownSection,
 } from '@nolebase/vitepress-plugin-git-changelog/vite';
-import { defineConfig } from 'vitepress';
+import { defineConfig, type HeadConfig } from 'vitepress';
 
 // https://vitepress.dev/reference/site-config
+const siteUrl = 'https://voyager.nagi.fun';
+
 export default defineConfig({
   base: '/',
   title: 'Voyager',
   description: '直观的导航。强大的组织。简洁优雅。',
   lang: 'zh-CN',
-  head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.ico' }],
+    ['meta', { property: 'og:site_name', content: 'Voyager' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:image', content: `${siteUrl}/logo.png` }],
+    ['meta', { name: 'twitter:card', content: 'summary' }],
+    ['meta', { name: 'twitter:site', content: '@Nag1ovo' }],
+  ],
+
+  sitemap: {
+    hostname: siteUrl,
+  },
+
+  transformHead({ pageData }) {
+    const head: HeadConfig[] = [];
+    const pagePath = pageData.relativePath
+      .replace(/\.md$/, '.html')
+      .replace(/index\.html$/, '');
+    const pageUrl = `${siteUrl}/${pagePath}`;
+    const title = pageData.frontmatter.title || pageData.title;
+    const description =
+      pageData.frontmatter.description || pageData.description;
+
+    head.push(['link', { rel: 'canonical', href: pageUrl }]);
+    head.push(['meta', { property: 'og:title', content: title }]);
+    head.push(['meta', { property: 'og:url', content: pageUrl }]);
+    if (description) {
+      head.push([
+        'meta',
+        { property: 'og:description', content: description },
+      ]);
+    }
+
+    const rawMdUrl = `https://raw.githubusercontent.com/Nagi-ovo/gemini-voyager/main/docs/${pageData.relativePath}`;
+    head.push([
+      'link',
+      { rel: 'alternate', type: 'text/markdown', href: rawMdUrl },
+    ]);
+
+    return head;
+  },
 
   locales: {
     root: {

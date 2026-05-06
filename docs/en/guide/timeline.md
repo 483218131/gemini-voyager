@@ -1,5 +1,7 @@
 # Time Travel
 
+Voyager Timeline is a visual conversation navigation system for Google Gemini. It maps every message in a chat to an interactive node on the right side of the screen, turning long AI conversations into a navigable map you can jump through instantly.
+
 Long conversations are messy. You scroll up, you scroll down, you lose your place.
 Voyager turns your conversation into a timeline.
 
@@ -55,3 +57,30 @@ Any key, any combo. `n`/`p`? `,`/`.`? Your call.
 
 **Flow mode**: Rapid presses queue up smoothly.
 **Jump mode**: Instant response, max speed.
+
+## When to Use Timeline
+
+Timeline is most valuable in conversations longer than 10 messages, where scrolling becomes inefficient:
+
+- **Research sessions**: You asked Gemini to explore a topic over 30+ turns. Timeline lets you jump back to the key insight without re-reading everything.
+- **Code debugging**: A long debugging conversation where the solution appeared at turn 47. Star it, find it later in one click.
+- **Learning and tutoring**: Working through a complex topic step by step. Use levels to collapse sections you've mastered.
+- **Brainstorming review**: Reviewing a creative session to extract the best ideas. Stars mark the moments worth keeping.
+- **Team handoffs**: Share a starred conversation so a colleague can jump straight to the relevant turns.
+
+## Timeline vs. Manual Scrolling
+
+| Capability | Without Timeline | With Voyager Timeline |
+|------------|-----------------|----------------------|
+| Find a specific message | Scroll up and down repeatedly | Click a node or press j/k |
+| Bookmark key moments | Copy-paste to external notes | Long-press to star, syncs to cloud |
+| See conversation structure | Read sequentially | Visual map shows full shape at a glance |
+| Keyboard navigation | Not available in Gemini | Vim-style j/k, gg/GG, fully customizable |
+| Navigate 100+ messages | Minutes of scrolling | Instant jump to any point |
+| Organize long threads | No built-in tools | Levels (1-3) and collapsible children |
+
+## Supported Browsers
+
+Timeline works on Google Gemini across Chrome, Edge, Firefox, Safari, Opera, and Brave. Keyboard shortcuts, starring, and levels work identically on all platforms. Starred messages sync across devices when [Cloud Sync](/en/guide/cloud-sync) is enabled.
+
+Timeline is a Gemini-exclusive feature and is not available on AI Studio, where conversations tend to be shorter.
