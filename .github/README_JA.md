@@ -29,9 +29,6 @@
     <a href="https://trendshift.io/repositories/16094" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16094" alt="Nagi-ovo%2Fgemini-voyager | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <a href="https://www.producthunt.com/products/gemini-voyager?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-gemini-voyager" target="_blank" rel="noopener noreferrer"><img alt="Gemini Voyager - All-in-one Gemini suite: folders, chat export and much more | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064704&amp;theme=light&amp;t=1768842096186"></a>
   </p>
-  <p align="center">
-    ✨ Product Hunt に登場しました！応援よろしくお願いします。❤️
-  </p>
 </div>
 
 <p align="center">
@@ -51,19 +48,8 @@
     <img src="https://count.getloli.com/@gemini-voyager?name=gemini-voyager&theme=rule34&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
-<p align="center">
-  <a href="https://x.com/Nag1ovo/status/2024507762483277927?s=20" target="_blank">
-    <img src="../docs/public/assets/x-recommendation.png" alt="KOL Recommendation" width="500">
-  </a>
-  <br>
-  <b>🎉 トップテック KOL やコミュニティから強く推奨されています！</b>
-</p>
-
 > [!NOTE]
 > もし Voyager が役に立っているなら、X、YouTube、Reddit などで共有してもらえると嬉しいです。シェアが増えるほど、このプロジェクトをより多くの人に届けられ、Gemini の体験改善にもつながります。ありがとう。
-
-> [!IMPORTANT]
-> Voyager は以前、商標に関する問題により Chrome ウェブストアから削除され、蓄積されたすべてのユーザーとレビューを失いました。現在は再公開しゼロから再構築中です。もし Voyager が役に立っていると感じたら、ストアページでの評価やレビューをいただけると大変励みになります。
 
 ---
 
@@ -245,15 +231,19 @@ Voyager に貢献してくださったすべてのコントリビューターに
 
 ## 🌟 クレジット
 
+> Voyager は小さなサイドプロジェクトです。他の拡張機能からユーザーを引き抜く機能を作るより、人の役に立つものづくりに時間を使いたいと思っています。
+
 - **[gemini-watermark-remover](https://github.com/journey-ad/gemini-watermark-remover) / [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool)** - NanoBanana はこれらのプロジェクトをもとに適応されています。関連する第三者の MIT notice は [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) に記載しています。
+
+- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - このプロジェクトのインスピレーションの源です。
+
+## 🌍 エコシステム
+
+Voyager にインスパイアされたプロジェクト：
 
 - **[DeepSeek Voyager](https://github.com/Azurboy/deepseek-voyager)** - Voyager を DeepSeek 向けに移植したプロジェクト。
 
 - **[claude-nexus](https://github.com/Qiuner/claude-nexus)** - Voyager に着想を得た Claude.ai 向け拡張機能。タイムラインナビゲーション、フォルダ管理、プロンプトライブラリなどを備え、Voyager のプロンプトのインポート／エクスポートと完全互換です！
-
-- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - オリジナルの ChatGPT 向け拡張機能。このプロジェクトのインスピレーションの源です。
-
-- **[Ophel Atlas](https://github.com/urzeye/ophel)** - AI チャットを整理された検索可能なドキュメントに変換するブラウザ拡張機能。アウトラインの自動生成、会話管理、プロンプトライブラリを備え、複数の AI プラットフォームに対応しています。
 
 - **[Better_Doubao](https://github.com/Rex16200513/Better_Doubao)** - Doubao を強化するブラウザ拡張機能。ナビゲーション、整理、生産性機能を向上させます。
 

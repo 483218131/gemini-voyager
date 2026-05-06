@@ -29,9 +29,6 @@
     <a href="https://trendshift.io/repositories/16094" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16094" alt="Nagi-ovo%2Fgemini-voyager | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <a href="https://www.producthunt.com/products/gemini-voyager?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-gemini-voyager" target="_blank" rel="noopener noreferrer"><img alt="Gemini Voyager - All-in-one Gemini suite: folders, chat export and much more | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064704&amp;theme=light&amp;t=1768842096186"></a>
   </p>
-  <p align="center">
-    ✨ Estamos no Product Hunt! Gostaríamos muito de ouvir o seu feedback. ❤️
-  </p>
 </div>
 
 <p align="center">
@@ -51,19 +48,8 @@
     <img src="https://count.getloli.com/@gemini-voyager?name=gemini-voyager&theme=rule34&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
-<p align="center">
-  <a href="https://x.com/Nag1ovo/status/2024507762483277927?s=20" target="_blank">
-    <img src="../docs/public/assets/x-recommendation.png" alt="KOL Recommendation" width="500">
-  </a>
-  <br>
-  <b>🎉 Altamente recomendado pelos principais influenciadores de tecnologia!</b>
-</p>
-
 > [!NOTE]
 > Se o Voyager for útil para você, compartilhe no X, Reddit, YouTube, etc. Cada partilha ajuda mais pessoas a descobrir o projeto e a melhorar a experiência com Gemini. Obrigado.
-
-> [!IMPORTANT]
-> O Voyager foi anteriormente removido da Chrome Web Store devido a uma disputa de marca registrada, resultando na perda de todos os utilizadores e avaliações acumulados. Estamos de volta e a reconstruir do zero — se o Voyager lhe for útil, deixar uma avaliação na página da loja significaria muito para nós.
 
 ---
 
@@ -231,15 +217,19 @@ Um agradecimento especial a todos os colaboradores pelas suas contribuições ao
 
 ## 🌟 Créditos
 
+> Voyager é um pequeno projeto paralelo. Prefiro gastar tempo construindo coisas que ajudem as pessoas do que construindo recursos para atrair usuários de outras extensões.
+
 - **[gemini-watermark-remover](https://github.com/journey-ad/gemini-watermark-remover) / [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool)** - O NanoBanana foi adaptado destes projetos. Os avisos MIT de terceiros retidos estão em [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - A fonte original de inspiração para este projeto.
+
+## 🌍 Ecossistema
+
+Projetos inspirados pelo Voyager:
 
 - **[DeepSeek Voyager](https://github.com/Azurboy/deepseek-voyager)** - Um fork do Voyager adaptado para o DeepSeek.
 
 - **[claude-nexus](https://github.com/Qiuner/claude-nexus)** - Uma extensão de aprimoramento para Claude.ai inspirada no Voyager, com navegação por linha do tempo, gerenciamento de pastas, biblioteca de prompts e muito mais, com compatibilidade total de importação/exportação de prompts com o Voyager!
-
-- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - A fonte original de inspiração para a navegação na linha do tempo.
-
-- **[Ophel Atlas](https://github.com/urzeye/ophel)** - Uma extensão de navegador que transforma conversas de IA em documentos organizados e pesquisáveis, com geração automática de esquemas, gestão de conversas e biblioteca de prompts, compatível com múltiplas plataformas de IA.
 
 - **[Better_Doubao](https://github.com/Rex16200513/Better_Doubao)** - Uma extensão de navegador avançada que aprimora o Doubao com navegação aprimorada, organização e recursos de produtividade.
 

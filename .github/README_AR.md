@@ -29,9 +29,6 @@
     <a href="https://trendshift.io/repositories/16094" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16094" alt="Nagi-ovo%2Fgemini-voyager | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <a href="https://www.producthunt.com/products/gemini-voyager?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-gemini-voyager" target="_blank" rel="noopener noreferrer"><img alt="Gemini Voyager - All-in-one Gemini suite: folders, chat export and much more | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064704&amp;theme=light&amp;t=1768842096186"></a>
   </p>
-  <p align="center">
-    ✨ نحن متواجدون الآن على Product Hunt! يسعدنا سماع آرائكم. ❤️
-  </p>
 </div>
 
 <p align="center">
@@ -51,19 +48,8 @@
     <img src="https://count.getloli.com/@gemini-voyager?name=gemini-voyager&theme=rule34&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
-<p align="center">
-  <a href="https://x.com/Nag1ovo/status/2024507762483277927?s=20" target="_blank">
-    <img src="../docs/public/assets/x-recommendation.png" alt="KOL Recommendation" width="500">
-  </a>
-  <br>
-  <b>🎉 نوصي به بشدة من قبل كبار المؤثرين في مجال التكنولوجيا والمجتمع!</b>
-</p>
-
 > [!NOTE]
 > إذا كان Voyager مفيداً لك، فشاركْه على X أو Reddit أو YouTube إلخ. كل مشاركة تساعد المزيد من الناس على اكتشاف المشروع وتحسين تجربة Gemini. شكراً.
-
-> [!IMPORTANT]
-> تمت إزالة Voyager سابقاً من متجر Chrome الإلكتروني بسبب نزاع على العلامة التجارية، مما أدى إلى فقدان جميع المستخدمين والمراجعات المتراكمة. لقد عدنا الآن ونعيد البناء من الصفر — إذا وجدت Voyager مفيداً، فإن ترك تقييم أو مراجعة على صفحة المتجر سيعني لنا الكثير.
 
 ---
 
@@ -225,15 +211,19 @@
 
 ## 🌟 الاعتمادات
 
+> Voyager مشروع جانبي صغير. أفضّل قضاء وقتي في بناء أشياء تساعد الناس بدلاً من بناء ميزات لاستقطاب مستخدمي الإضافات الأخرى.
+
 - **[gemini-watermark-remover](https://github.com/journey-ad/gemini-watermark-remover) / [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool)** - تم بناء NanoBanana بالاعتماد على هذين المشروعين. إشعارات MIT الخاصة بالأطراف الثالثة والمحفوظة موجودة في [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - مصدر الإلهام الأصلي لهذا المشروع.
+
+## 🌍 المنظومة
+
+مشاريع مستوحاة من Voyager:
 
 - **[DeepSeek Voyager](https://github.com/Azurboy/deepseek-voyager)** - نسخة مشتقة من Voyager مخصصة لـ DeepSeek.
 
 - **[claude-nexus](https://github.com/Qiuner/claude-nexus)** - إضافة لتحسين Claude.ai مستوحاة من Voyager، تتضمن التنقّل عبر الخط الزمني، وإدارة المجلدات، ومكتبة المطالبات والمزيد، مع توافق كامل لاستيراد/تصدير المطالبات مع Voyager!
-
-- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - مصدر الإلهام الأصلي للتنقل في الجدول الزمني للمحادثة.
-
-- **[Ophel Atlas](https://github.com/urzeye/ophel)** - إضافة متصفح تحوّل محادثات الذكاء الاصطناعي إلى مستندات منظمة وقابلة للبحث، مع إنشاء تلقائي للمخططات وإدارة المحادثات ومكتبة للأوامر، وتدعم منصات ذكاء اصطناعي متعددة.
 
 - **[Better_Doubao](https://github.com/Rex16200513/Better_Doubao)** - إضافة متصفح متقدمة تعزز Doubao بميزات التنقل المحسّن والتنظيم والإنتاجية.
 

@@ -29,8 +29,11 @@
     <a href="https://trendshift.io/repositories/16094" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16094" alt="Nagi-ovo%2Fgemini-voyager | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <a href="https://www.producthunt.com/products/gemini-voyager?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-gemini-voyager" target="_blank" rel="noopener noreferrer"><img alt="Gemini Voyager - All-in-one Gemini suite: folders, chat export and much more | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064704&amp;theme=light&amp;t=1768842096186"></a>
   </p>
-  <p align="center">
-    ✨ 我们已在 Product Hunt 上线！欢迎来分享你的想法和反馈。❤️
+  <p>
+    <a href="https://x.com/Nag1ovo" target="_blank"><img src="https://img.shields.io/badge/@Nag1ovo-000000?style=flat-square&logo=x&logoColor=white" alt="X"></a>
+    <a href="https://discord.gg/TEUFxdMbGb" target="_blank"><img src="https://img.shields.io/badge/Discord-加入社区-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a>
+    <a href="https://www.xiaohongshu.com/user/profile/5d366136000000001101950a" target="_blank"><img src="https://img.shields.io/badge/小红书-@Nagi--ovo-FF2442?style=flat-square" alt="小红书"></a>
+    <a href="https://space.bilibili.com/312249633" target="_blank"><img src="https://img.shields.io/badge/Bilibili-@卡普迪姆-FB7299?style=flat-square&logo=bilibili&logoColor=white" alt="Bilibili"></a>
   </p>
 </div>
 
@@ -51,19 +54,8 @@
     <img src="https://count.getloli.com/@gemini-voyager?name=gemini-voyager&theme=rule34&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
-<p align="center">
-  <a href="https://x.com/Nag1ovo/status/2024507762483277927?s=20" target="_blank">
-    <img src="../docs/public/assets/x-recommendation.png" alt="KOL Recommendation" width="500">
-  </a>
-  <br>
-  <b>🎉 感谢知名科技圈大 V 与社区的强烈推荐！</b>
-</p>
-
 > [!NOTE]
 > 如果 Voyager 帮到了你，欢迎分享到 X、即刻、小红书、Linux.do、V2EX 等等，也欢迎推荐给海外 KOL。每一次分享都能让更多人看到这个项目，从而改善 Gemini 的使用体验。谢谢。
-
-> [!IMPORTANT]
-> Voyager 曾因商标争议被 Chrome Web Store 下架，所有积累的用户和评价都归零了。现在我们已重新上架，正在从头开始重建——如果你觉得 Voyager 好用，去商店页面留个评分或评价，对我们来说意义重大。
 
 ---
 
@@ -71,7 +63,7 @@
 
 我们都很喜欢 Gemini，但有时候总觉得它少了一点"秩序感"。
 
-这就是我们开发 **Voyager** 的初衷。它不仅仅是一个工具，更是一个能帮你把 AI 对话变得井井有条、触手可及的得力助手。无论你是需要处理大量对话的研究人员，还是喜欢收藏代码片段的开发者，亦或是单纯的整理控，Voyager 都是为你准备的。
+这就是我开发 **Voyager** 的初衷。它不仅仅是一个工具，更是一个能帮你把 AI 对话变得井井有条、触手可及的得力助手。无论你是需要处理大量对话的研究人员，还是喜欢收藏代码片段的开发者，亦或是单纯的整理控，Voyager 都是为你准备的。
 
 <p align="center">
   <a href="https://x.com/Nag1ovo/status/2024509398601597412?s=20" target="_blank">
@@ -274,15 +266,19 @@ bun run build:all
 
 ## 🌟 致谢
 
+> Voyager 只是一个小小的 side project。比起做「从 XX 迁移」来抢用户，我更想把时间花在真正帮到人的事情上。
+
 - **[gemini-watermark-remover](https://github.com/journey-ad/gemini-watermark-remover) / [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool)** - NanoBanana 基于这些项目适配而来，相关第三方 MIT 声明保留在 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
+
+- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - 本项目的灵感来源。
+
+## 🌍 生态
+
+受 Voyager 启发的项目：
 
 - **[DeepSeek Voyager](https://github.com/Azurboy/deepseek-voyager)** - 为 DeepSeek 适配的 Fork 版本。
 
 - **[claude-nexus](https://github.com/Qiuner/claude-nexus)** - 受 Voyager 启发的 Claude.ai 增强扩展，提供时间线导航、文件夹管理、提示词库等功能，并与 Voyager 的提示词导入/导出完全兼容！
-
-- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - 本项目的灵感来源。
-
-- **[Ophel Atlas](https://github.com/urzeye/ophel)** - 将 AI 对话转化为有组织、可搜索文档的浏览器扩展，支持自动生成大纲、对话管理和提示词库，兼容多个 AI 平台。
 
 - **[Better_Doubao](https://github.com/Rex16200513/Better_Doubao)** - 为豆包提供增强导航、组织管理和生产力功能的浏览器扩展。
 

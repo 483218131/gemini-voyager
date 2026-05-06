@@ -29,8 +29,11 @@
     <a href="https://trendshift.io/repositories/16094" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16094" alt="Nagi-ovo%2Fgemini-voyager | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <a href="https://www.producthunt.com/products/gemini-voyager?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-gemini-voyager" target="_blank" rel="noopener noreferrer"><img alt="Gemini Voyager - All-in-one Gemini suite: folders, chat export and much more | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064704&amp;theme=light&amp;t=1768842096186"></a>
   </p>
-  <p align="center">
-    ✨ We're live on Product Hunt! We'd love to hear your thoughts and feedback. ❤️
+  <p>
+    <a href="https://x.com/Nag1ovo" target="_blank"><img src="https://img.shields.io/badge/@Nag1ovo-000000?style=flat-square&logo=x&logoColor=white" alt="X"></a>
+    <a href="https://discord.gg/TEUFxdMbGb" target="_blank"><img src="https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a>
+    <a href="https://www.xiaohongshu.com/user/profile/5d366136000000001101950a" target="_blank"><img src="https://img.shields.io/badge/小红书-@Nagi--ovo-FF2442?style=flat-square" alt="Xiaohongshu"></a>
+    <a href="https://space.bilibili.com/312249633" target="_blank"><img src="https://img.shields.io/badge/Bilibili-@卡普迪姆-FB7299?style=flat-square&logo=bilibili&logoColor=white" alt="Bilibili"></a>
   </p>
 </div>
 
@@ -51,19 +54,8 @@
     <img src="https://count.getloli.com/@gemini-voyager?name=gemini-voyager&theme=rule34&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
-<p align="center">
-  <a href="https://x.com/Nag1ovo/status/2024507762483277927?s=20" target="_blank">
-    <img src="docs/public/assets/x-recommendation.png" alt="KOL Recommendation" width="500">
-  </a>
-  <br>
-  <b>🎉 Highly recommended by top tech KOLs and the community!</b>
-</p>
-
 > [!NOTE]
 > If Voyager helps you, feel free to share it on X, Reddit, YouTube, Threads, etc. Every share helps more people discover the project and improve the Gemini experience. Thanks.
-
-> [!IMPORTANT]
-> Voyager was previously taken down from the Chrome Web Store due to a trademark dispute, which resulted in the loss of all accumulated users and reviews. We're now back and rebuilding from scratch — if you find Voyager useful, leaving a rating or review on the store page would mean the world to us.
 
 ---
 
@@ -71,7 +63,7 @@
 
 We love Gemini, but sometimes we wish it had just a _bit_ more structure.
 
-That's why we built **Voyager**. It's not just a tool; it's a companion that helps you keep your AI conversations organized, accessible, and productive. Whether you're a researcher juggling dozens of threads, a developer saving code snippets, or just someone who loves order, Voyager is designed for you.
+That's why I built **Voyager**. It's not just a tool; it's a companion that helps you keep your AI conversations organized, accessible, and productive. Whether you're a researcher juggling dozens of threads, a developer saving code snippets, or just someone who loves order, Voyager is designed for you.
 
 <p align="center">
   <a href="https://x.com/Nag1ovo/status/2024509398601597412?s=20" target="_blank">
@@ -273,15 +265,19 @@ Special thanks to all contributors for their contributions to Voyager ❤️
 
 ## 🌟 Credits
 
+> Voyager is a small side project. I'd rather spend time building things that help people than building features that poach users from other extensions.
+
 - **[gemini-watermark-remover](https://github.com/journey-ad/gemini-watermark-remover) / [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool)** - NanoBanana is adapted from these projects. Third-party MIT notices are retained in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+
+- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - The original timeline navigation extension for ChatGPT that inspired this project.
+
+## 🌍 Ecosystem
+
+Projects inspired by Voyager:
 
 - **[DeepSeek Voyager](https://github.com/Azurboy/deepseek-voyager)** - A fork of Voyager adapted for DeepSeek, bringing timeline navigation and chat management to DeepSeek users!
 
 - **[claude-nexus](https://github.com/Qiuner/claude-nexus)** - A Claude.ai enhancement extension inspired by Voyager, featuring timeline navigation, folder management, prompt library and more, with full prompt import/export compatibility with Voyager!
-
-- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - The original timeline navigation extension for ChatGPT that inspired this project: Voyager adapted the timeline concept for Gemini and added extensive new features including folder management, prompt vault, and chat export.
-
-- **[Ophel Atlas](https://github.com/urzeye/ophel)** - A browser extension that transforms AI conversations into organized, searchable documents with auto-generated outlines, conversation management, and prompt libraries across multiple AI platforms.
 
 - **[Better_Doubao](https://github.com/Rex16200513/Better_Doubao)** - An advanced browser extension supercharging Doubao with enhanced navigation, organization, and productivity features.
 

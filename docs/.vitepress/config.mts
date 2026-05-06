@@ -2,7 +2,7 @@ import {
   GitChangelog,
   GitChangelogMarkdownSection,
 } from '@nolebase/vitepress-plugin-git-changelog/vite';
-import { defineConfig, type HeadConfig } from 'vitepress';
+import { type HeadConfig, defineConfig } from 'vitepress';
 
 // https://vitepress.dev/reference/site-config
 const siteUrl = 'https://voyager.nagi.fun';
@@ -27,29 +27,20 @@ export default defineConfig({
 
   transformHead({ pageData }) {
     const head: HeadConfig[] = [];
-    const pagePath = pageData.relativePath
-      .replace(/\.md$/, '.html')
-      .replace(/index\.html$/, '');
+    const pagePath = pageData.relativePath.replace(/\.md$/, '.html').replace(/index\.html$/, '');
     const pageUrl = `${siteUrl}/${pagePath}`;
     const title = pageData.frontmatter.title || pageData.title;
-    const description =
-      pageData.frontmatter.description || pageData.description;
+    const description = pageData.frontmatter.description || pageData.description;
 
     head.push(['link', { rel: 'canonical', href: pageUrl }]);
     head.push(['meta', { property: 'og:title', content: title }]);
     head.push(['meta', { property: 'og:url', content: pageUrl }]);
     if (description) {
-      head.push([
-        'meta',
-        { property: 'og:description', content: description },
-      ]);
+      head.push(['meta', { property: 'og:description', content: description }]);
     }
 
     const rawMdUrl = `https://raw.githubusercontent.com/Nagi-ovo/gemini-voyager/main/docs/${pageData.relativePath}`;
-    head.push([
-      'link',
-      { rel: 'alternate', type: 'text/markdown', href: rawMdUrl },
-    ]);
+    head.push(['link', { rel: 'alternate', type: 'text/markdown', href: rawMdUrl }]);
 
     return head;
   },
@@ -71,6 +62,7 @@ export default defineConfig({
               { text: '快速上手', link: '/guide/getting-started' },
               { text: '赞助', link: '/guide/sponsor' },
               { text: '交流与反馈', link: '/guide/community' },
+              { text: '受 Voyager 启发的项目', link: '/guide/ecosystem' },
             ],
           },
           {
@@ -135,6 +127,7 @@ export default defineConfig({
               { text: '快速開始', link: '/zh_TW/guide/getting-started' },
               { text: '贊助', link: '/zh_TW/guide/sponsor' },
               { text: '社群', link: '/zh_TW/guide/community' },
+              { text: '受 Voyager 啟發的項目', link: '/zh_TW/guide/ecosystem' },
             ],
           },
           {
@@ -199,6 +192,7 @@ export default defineConfig({
               { text: 'Getting Started', link: '/en/guide/getting-started' },
               { text: 'Sponsor', link: '/en/guide/sponsor' },
               { text: 'Community', link: '/en/guide/community' },
+              { text: 'Ecosystem', link: '/en/guide/ecosystem' },
             ],
           },
           {
@@ -263,6 +257,7 @@ export default defineConfig({
               { text: 'クイックスタート', link: '/ja/guide/getting-started' },
               { text: 'スポンサー', link: '/ja/guide/sponsor' },
               { text: 'コミュニティ', link: '/ja/guide/community' },
+              { text: 'エコシステム', link: '/ja/guide/ecosystem' },
             ],
           },
           {
@@ -327,6 +322,7 @@ export default defineConfig({
               { text: '시작하기', link: '/ko/guide/getting-started' },
               { text: '후원', link: '/ko/guide/sponsor' },
               { text: '커뮤니티', link: '/ko/guide/community' },
+              { text: '에코시스템', link: '/ko/guide/ecosystem' },
             ],
           },
           {
@@ -391,6 +387,7 @@ export default defineConfig({
               { text: 'Commencer', link: '/fr/guide/getting-started' },
               { text: 'Sponsor', link: '/fr/guide/sponsor' },
               { text: 'Communauté', link: '/fr/guide/community' },
+              { text: 'Écosystème', link: '/fr/guide/ecosystem' },
             ],
           },
           {
@@ -455,6 +452,7 @@ export default defineConfig({
               { text: 'Comenzar', link: '/es/guide/getting-started' },
               { text: 'Patrocinar', link: '/es/guide/sponsor' },
               { text: 'Comunidad', link: '/es/guide/community' },
+              { text: 'Ecosistema', link: '/es/guide/ecosystem' },
             ],
           },
           {
@@ -528,6 +526,7 @@ export default defineConfig({
               { text: 'Começar', link: '/pt/guide/getting-started' },
               { text: 'Patrocinar', link: '/pt/guide/sponsor' },
               { text: 'Comunidade', link: '/pt/guide/community' },
+              { text: 'Ecossistema', link: '/pt/guide/ecosystem' },
             ],
           },
           {
@@ -593,6 +592,7 @@ export default defineConfig({
               { text: 'البدء', link: '/ar/guide/getting-started' },
               { text: 'رعاية', link: '/ar/guide/sponsor' },
               { text: 'المجتمع', link: '/ar/guide/community' },
+              { text: 'المنظومة', link: '/ar/guide/ecosystem' },
             ],
           },
           {
@@ -657,6 +657,7 @@ export default defineConfig({
               { text: 'Начало работы', link: '/ru/guide/getting-started' },
               { text: 'Поддержать', link: '/ru/guide/sponsor' },
               { text: 'Сообщество', link: '/ru/guide/community' },
+              { text: 'Экосистема', link: '/ru/guide/ecosystem' },
             ],
           },
           {

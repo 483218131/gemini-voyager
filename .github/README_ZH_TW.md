@@ -29,9 +29,6 @@
     <a href="https://trendshift.io/repositories/16094" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16094" alt="Nagi-ovo%2Fgemini-voyager | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <a href="https://www.producthunt.com/products/gemini-voyager?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-gemini-voyager" target="_blank" rel="noopener noreferrer"><img alt="Gemini Voyager - All-in-one Gemini suite: folders, chat export and much more | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064704&amp;theme=light&amp;t=1768842096186"></a>
   </p>
-  <p align="center">
-    ✨ 我們已在 Product Hunt 上線！歡迎來分享你的想法和回饋。❤️
-  </p>
 </div>
 
 <p align="center">
@@ -51,19 +48,8 @@
     <img src="https://count.getloli.com/@gemini-voyager?name=gemini-voyager&theme=rule34&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
-<p align="center">
-  <a href="https://x.com/Nag1ovo/status/2024507762483277927?s=20" target="_blank">
-    <img src="../docs/public/assets/x-recommendation.png" alt="KOL Recommendation" width="500">
-  </a>
-  <br>
-  <b>🎉 感謝知名科技圈大 V 與社區的強烈推薦！</b>
-</p>
-
 > [!NOTE]
 > 如果 Voyager 有幫助，歡迎分享到 X、Facebook、YouTube、Threads、Dcard 等等。每一次分享都能讓更多人看見這個專案，從而改善 Gemini 的使用體驗。謝謝。
-
-> [!IMPORTANT]
-> Voyager 曾因商標爭議被 Chrome Web Store 下架，所有累積的用戶和評價都歸零了。現在我們已重新上架，正在從頭開始重建——如果你覺得 Voyager 好用，去商店頁面留個評分或評價，對我們來說意義重大。
 
 ---
 
@@ -279,15 +265,19 @@ bun run build:all
 
 ## 🌟 致謝
 
+> Voyager 只是一個小小的 side project。比起做「從 XX 遷移」來搶使用者，我更想把時間花在真正幫到人的事情上。
+
 - **[gemini-watermark-remover](https://github.com/journey-ad/gemini-watermark-remover) / [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool)** - NanoBanana 基於這些專案適配而來，相關第三方 MIT 聲明保留在 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
+
+- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - 本項目的靈感來源。
+
+## 🌍 生態
+
+受 Voyager 啟發的項目：
 
 - **[DeepSeek Voyager](https://github.com/Azurboy/deepseek-voyager)** - 為 DeepSeek 適配的 Fork 版本。
 
 - **[claude-nexus](https://github.com/Qiuner/claude-nexus)** - 受 Voyager 啟發的 Claude.ai 增強擴充套件，提供時間軸導覽、資料夾管理、提示詞庫等功能，並與 Voyager 的提示詞匯入/匯出完全相容！
-
-- **[ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)** - 本項目的靈感來源。
-
-- **[Ophel Atlas](https://github.com/urzeye/ophel)** - 將 AI 對話轉化為有組織、可搜尋文件的瀏覽器擴充功能，支援自動生成大綱、對話管理和提示詞庫，相容多個 AI 平台。
 
 - **[Better_Doubao](https://github.com/Rex16200513/Better_Doubao)** - 為豆包提供增強導航、組織管理和生產力功能的瀏覽器擴充功能。
 
