@@ -174,6 +174,39 @@ describe('sendBehavior', () => {
     cleanup();
   });
 
+  it('clicks a localized send button within the main chat container', async () => {
+    const staleUpdateButton = document.createElement('button');
+    staleUpdateButton.className = 'update-button';
+    markElementVisible(staleUpdateButton);
+
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'text-input-field';
+
+    const input = document.createElement('div');
+    input.setAttribute('contenteditable', 'true');
+
+    const sendButton = document.createElement('button');
+    sendButton.setAttribute('aria-label', '发送消息');
+    markElementVisible(sendButton);
+
+    inputContainer.append(input, sendButton);
+    document.body.append(staleUpdateButton, inputContainer);
+
+    const staleClickSpy = vi.spyOn(staleUpdateButton, 'click');
+    const sendClickSpy = vi.spyOn(sendButton, 'click');
+
+    const { startSendBehavior } = await import('../index');
+    const cleanup = await startSendBehavior();
+
+    const event = fireCtrlEnter(input);
+
+    expect(sendClickSpy).toHaveBeenCalledTimes(1);
+    expect(staleClickSpy).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+
+    cleanup();
+  });
+
   it('clicks the update button within an edit container (chat-message)', async () => {
     // Edit mode: input and update button are inside a chat-message element
     const chatMessage = document.createElement('chat-message');

@@ -58,6 +58,16 @@ const SEND_BUTTON_SELECTORS = [
   'button[aria-label*="更新"]',
 ] as const;
 
+const ACTION_BUTTON_LABEL_ATTRIBUTES = [
+  'aria-label',
+  'data-tooltip',
+  'mattooltip',
+  'title',
+] as const;
+
+const ACTION_BUTTON_LABEL_PATTERN =
+  /\b(send|submit|run|update|save|confirm)\b|发送|提交|傳送|送出|送信|전송|enviar|envoyer|senden|отправ|إرسال|运行|執行|実行|실행|更新|保存|修改/i;
+
 /** Selector for editable elements */
 const EDITABLE_SELECTORS = '[contenteditable="true"], [role="textbox"], textarea';
 
@@ -87,6 +97,20 @@ const attachedElements = new WeakSet<HTMLElement>();
 // ============================================================================
 // DOM Helpers
 // ============================================================================
+
+function getButtonLabel(button: HTMLButtonElement): string {
+  const labels = ACTION_BUTTON_LABEL_ATTRIBUTES.map((attribute) => button.getAttribute(attribute));
+  labels.push(button.textContent);
+  return labels.filter(Boolean).join(' ');
+}
+
+function isVisibleButton(element: Element): element is HTMLButtonElement {
+  return element instanceof HTMLButtonElement && element.offsetParent !== null;
+}
+
+function isActionButton(button: HTMLButtonElement): boolean {
+  return ACTION_BUTTON_LABEL_PATTERN.test(getButtonLabel(button));
+}
 
 /**
  * Find the send button associated with the current input element.
@@ -146,12 +170,16 @@ function findSendButton(inputElement: HTMLElement): HTMLElement | null {
       }
     }
 
-    // Fallback search within container by icon text
+    // Fallback search within container by localized labels or icon text
     const allButtons = container.querySelectorAll('button');
     for (const button of allButtons) {
+      if (isVisibleButton(button) && isActionButton(button)) {
+        return button;
+      }
+
       const iconElement = button.querySelector('.material-symbols-outlined, mat-icon');
       const iconName = iconElement?.textContent?.trim().toLowerCase();
-      if ((iconName === 'send' || iconName === 'play_arrow') && button.offsetParent !== null) {
+      if ((iconName === 'send' || iconName === 'play_arrow') && isVisibleButton(button)) {
         return button;
       }
     }
