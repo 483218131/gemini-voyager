@@ -1146,18 +1146,111 @@ export class TimelineManager {
       : 12;
   }
 
-  private ensureTurnId(el: Element, index: number): string {
+  private collectExistingTurnIdOwners(elements: HTMLElement[]): Map<string, HTMLElement[]> {
+    const owners = new Map<string, HTMLElement[]>();
+    elements.forEach((el) => {
+      const id = el.dataset?.turnId?.trim() || '';
+      if (!id) return;
+      const existing = owners.get(id);
+      if (existing) {
+        existing.push(el);
+      } else {
+        owners.set(id, [el]);
+      }
+    });
+    return owners;
+  }
+
+  private collectPreviousMarkerElementsById(): Map<string, Set<HTMLElement>> {
+    const elementsById = new Map<string, Set<HTMLElement>>();
+    this.markers.forEach((marker) => {
+      let elements = elementsById.get(marker.id);
+      if (!elements) {
+        elements = new Set<HTMLElement>();
+        elementsById.set(marker.id, elements);
+      }
+      elements.add(marker.element);
+    });
+    return elementsById;
+  }
+
+  private shouldKeepExistingTurnId(
+    id: string,
+    el: HTMLElement,
+    usedIds: Set<string>,
+    existingTurnIdOwners: Map<string, HTMLElement[]>,
+    previousMarkerElementsById: Map<string, Set<HTMLElement>>,
+  ): boolean {
+    if (usedIds.has(id)) return false;
+
+    const owners = existingTurnIdOwners.get(id) ?? [];
+    if (owners.length <= 1) return true;
+
+    const previousOwners = previousMarkerElementsById.get(id);
+    if (!previousOwners || previousOwners.size === 0) return owners[0] === el;
+    if (previousOwners.has(el)) return true;
+
+    return !owners.some((owner) => owner !== el && previousOwners.has(owner));
+  }
+
+  private allocateTurnId(
+    el: HTMLElement,
+    index: number,
+    usedIds: Set<string>,
+    existingTurnIdOwners: Map<string, HTMLElement[]>,
+  ): string {
+    const basis = this.extractTurnText(el) || `user-${index}`;
+    const candidates = [
+      this.turnIdByIndex.get(index) || '',
+      makeStableTurnId(index),
+      `u-${index}-${hashString(basis)}`,
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate || usedIds.has(candidate)) continue;
+      if (existingTurnIdOwners.has(candidate)) continue;
+      return candidate;
+    }
+
+    const base = `u-${index}-${hashString(`${basis}|dedupe`)}`;
+    let suffix = 0;
+    let candidate = base;
+    while (usedIds.has(candidate) || existingTurnIdOwners.has(candidate)) {
+      suffix += 1;
+      candidate = `${base}-${suffix}`;
+    }
+    return candidate;
+  }
+
+  private ensureTurnId(
+    el: Element,
+    index: number,
+    usedIds: Set<string>,
+    existingTurnIdOwners: Map<string, HTMLElement[]>,
+    previousMarkerElementsById: Map<string, Set<HTMLElement>>,
+  ): string {
     const asEl = el as HTMLElement & { dataset?: DOMStringMap & { turnId?: string } };
     const existingId = asEl.dataset?.turnId?.trim() || '';
-    if (existingId) {
+    if (
+      existingId &&
+      this.shouldKeepExistingTurnId(
+        existingId,
+        asEl,
+        usedIds,
+        existingTurnIdOwners,
+        previousMarkerElementsById,
+      )
+    ) {
+      usedIds.add(existingId);
       this.turnIdByIndex.set(index, existingId);
       return existingId;
     }
 
-    const id = this.turnIdByIndex.get(index) || makeStableTurnId(index);
+    const id = this.allocateTurnId(asEl, index, usedIds, existingTurnIdOwners);
     try {
       if (asEl.dataset) asEl.dataset.turnId = id;
     } catch {}
+    usedIds.add(id);
     this.turnIdByIndex.set(index, id);
     return id;
   }
@@ -1398,12 +1491,21 @@ export class TimelineManager {
     this.contentSpanPx = contentSpan;
 
     this.markerMap.clear();
+    const usedTurnIds = new Set<string>();
+    const existingTurnIdOwners = this.collectExistingTurnIdOwners(allEls);
+    const previousMarkerElementsById = this.collectPreviousMarkerElementsById();
     this.markers = Array.from(allEls).map((el, idx) => {
       const element = el as HTMLElement;
       const offsetFromStart = element.offsetTop - firstTurnOffset;
       let n = offsetFromStart / contentSpan;
       n = Math.max(0, Math.min(1, n));
-      const id = this.ensureTurnId(element, idx);
+      const id = this.ensureTurnId(
+        element,
+        idx,
+        usedTurnIds,
+        existingTurnIdOwners,
+        previousMarkerElementsById,
+      );
       const m = {
         id,
         element,
