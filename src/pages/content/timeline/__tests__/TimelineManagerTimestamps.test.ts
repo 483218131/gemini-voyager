@@ -191,6 +191,133 @@ describe('TimelineManager message timestamps', () => {
     expect(document.querySelectorAll('.gv-timestamp')).toHaveLength(1);
   });
 
+  it('removes duplicate timestamp nodes with the same turn id', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const message = document.createElement('div');
+    message.className = 'user';
+    message.textContent = 'hello';
+    container.appendChild(message);
+
+    const firstDuplicate = document.createElement('div');
+    firstDuplicate.className = 'gv-timestamp gv-timestamp-user';
+    firstDuplicate.setAttribute('data-gv-turn-id', 'u-1');
+    firstDuplicate.textContent = 'old';
+    container.appendChild(firstDuplicate);
+
+    const secondDuplicate = document.createElement('div');
+    secondDuplicate.className = 'gv-timestamp gv-timestamp-user';
+    secondDuplicate.setAttribute('data-gv-turn-id', 'u-1');
+    secondDuplicate.textContent = 'old';
+    container.appendChild(secondDuplicate);
+
+    const manager = new TimelineManager();
+    const internal = manager as unknown as {
+      conversationId: string | null;
+      timestampService: TimestampService | null;
+      showMessageTimestampsEnabled: boolean;
+      markers: Array<{
+        id: string;
+        element: HTMLElement;
+        summary: string;
+        n: number;
+        baseN: number;
+        dotElement: null;
+        starred: boolean;
+      }>;
+      injectMessageTimestamps: () => Promise<void>;
+    };
+
+    internal.conversationId = 'gemini:conv:test';
+    internal.timestampService = {
+      getTimestamp: vi.fn().mockReturnValue(1234),
+      formatAbsoluteTime: vi.fn().mockReturnValue('2024-01-01 00:00:01'),
+    } as unknown as TimestampService;
+    internal.showMessageTimestampsEnabled = true;
+    internal.markers = [
+      {
+        id: 'u-1',
+        element: message,
+        summary: 'hello',
+        n: 0,
+        baseN: 0,
+        dotElement: null,
+        starred: false,
+      },
+    ];
+
+    await internal.injectMessageTimestamps();
+
+    const timestamps = document.querySelectorAll('.gv-timestamp[data-gv-turn-id="u-1"]');
+    expect(timestamps).toHaveLength(1);
+    expect(timestamps[0]).toBe(firstDuplicate);
+    expect(timestamps[0]?.textContent).toBe('2024-01-01 00:00:01');
+  });
+
+  it('renders one timestamp when duplicate markers share a turn id', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const firstMessage = document.createElement('div');
+    firstMessage.className = 'user';
+    firstMessage.textContent = 'hello';
+    container.appendChild(firstMessage);
+
+    const duplicateMessage = document.createElement('div');
+    duplicateMessage.className = 'user';
+    duplicateMessage.textContent = 'hello clone';
+    container.appendChild(duplicateMessage);
+
+    const manager = new TimelineManager();
+    const internal = manager as unknown as {
+      conversationId: string | null;
+      timestampService: TimestampService | null;
+      showMessageTimestampsEnabled: boolean;
+      markers: Array<{
+        id: string;
+        element: HTMLElement;
+        summary: string;
+        n: number;
+        baseN: number;
+        dotElement: null;
+        starred: boolean;
+      }>;
+      injectMessageTimestamps: () => Promise<void>;
+    };
+
+    internal.conversationId = 'gemini:conv:test';
+    internal.timestampService = {
+      getTimestamp: vi.fn().mockReturnValue(1234),
+      formatAbsoluteTime: vi.fn().mockReturnValue('2024-01-01 00:00:01'),
+    } as unknown as TimestampService;
+    internal.showMessageTimestampsEnabled = true;
+    internal.markers = [
+      {
+        id: 'u-1',
+        element: firstMessage,
+        summary: 'hello',
+        n: 0,
+        baseN: 0,
+        dotElement: null,
+        starred: false,
+      },
+      {
+        id: 'u-1',
+        element: duplicateMessage,
+        summary: 'hello clone',
+        n: 0.5,
+        baseN: 0.5,
+        dotElement: null,
+        starred: false,
+      },
+    ];
+
+    await internal.injectMessageTimestamps();
+
+    expect(document.querySelectorAll('.gv-timestamp[data-gv-turn-id="u-1"]')).toHaveLength(1);
+  });
+
   it('keeps timestamp turn ids stable when Gemini replaces a rendered message element', async () => {
     const main = document.createElement('main');
     document.body.appendChild(main);

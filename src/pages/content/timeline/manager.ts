@@ -1461,12 +1461,24 @@ export class TimelineManager {
         el.remove();
         return;
       }
+
+      if (existingTimestampEls.has(turnId)) {
+        el.remove();
+        return;
+      }
+
       existingTimestampEls.set(turnId, el);
     });
 
     // Use markers instead of querying DOM - markers already have the correct elements
+    const renderedTurnIds = new Set<string>();
     this.markers.forEach((marker, index) => {
       activeTurnIds.add(marker.id);
+      if (renderedTurnIds.has(marker.id)) {
+        return;
+      }
+      renderedTurnIds.add(marker.id);
+
       const msgEl = marker.element;
       const parent = msgEl.parentElement;
       if (!parent) {
