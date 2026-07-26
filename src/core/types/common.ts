@@ -262,6 +262,10 @@ export const StorageKeys = {
   // Message timestamps
   GV_SHOW_MESSAGE_TIMESTAMPS: 'gvShowMessageTimestamps',
   GV_MESSAGE_TIMESTAMPS: 'gvMessageTimestamps',
+  // Local-only cache of Gemini's complete ordered response-id list per
+  // conversation. It lets legacy positional turn ids resolve safely after a
+  // full reload without persisting message text or response bodies.
+  GV_TURN_IDENTITY_CACHE: 'gvTurnIdentityCache',
 
   // Popup section order
   GV_POPUP_SECTION_ORDER: 'gvPopupSectionOrder',

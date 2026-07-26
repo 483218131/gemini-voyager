@@ -350,6 +350,12 @@ export const NON_SETTINGS_BACKUP_POLICIES = {
     disposition: 'local-data',
     reason: 'Message timestamp history is local data, not a setting.',
   },
+  [StorageKeys.GV_TURN_IDENTITY_CACHE]: {
+    storage: 'local',
+    disposition: 'cache',
+    reason:
+      'Gemini response-id aliases are bounded, device-local, and rebuilt from conversation history.',
+  },
   [StorageKeys.FOLDER_PROJECT_PENDING_FOLDER_ID]: {
     storage: 'local',
     disposition: 'transient',

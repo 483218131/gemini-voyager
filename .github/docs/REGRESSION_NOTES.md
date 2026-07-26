@@ -786,3 +786,35 @@ Regression test:
 
 Commit:
 `fix(export): render Mermaid diagrams in exports`
+
+## Gemini turn identity must not come from the mounted DOM index
+
+Symptom:
+After reloading a long conversation, bookmarks (stars) in Timeline Navigation
+appeared on the wrong turns. Un-starring one of those wrong dots silently
+deleted the original bookmark record.
+
+Root cause:
+Voyager used the current user-turn DOM index (`u-<index>`) as content identity.
+Gemini virtualizes long conversations: after a reload the first mounted node
+can be turn 60, yet it receives `u-0`. Prompt text cannot repair this reliably
+because prompts can be duplicated, edited, truncated, or rendered differently.
+
+Fix:
+Use Gemini's response id (`rid`) as the canonical `s-<rid>` turn id. The
+`hNvQHb` response supplies the complete ordered turn list, including unmounted
+turns, so cache only that bounded id list per conversation and use it to map
+legacy `u-N` records. Never derive a legacy alias from the current DOM window
+and never guess by prompt text. If the complete map is unavailable, keep the
+legacy record untouched but do not display, migrate, or delete it. Timeline
+stars, hierarchy/collapse, timestamps, forks, highlights, and exports all use
+the same resolver.
+
+Regression test:
+`src/pages/content/timeline/__tests__/starredResolution.test.ts`
+`src/pages/content/timeline/__tests__/TimelineManagerStarredRelocation.test.ts`
+`src/pages/content/timeline/__tests__/TimelineManagerIdentityAliases.test.ts`
+`src/pages/content/timestamp/__tests__/historyTimestamps.test.ts`
+
+Commit:
+`fix(timeline): use stable Gemini turn identities`
