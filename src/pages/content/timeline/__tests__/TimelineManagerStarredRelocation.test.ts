@@ -23,7 +23,6 @@ type TimelineManagerInternal = {
   conversationId: string | null;
   historyTimestampStore: IdentityStoreStub | null;
   starred: Set<string>;
-  starredAtMap: Map<string, number>;
   markers: Marker[];
   markerMap: Map<string, Marker>;
   previewPanel: { updateMarkers: ReturnType<typeof vi.fn> } | null;
@@ -68,7 +67,6 @@ function setupManager(markers: Marker[], legacyAliases = new Map<string, string>
     },
   };
   internal.starred = new Set();
-  internal.starredAtMap = new Map();
   internal.markers = markers;
   internal.markerMap = new Map(markers.map((marker) => [marker.id, marker]));
   internal.previewPanel = { updateMarkers: vi.fn() };

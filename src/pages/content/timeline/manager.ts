@@ -209,8 +209,6 @@ export class TimelineManager {
   private onSyncSettingsChanged: SyncSettingsListener | null = null;
   private savedTimelinePosition: TimelinePositionData | null = null;
   private starred: Set<string> = new Set();
-  /** Map of turnId → starredAt timestamp (ms). Populated from service/storage; used for preview labels. */
-  private starredAtMap: Map<string, number> = new Map();
   /** Marker id → forced star display state, derived from the identity map. */
   private starDisplayOverride: Map<string, boolean> = new Map();
   /** Marker id → every stored turnId record represented by its painted star. */
@@ -740,14 +738,12 @@ export class TimelineManager {
     summary: string;
     index: number;
     starred: boolean;
-    starredAt?: number;
   }> {
     return this.markers.map((m, i) => ({
       id: m.id,
       summary: m.summary,
       index: i,
       starred: m.starred,
-      starredAt: m.starred ? this.starredAtMap.get(this.getStarStorageId(m.id)) : undefined,
     }));
   }
 
@@ -773,12 +769,6 @@ export class TimelineManager {
     const override = this.starDisplayOverride.get(markerId);
     if (override !== undefined) return override;
     return this.starred.has(markerId);
-  }
-
-  /** The preferred stored turnId represented by a marker's star. */
-  private getStarStorageId(markerId: string): string {
-    const storageIds = this.starStorageIdsByMarkerId.get(markerId);
-    return storageIds?.find((storageId) => storageId === markerId) ?? storageIds?.[0] ?? markerId;
   }
 
   private getStarStorageIds(markerId: string): string[] {
@@ -818,13 +808,6 @@ export class TimelineManager {
       return;
     }
 
-    // Clean up starredAtMap for removed entries
-    for (const id of this.starred) {
-      if (!nextSet.has(id)) {
-        this.starredAtMap.delete(id);
-      }
-    }
-
     this.starred = new Set(nextSet);
 
     if (persistLocal) this.saveStars();
@@ -854,11 +837,6 @@ export class TimelineManager {
     );
     const nextSet = new Set(matched.messages.map((message) => String(message.turnId)));
 
-    // Update starredAt map from shared data
-    for (const msg of matched.messages) {
-      if (msg.starredAt) this.starredAtMap.set(String(msg.turnId), msg.starredAt);
-    }
-
     this.applyStarredIdSet(nextSet);
   }
 
@@ -885,11 +863,6 @@ export class TimelineManager {
       }
 
       const nextSet = new Set(messages.map((message) => String(message.turnId)));
-
-      // Update starredAt map from service data
-      for (const msg of messages) {
-        if (msg.starredAt) this.starredAtMap.set(String(msg.turnId), msg.starredAt);
-      }
 
       this.applyStarredIdSet(nextSet);
     } catch (error) {
@@ -2229,7 +2202,6 @@ export class TimelineManager {
         // Update local starred set
         if (this.starred.has(turnId)) {
           this.starred.delete(turnId);
-          this.starredAtMap.delete(turnId);
           this.saveStars();
           this.syncMarkerStarredState();
           console.log('[Timeline] Starred removed via EventBus:', turnId);
@@ -2245,7 +2217,6 @@ export class TimelineManager {
         // Update local starred set
         if (!this.starred.has(turnId)) {
           this.starred.add(turnId);
-          this.starredAtMap.set(turnId, Date.now());
           this.saveStars();
           this.syncMarkerStarredState();
           console.log('[Timeline] Starred added via EventBus:', turnId);
@@ -3273,7 +3244,6 @@ export class TimelineManager {
     if (wasStarred) {
       storageIds.forEach((storageId) => {
         this.starred.delete(storageId);
-        this.starredAtMap.delete(storageId);
       });
     } else {
       this.starred.add(id);
@@ -3301,7 +3271,6 @@ export class TimelineManager {
           conversationTitle,
           starredAt: now,
         };
-        this.starredAtMap.set(id, now);
         await StarredMessagesService.addStarredMessage(message);
       }
     }
@@ -3315,9 +3284,9 @@ export class TimelineManager {
   }
 
   /**
-   * Inverse of {@link getStarStorageId}: which mounted marker currently carries
-   * a stored star. Used by `#gv-turn-<id>` deep links, whose ids come from
-   * storage and may have been relocated onto a different index.
+   * Resolve which mounted marker currently carries a stored star. Used by
+   * `#gv-turn-<id>` deep links, whose ids come from storage and may have been
+   * relocated onto a different index.
    */
   private resolveMarkerIdForStorageId(storageId: string): string {
     for (const [markerId, ids] of this.starStorageIdsByMarkerId) {
