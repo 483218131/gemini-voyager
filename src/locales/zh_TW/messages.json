@@ -2310,6 +2310,10 @@
     "message": "網站權限遭拒，外掛無法運作。",
     "description": "Shown when the user denies the site permission for a plugin"
   },
+  "pluginGrantRequiredAccess": {
+    "message": "授予所需網站存取權限",
+    "description": "Button that repairs missing optional site access for an enabled plugin"
+  },
   "pluginUnsupportedPlatform": {
     "message": "此瀏覽器不支援——無法授予此外掛所需的網站權限。",
     "description": "Shown when a plugin can't be enabled because the browser can't grant the site access it needs (e.g. Safari)"

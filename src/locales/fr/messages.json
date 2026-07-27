@@ -2314,6 +2314,10 @@
     "message": "Autorisation du site refusée ; l'extension ne peut pas s'exécuter.",
     "description": "Shown when the user denies the site permission for a plugin"
   },
+  "pluginGrantRequiredAccess": {
+    "message": "Accorder l'accès requis au site",
+    "description": "Button that repairs missing optional site access for an enabled plugin"
+  },
   "pluginUnsupportedPlatform": {
     "message": "Non pris en charge par ce navigateur : impossible d'accorder l'accès au site requis par l'extension.",
     "description": "Shown when a plugin can't be enabled because the browser can't grant the site access it needs (e.g. Safari)"

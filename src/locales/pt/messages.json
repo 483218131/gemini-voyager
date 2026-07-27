@@ -2312,6 +2312,10 @@
     "message": "Permissão do site negada; o plugin não pode ser executado.",
     "description": "Shown when the user denies the site permission for a plugin"
   },
+  "pluginGrantRequiredAccess": {
+    "message": "Conceder o acesso necessário ao site",
+    "description": "Button that repairs missing optional site access for an enabled plugin"
+  },
   "pluginUnsupportedPlatform": {
     "message": "Sem suporte neste navegador: não é possível conceder o acesso ao site de que o plugin precisa.",
     "description": "Shown when a plugin can't be enabled because the browser can't grant the site access it needs (e.g. Safari)"

@@ -2312,6 +2312,10 @@
     "message": "사이트 권한이 거부되어 플러그인을 실행할 수 없습니다.",
     "description": "Shown when the user denies the site permission for a plugin"
   },
+  "pluginGrantRequiredAccess": {
+    "message": "필요한 사이트 접근 권한 부여",
+    "description": "Button that repairs missing optional site access for an enabled plugin"
+  },
   "pluginUnsupportedPlatform": {
     "message": "이 브라우저에서는 지원되지 않습니다. 플러그인에 필요한 사이트 권한을 부여할 수 없습니다.",
     "description": "Shown when a plugin can't be enabled because the browser can't grant the site access it needs (e.g. Safari)"
