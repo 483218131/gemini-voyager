@@ -33,7 +33,7 @@ Bien que les outils d'IA soient d'excellents assistants, les contributions "pare
 4. Ajoutez des tests de régression pour les changements de comportement ou expliquez pourquoi l'automatisation n'est pas utile.
 5. Chargez l'artefact réel dans les navigateurs concernés et testez le parcours modifié ; indiquez dans la PR la couverture restante et son responsable.
 
-> 💡 Si vous contribuez avec un agent IA (Claude Code, Codex, …), demandez-lui d'utiliser la skill `voyager-contribute` fournie dans le dépôt (dans `.claude/skills/` et `.agents/skills/`) : elle encode ce flux ainsi que les pièges spécifiques au dépôt qui ont coûté le plus de cycles de revue.
+> 💡 Si vous contribuez avec un agent IA (Claude Code, Codex, …), demandez-lui d'utiliser la skill `voyager-contribute` fournie dans le dépôt (dans `.claude/skills/` et `.agents/skills/`) : elle encode ce flux ainsi que les pièges spécifiques au dépôt qui ont coûté le plus de cycles de revue. Les agents hors du checkout du dépôt (p. ex. Cursor) peuvent l'installer via `npx skills add Nagi-ovo/voyager -s voyager-contribute`.
 
 ## Table des Matières
 
@@ -53,6 +53,7 @@ Bien que les outils d'IA soient d'excellents assistants, les contributions "pare
 ### Prérequis
 
 - **Bun 1.3.12** (aligné sur `packageManager` et la CI)
+- **GitHub CLI (`gh`)** : installez-le et authentifiez-vous avec `gh auth login` ; la skill `voyager-contribute` s'en sert pour consulter et publier les Issues/PRs. Sans `gh`, utilisez l'interface web GitHub et signalez-le dans la PR.
 - Les navigateurs concernés pour charger l'extension et tester le parcours réel
 
 ### Démarrage Rapide

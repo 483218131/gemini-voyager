@@ -33,7 +33,7 @@ AI ツールは優れたアシスタントですが、「怠惰な」コピー�
 4. 動作変更には回帰テストを追加するか、自動化が有用でない理由を説明してください。
 5. 影響するブラウザで実際の成果物を読み込み、変更したフローを確認してください。未確認項目と担当者は PR に記載します。
 
-> 💡 AI エージェント（Claude Code、Codex など）で貢献する場合は、リポジトリに同梱の `voyager-contribute` skill（`.claude/skills/` と `.agents/skills/`）を使うよう指示してください。本ワークフローに加え、過去の PR で最もレビュー往復を要したリポジトリ固有の落とし穴を網羅しています。
+> 💡 AI エージェント（Claude Code、Codex など）で貢献する場合は、リポジトリに同梱の `voyager-contribute` skill（`.claude/skills/` と `.agents/skills/`）を使うよう指示してください。本ワークフローに加え、過去の PR で最もレビュー往復を要したリポジトリ固有の落とし穴を網羅しています。リポジトリ外のエージェント（Cursor など）では `npx skills add Nagi-ovo/voyager -s voyager-contribute` でインストールできます。
 
 ## 目次
 
@@ -53,6 +53,7 @@ AI ツールは優れたアシスタントですが、「怠惰な」コピー�
 ### 前提条件
 
 - **Bun 1.3.12**（`packageManager` および CI と統一）
+- **GitHub CLI（`gh`）**：インストール後 `gh auth login` で認証してください。`voyager-contribute` skill は Issue/PR の照会・公開に `gh` を利用します。`gh` がない場合は GitHub の Web UI を使い、その旨を PR に記載してください。
 - 拡張機能を読み込み、実際のフローを確認する対象ブラウザ
 
 ### クイックスタート

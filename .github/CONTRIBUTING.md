@@ -40,7 +40,7 @@ AI 是很好的辅助工具，但缺少明确目标、聚焦范围和真实验�
 4. 行为变更添加回归测试，或说明自动化测试不适用的理由。
 5. 在受影响浏览器中加载实际扩展并验证改动流程；缺少环境时，在 PR 中注明未测试项和补测负责人。
 
-> 💡 使用 AI Agent（Claude Code、Codex 等）贡献时，请让它使用仓库自带的 `voyager-contribute` skill（位于 `.claude/skills/` 与 `.agents/skills/`）：它内置上述流程与历史 PR 中最耗评审轮次的仓库特有陷阱。
+> 💡 使用 AI Agent（Claude Code、Codex 等）贡献时，请让它使用仓库自带的 `voyager-contribute` skill（位于 `.claude/skills/` 与 `.agents/skills/`）：它内置上述流程与历史 PR 中最耗评审轮次的仓库特有陷阱。仓库外的 agent（如 Cursor）可用 `npx skills add Nagi-ovo/voyager -s voyager-contribute` 安装。
 
 ## 目录
 
@@ -60,6 +60,7 @@ AI 是很好的辅助工具，但缺少明确目标、聚焦范围和真实验�
 ### 前置要求
 
 - **Bun 1.3.12**（与 `packageManager` 和 CI 一致）
+- **GitHub CLI（`gh`）**：安装后运行 `gh auth login` 完成认证；`voyager-contribute` skill 依赖它查询和发布 Issue/PR。没有 `gh` 时可改用 GitHub 网页操作，并在 PR 中注明。
 - 用于加载扩展并验证真实流程的受影响浏览器
 
 ### 快速启动
@@ -332,7 +333,7 @@ AI tools can be helpful, but copy-paste PRs without clear intent, focused scope,
 4. Add regression tests for behavior changes, or explain why automation is not useful.
 5. Load the real extension artifact in affected browsers and exercise the changed workflow; identify missing coverage and its owner in the PR.
 
-> 💡 If you contribute with an AI agent (Claude Code, Codex, …), tell it to use the bundled `voyager-contribute` skill (under `.claude/skills/` and `.agents/skills/`): it encodes this workflow plus the repository-specific pitfalls that cost past PRs the most review rounds.
+> 💡 If you contribute with an AI agent (Claude Code, Codex, …), tell it to use the bundled `voyager-contribute` skill (under `.claude/skills/` and `.agents/skills/`): it encodes this workflow plus the repository-specific pitfalls that cost past PRs the most review rounds. Agents outside the repo checkout (e.g. Cursor) can install it via `npx skills add Nagi-ovo/voyager -s voyager-contribute`.
 
 ## Table of Contents
 
@@ -352,6 +353,7 @@ AI tools can be helpful, but copy-paste PRs without clear intent, focused scope,
 ### Prerequisites
 
 - **Bun 1.3.12** (matching `packageManager` and CI)
+- **GitHub CLI (`gh`)**: install it and authenticate with `gh auth login`; the `voyager-contribute` skill relies on it for Issue/PR state and publishing. Without `gh`, use the GitHub web UI instead and note that in the PR.
 - The affected browsers for loading the extension and exercising the real workflow
 
 ### Quick Start

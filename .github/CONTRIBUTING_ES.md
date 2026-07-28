@@ -33,7 +33,7 @@ Aunque las herramientas de IA son grandes asistentes, las contribuciones de "cop
 4. Añade pruebas de regresión para cambios de comportamiento o explica por qué la automatización no es útil.
 5. Carga el artefacto real en los navegadores afectados y prueba el flujo modificado; indica en la PR la cobertura pendiente y su responsable.
 
-> 💡 Si contribuyes con un agente de IA (Claude Code, Codex, …), pídele que use la skill `voyager-contribute` incluida en el repositorio (en `.claude/skills/` y `.agents/skills/`): codifica este flujo y las trampas específicas del repositorio que más rondas de revisión han costado.
+> 💡 Si contribuyes con un agente de IA (Claude Code, Codex, …), pídele que use la skill `voyager-contribute` incluida en el repositorio (en `.claude/skills/` y `.agents/skills/`): codifica este flujo y las trampas específicas del repositorio que más rondas de revisión han costado. Los agentes fuera del checkout del repositorio (p. ej. Cursor) pueden instalarla con `npx skills add Nagi-ovo/voyager -s voyager-contribute`.
 
 ## Tabla de Contenidos
 
@@ -53,6 +53,7 @@ Aunque las herramientas de IA son grandes asistentes, las contribuciones de "cop
 ### Requisitos Previos
 
 - **Bun 1.3.12** (coincide con `packageManager` y CI)
+- **GitHub CLI (`gh`)**: instálalo y autentícate con `gh auth login`; la skill `voyager-contribute` lo usa para consultar y publicar Issues/PRs. Sin `gh`, usa la interfaz web de GitHub e indícalo en la PR.
 - Los navegadores afectados para cargar la extensión y probar el flujo real
 
 ### Inicio Rápido

@@ -14,7 +14,7 @@ Route issue investigation to the `issue-review` skill, Safari loading or native 
 3. Read related entries in `.github/docs/REGRESSION_NOTES.md` before a non-trivial feature or fix.
 4. Work on one focused topic branch targeting `main`. Keep secrets and generated `dist_*` artifacts out of commits.
 5. Read [repo-traps.md](references/repo-traps.md) — the repository-specific pitfalls that have cost past contributors the most review rounds.
-6. Use `gh` as the source of truth for Issue/PR state. Before any GitHub write, confirm `gh auth status` shows the account you intend to contribute as.
+6. Use `gh` as the source of truth for Issue/PR state. Before any GitHub write, confirm `gh auth status` shows the account you intend to contribute as. If GitHub CLI is unavailable, perform Issue/PR reads and writes through the GitHub web UI instead and note that in the PR.
 
 Preflight is complete when the Issue or rationale, approval state, intended scope, current branch, and clean ownership of every changed file are known.
 
