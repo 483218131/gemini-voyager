@@ -1,4 +1,4 @@
-> **🌐 语言 / Language**: [中文](#贡献指南) | [English](#contributing-to-gemini-voyager) | [Español](CONTRIBUTING_ES.md) | [Français](CONTRIBUTING_FR.md) | [日本語](CONTRIBUTING_JA.md)
+> **🌐 语言 / Language**: [中文](#贡献指南) | [English](#contributing-to-voyager) | [Español](CONTRIBUTING_ES.md) | [Français](CONTRIBUTING_FR.md) | [日本語](CONTRIBUTING_JA.md)
 
 ---
 
@@ -32,6 +32,16 @@ AI 是很好的辅助工具，但缺少明确目标、聚焦范围和真实验�
 - 验证后再提交 PR，并附上可视化证据，例如截图、录屏或前后对比。
 - **Git 协作能力**：你应熟悉 GitHub 和 Git 的基本工作流，确保能在 AI Agent 的辅助下正确进行开源协作。如果你对此尚不熟悉，建议先学习相关知识，请保持 PR 中的 Git 历史整洁，避免出现混乱的提交记录。
 
+## 必须流程
+
+1. 新功能先开 Issue，并等待维护者明确同意方案；`/claim` 或被分配只代表负责人。
+2. 每次仓库改动都通过一个聚焦的主题分支提交 PR，不直接推送到 `main`。
+3. 提交前依次运行 `bun run format`、`bun run lint` 和 `bun run verify:pr`，并说明任何未运行项。仅改动文档（docs/README）时，可用 `bun run format:check` 加 `bun run docs:build` 代替完整的 `verify:pr`。
+4. 行为变更添加回归测试，或说明自动化测试不适用的理由。
+5. 在受影响浏览器中加载实际扩展并验证改动流程；缺少环境时，在 PR 中注明未测试项和补测负责人。
+
+> 💡 使用 AI Agent（Claude Code、Codex 等）贡献时，请让它使用仓库自带的 `voyager-contribute` skill（位于 `.claude/skills/` 与 `.agents/skills/`）：它内置上述流程与历史 PR 中最耗评审轮次的仓库特有陷阱。
+
 ## 目录
 
 - [快速开始](#快速开始)
@@ -49,10 +59,8 @@ AI 是很好的辅助工具，但缺少明确目标、聚焦范围和真实验�
 
 ### 前置要求
 
-- **Bun** 1.0+（必需）
-- 用于测试的 Chromium 内核浏览器（Chrome、Edge、Brave 等）
-- **Firefox：必须进行测试。**
-- **Safari：作为可选项目**。如果有环境请进行测试；或者由 AI/自行判断该功能是否为 Safari 不支持的功能，并请予以标注。
+- **Bun 1.3.12**（与 `packageManager` 和 CI 一致）
+- 用于加载扩展并验证真实流程的受影响浏览器
 
 ### 快速启动
 
@@ -118,10 +126,12 @@ bun install
 | `bun run dev:firefox` | 启动 Firefox 开发模式            |
 | `bun run dev:safari`  | 启动 Safari 开发模式（仅 macOS） |
 | `bun run build`       | Chrome 生产构建                  |
-| `bun run build:all`   | 所有浏览器生产构建               |
+| `bun run build:edge`  | Edge 独立构建与打包              |
+| `bun run build:all`   | Chrome + Firefox + Safari 构建   |
 | `bun run lint`        | 运行 ESLint 并自动修复           |
 | `bun run typecheck`   | 运行 TypeScript 类型检查         |
 | `bun run test`        | 运行测试套件                     |
+| `bun run verify:pr`   | 标准本地 PR 自动验证             |
 
 ### 加载扩展
 
@@ -151,11 +161,9 @@ bun install
 提交前，请务必运行：
 
 ```bash
-bun run lint       # 修复代码风格问题
 bun run format     # 格式化代码
-bun run typecheck  # 检查类型
-bun run build      # 验证构建成功
-bun run test       # 运行测试
+bun run lint       # 修复代码风格问题
+bun run verify:pr  # 标准本地 PR 自动验证
 ```
 
 并确保：
@@ -167,11 +175,7 @@ bun run test       # 运行测试
 
 ## 测试策略
 
-我们遵循“基于 ROI”的测试策略：**测逻辑，不测 DOM。**
-
-1. **必须测 (Logic)**：核心服务（Storage, Backup）、数据解析和工具函数。必须使用 TDD。
-2. **建议测 (State)**：复杂的 UI 状态（如文件夹 Reducer）。
-3. **跳过 (Fragile)**：直接 DOM 操作（Content Scripts）和纯 UI 组件。请使用防御性编程代替。
+测试最可能回归的接口：逻辑与复杂状态使用自动化测试；选择器、挂载/清理或 SPA 导航发生变化时添加最小 DOM 回归测试；单元测试不能代替真实浏览器加载与流程验证。
 
 ---
 
@@ -184,7 +188,7 @@ bun run test       # 运行测试
 3. **用户影响**：描述用户将如何受到影响
 4. **可视化证据（严格）**：对于任何 UI 修改或新功能，**必须**提供截图或屏幕录制。**没有截图 = 不予审核/回复。**
 5. **Issue 引用**：链接相关 issue（如 "Closes #123"）
-6. **测试与逻辑**：PR 必须包含单元测试并清晰解释修改逻辑。不接受没有上下文的“魔法”修复。
+6. **测试与逻辑**：行为变更须包含相关回归测试；没有适用的自动化测试时，说明理由和修改逻辑。不接受没有上下文的“魔法”修复。
 
 ### 提交信息格式
 
@@ -320,6 +324,16 @@ AI tools can be helpful, but copy-paste PRs without clear intent, focused scope,
 - Submit the PR after verification, and include visual proof such as screenshots, screen recordings, or before/after clips.
 - **Workflow Proficiency**: You should be familiar with GitHub and Git workflows and able to collaborate correctly using AI tools. If you are new to this, please learn the basics first to ensure a clean Git history in your PRs.
 
+## Required Workflow
+
+1. Open an Issue for a new feature and wait for explicit maintainer approval of the approach; assignment or `/claim` only selects an owner.
+2. Submit every repository change through one focused topic-branch PR; do not push directly to `main`.
+3. Run `bun run format`, `bun run lint`, and `bun run verify:pr` in that order, and disclose anything not run. For docs-only changes (docs/README), `bun run format:check` plus `bun run docs:build` may replace the full `verify:pr`.
+4. Add regression tests for behavior changes, or explain why automation is not useful.
+5. Load the real extension artifact in affected browsers and exercise the changed workflow; identify missing coverage and its owner in the PR.
+
+> 💡 If you contribute with an AI agent (Claude Code, Codex, …), tell it to use the bundled `voyager-contribute` skill (under `.claude/skills/` and `.agents/skills/`): it encodes this workflow plus the repository-specific pitfalls that cost past PRs the most review rounds.
+
 ## Table of Contents
 
 - [Getting Started](#getting-started)
@@ -337,10 +351,8 @@ AI tools can be helpful, but copy-paste PRs without clear intent, focused scope,
 
 ### Prerequisites
 
-- **Bun** 1.0+ (Required)
-- A Chromium-based browser for testing (Chrome, Edge, Brave, etc.)
-- **Firefox: Mandatory testing.**
-- **Safari: Optional.** If you have the environment, please test it. Alternatively, let AI or use your own judgment to determine if the feature is unsupported on Safari and label it accordingly.
+- **Bun 1.3.12** (matching `packageManager` and CI)
+- The affected browsers for loading the extension and exercising the real workflow
 
 ### Quick Start
 
@@ -406,10 +418,12 @@ bun install
 | `bun run dev:firefox` | Start Firefox development mode                |
 | `bun run dev:safari`  | Start Safari development mode (macOS only)    |
 | `bun run build`       | Production build for Chrome                   |
-| `bun run build:all`   | Production build for all browsers             |
+| `bun run build:edge`  | Standalone Edge build and package             |
+| `bun run build:all`   | Chrome + Firefox + Safari builds              |
 | `bun run lint`        | Run ESLint with auto-fix                      |
 | `bun run typecheck`   | Run TypeScript type checking                  |
 | `bun run test`        | Run test suite                                |
+| `bun run verify:pr`   | Standard local PR automation                  |
 
 ### Loading the Extension
 
@@ -439,11 +453,9 @@ bun install
 Before submitting, always run:
 
 ```bash
-bun run lint       # Fix linting issues
 bun run format     # Format code
-bun run typecheck  # Check types
-bun run build      # Verify build succeeds
-bun run test       # Run tests
+bun run lint       # Fix linting issues
+bun run verify:pr  # Standard local PR automation
 ```
 
 Ensure that:
@@ -455,11 +467,7 @@ Ensure that:
 
 ## Testing Strategy
 
-We follow a "ROI-based" testing strategy: **Test Logic, Not DOM.**
-
-1. **Must Have (Logic)**: Core services (Storage, Backup), Data parsers, and Utils. TDD is required here.
-2. **Should Have (State)**: Complex UI state (e.g., Folder reducer).
-3. **Skip (Fragile)**: Direct DOM manipulation (Content Scripts) and pure UI components. Use defensive programming instead.
+Test the interface most likely to regress: automate logic and complex state; add a minimal DOM regression test when selectors, mount/teardown, or SPA navigation changes; unit tests do not replace live extension loading and workflow checks.
 
 ---
 
@@ -472,7 +480,7 @@ We follow a "ROI-based" testing strategy: **Test Logic, Not DOM.**
 3. **User Impact**: Describe how users will be affected
 4. **Visual Proof (Strict)**: For ANY UI changes or new features, you **MUST** provide screenshots or screen recordings. **No screenshot = No review/reply.**
 5. **Issue Reference**: Link related issues (e.g., "Closes #123")
-6. **Tests & Logic**: PRs must include unit tests and a clear explanation of the logic. "Magic" fixes without context are not accepted.
+6. **Tests & Logic**: Behavior changes need relevant regression tests; when no useful automated test exists, explain why and describe the logic. "Magic" fixes without context are not accepted.
 
 ### Commit Message Format
 

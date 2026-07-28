@@ -8,10 +8,12 @@ bun run dev:chrome         # Dev (also: dev, dev:firefox, dev:safari, dev:chrome
 bun run build:chrome       # Build Chrome (also: build, build:firefox, build:safari)
 bun run build:edge         # Edge package (runs Chrome build, adjusts manifest, creates zip)
 bun run build:all          # Build Chrome + Firefox + Safari (does not include Edge)
+bun run build:browsers     # Build Chrome + Edge + Firefox + Safari
 bun run test               # Test (also: test:watch, test:ui, test:coverage)
 bun run typecheck          # Type check
 bun run lint               # Lint and auto-fix
 bun run format             # Format
+bun run verify:pr          # Standard local PR automation (excludes native/live browser tests)
 bun run bump               # Bump package/manifest versions and run format
 bun run docs:dev           # Docs dev server
 bun run docs:build         # Build docs

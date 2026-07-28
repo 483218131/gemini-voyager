@@ -25,6 +25,16 @@ AI ツールは優れたアシスタントですが、「怠惰な」コピー�
 - ロジックの**説明がない PR** や、必要なテストが不足している PR は拒否されます。
 - あなたは提出するすべてのコード行を理解し、責任を負う必要があります。
 
+## 必須フロー
+
+1. 新機能は Issue を作成し、方針に対する明示的な承認を待ってください。`/claim` や割り当ては担当者を示すだけです。
+2. 各変更はトピックブランチから焦点を絞った PR として提出し、`main` へ直接プッシュしないでください。
+3. `bun run format`、`bun run lint`、`bun run verify:pr` の順に実行し、未実行項目を記載してください。ドキュメントのみの変更（docs/README）の場合は、`bun run format:check` と `bun run docs:build` で完全な `verify:pr` を代替できます。
+4. 動作変更には回帰テストを追加するか、自動化が有用でない理由を説明してください。
+5. 影響するブラウザで実際の成果物を読み込み、変更したフローを確認してください。未確認項目と担当者は PR に記載します。
+
+> 💡 AI エージェント（Claude Code、Codex など）で貢献する場合は、リポジトリに同梱の `voyager-contribute` skill（`.claude/skills/` と `.agents/skills/`）を使うよう指示してください。本ワークフローに加え、過去の PR で最もレビュー往復を要したリポジトリ固有の落とし穴を網羅しています。
+
 ## 目次
 
 - [はじめに](#はじめに)
@@ -42,8 +52,8 @@ AI ツールは優れたアシスタントですが、「怠惰な」コピー�
 
 ### 前提条件
 
-- **Bun** 1.0+（必須）
-- テスト用の Chromium ベースのブラウザ（Chrome, Edge, Brave など）
+- **Bun 1.3.12**（`packageManager` および CI と統一）
+- 拡張機能を読み込み、実際のフローを確認する対象ブラウザ
 
 ### クイックスタート
 
@@ -109,10 +119,12 @@ bun install
 | `bun run dev:firefox` | Firefox 開発モードを開始                  |
 | `bun run dev:safari`  | Safari 開発モードを開始（macOS のみ）     |
 | `bun run build`       | Chrome 用のプロダクションビルド           |
-| `bun run build:all`   | 全ブラウザ用のプロダクションビルド        |
+| `bun run build:edge`  | Edge の独立ビルドとパッケージ作成         |
+| `bun run build:all`   | Chrome + Firefox + Safari のビルド        |
 | `bun run lint`        | ESLint を実行して自動修正                 |
 | `bun run typecheck`   | TypeScript の型チェックを実行             |
 | `bun run test`        | テストスイートを実行                      |
+| `bun run verify:pr`   | 標準のローカル PR 自動検証                |
 
 ### 拡張機能の読み込み
 
@@ -144,11 +156,9 @@ bun install
 送信する前に、必ず以下を実行してください：
 
 ```bash
-bun run lint       # リンティングの問題を修正
 bun run format     # コードの整形
-bun run typecheck  # 型をチェック
-bun run build      # ビルドが成功することを確認
-bun run test       # テストを実行
+bun run lint       # リンティングの問題を修正
+bun run verify:pr  # 標準のローカル検証を実行
 ```
 
 以下を確認してください：
@@ -160,11 +170,7 @@ bun run test       # テストを実行
 
 ## テスト戦略
 
-私たちは「ROI に基づく」テスト戦略に従います：**DOM ではなくロジックをテストしてください。**
-
-1. **必須 (Logic)**: コアサービス (ストレージ、バックアップ)、データパーサー、ユーティリティ。ここでは TDD が必須です。
-2. **推奨 (State)**: 複雑な UI 状態 (例: フォルダ Reducer)。
-3. **スキップ (Fragile)**: 直接的な DOM 操作 (Content Scripts) や純粋な UI コンポーネント。代わりに防御的プログラミングを使用してください。
+最も回帰しやすいインターフェースを検証してください。ロジックと複雑な状態は自動化し、セレクターや SPA ナビゲーションの変更には最小限の DOM テストを追加し、実際に拡張機能を読み込んでフローを確認します。
 
 ---
 
