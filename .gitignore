@@ -73,6 +73,7 @@ scripts/chrome-profile/
 .entire/
 .agent/
 .hermes/
+skills-lock.json
 docs/plans/
 output/
 src/pages/content/printBridge/
