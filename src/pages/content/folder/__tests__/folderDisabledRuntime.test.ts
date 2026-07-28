@@ -154,6 +154,19 @@ describe('FolderManager disabled runtime teardown', () => {
     expect(mountFloatingFabMock).not.toHaveBeenCalled();
   });
 
+  it('keeps the FAB reopen path for explicit floating mode', async () => {
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+    typed.folderEnabled = true;
+
+    await typed.startFloatingMode();
+    const calls = mountFloatingPanelMock.mock.calls as unknown as Array<[{ onClose?: () => void }]>;
+    const panelArgs = calls[0]?.[0];
+    panelArgs?.onClose?.();
+
+    await vi.waitFor(() => expect(mountFloatingFabMock).toHaveBeenCalledTimes(1));
+  });
+
   it('routes floating panel conversation clicks through the SPA navigator', async () => {
     manager = new FolderManager();
     const typed = manager as unknown as TestableManager;

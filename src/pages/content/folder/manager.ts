@@ -974,11 +974,7 @@ export class FolderManager {
       // fallback up from a previous transition, retire it.
       if (this.floatingFallbackActive) {
         this.debug('Recovery: sidebar folder restored — retiring floating fallback');
-        this.floatingFallbackActive = false;
-        if (this.floatingPanelHandle) {
-          this.floatingPanelHandle.destroy();
-          this.floatingPanelHandle = null;
-        }
+        this.retireFloatingFallback();
       }
       // Belt-and-suspenders: if the position observer ever misses a mutation
       // (e.g. it was torn down across a reinit and not yet re-attached), the
@@ -997,28 +993,20 @@ export class FolderManager {
       // If a floating fallback is up, retire it before reinjecting the sidebar
       // version so we don't briefly have both visible.
       if (this.floatingFallbackActive) {
-        this.floatingFallbackActive = false;
-        if (this.floatingPanelHandle) {
-          this.floatingPanelHandle.destroy();
-          this.floatingPanelHandle = null;
-        }
+        this.retireFloatingFallback();
       }
       this.reinitializeFolderUI();
       return;
     }
 
-    if (currentSidebar) {
-      const now = Date.now();
-      if (this.sidebarAnchorMissingSince === null) {
-        this.sidebarAnchorMissingSince = now;
-      }
-      const missingDuration = now - this.sidebarAnchorMissingSince;
-      if (missingDuration < SIDEBAR_ANCHOR_FALLBACK_GRACE_MS) {
-        this.debug('Recovery: sidebar anchor missing temporarily — waiting');
-        return;
-      }
-    } else {
-      this.sidebarAnchorMissingSince = null;
+    const now = Date.now();
+    if (this.sidebarAnchorMissingSince === null) {
+      this.sidebarAnchorMissingSince = now;
+    }
+    const missingDuration = now - this.sidebarAnchorMissingSince;
+    if (missingDuration < SIDEBAR_ANCHOR_FALLBACK_GRACE_MS) {
+      this.debug('Recovery: sidebar or anchor missing temporarily — waiting');
+      return;
     }
 
     // Anchor is gone — Gemini moved the goalposts. Surface the floating panel
@@ -1102,6 +1090,22 @@ export class FolderManager {
   }
 
   /**
+   * End one automatic fallback episode once the sidebar becomes usable again.
+   * Clear every body-level entry point, including a FAB left by older builds,
+   * without touching the user's explicit floating-mode preference.
+   */
+  private retireFloatingFallback(): void {
+    if (!this.floatingFallbackActive) return;
+    this.floatingFallbackActive = false;
+    this.sidebarAnchorMissingSince = null;
+    unmountFloatingFab();
+    if (this.floatingPanelHandle) {
+      this.floatingPanelHandle.destroy();
+      this.floatingPanelHandle = null;
+    }
+  }
+
+  /**
    * Sidebar injection failed — surface a one-time nudge letting the user pop
    * the folder panel out as a floating window. If they've already dismissed the
    * nudge or already have the floating panel open, skip straight to mounting it.
@@ -1118,6 +1122,10 @@ export class FolderManager {
   private async startFloatingMode(openPanel = this.floatingOpenOnStart): Promise<void> {
     if (this.isDestroyed || !this.folderEnabled) return;
     if (this.floatingModeActive) return;
+    // An already-mounted temporary fallback can be adopted by the explicit
+    // mode, but the recovery loop must no longer own or retire it.
+    this.floatingFallbackActive = false;
+    this.sidebarAnchorMissingSince = null;
     this.floatingModeActive = true;
     this.debug('Entering floating mode');
 
@@ -1138,6 +1146,8 @@ export class FolderManager {
    */
   private stopFloatingMode(): void {
     this.floatingModeActive = false;
+    this.floatingFallbackActive = false;
+    this.sidebarAnchorMissingSince = null;
     unmountFloatingModeNudge();
     unmountFloatingFab();
     if (this.floatingPanelHandle) {
@@ -1271,8 +1281,12 @@ export class FolderManager {
       },
       onClose: () => {
         this.floatingPanelHandle = null;
-        // Panel is gone — bring the FAB back so the user can re-open later.
-        this.showFloatingFab();
+        // Only explicit floating mode owns a persistent FAB. A temporary
+        // recovery fallback stays dismissed until the sidebar returns, which
+        // avoids turning an internal recovery state into a sticky user mode.
+        if (this.floatingModeActive) {
+          this.showFloatingFab();
+        }
       },
       onNavigate: (conv) => {
         if (conv.url) {

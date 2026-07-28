@@ -3,11 +3,13 @@ import browser from 'webextension-polyfill';
 
 import { FolderManager } from '../manager';
 
-const { mountFloatingPanelMock } = vi.hoisted(() => ({
+const { mountFloatingFabMock, mountFloatingPanelMock, unmountFloatingFabMock } = vi.hoisted(() => ({
+  mountFloatingFabMock: vi.fn(),
   mountFloatingPanelMock: vi.fn(() => ({
     destroy: vi.fn(),
     update: vi.fn(),
   })),
+  unmountFloatingFabMock: vi.fn(),
 }));
 
 vi.mock('webextension-polyfill', () => ({
@@ -39,12 +41,18 @@ vi.mock('../floatingPanel', () => ({
   mountFloatingPanel: mountFloatingPanelMock,
 }));
 
+vi.mock('../floatingModeFab', () => ({
+  mountFloatingFab: mountFloatingFabMock,
+  unmountFloatingFab: unmountFloatingFabMock,
+}));
+
 type TestableManager = {
   containerElement: HTMLElement | null;
   sidebarContainer: HTMLElement | null;
   recentSection: HTMLElement | null;
   folderEnabled: boolean;
   floatingModeActive: boolean;
+  floatingFallbackActive: boolean;
   folderAnchor: 'above-recents' | 'above-notebooks';
   notebooksAnchorButton: HTMLElement | null;
   enforceFolderAboveRecents: () => boolean;
@@ -469,6 +477,76 @@ describe('folder position enforcer (above Recents)', () => {
     await typed.runFolderRecoveryTick();
 
     expect(mountFloatingPanelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits before opening the floating fallback when the whole sidebar is temporarily missing', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-12T00:00:00.000Z'));
+
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+    typed.folderEnabled = true;
+    typed.floatingModeActive = false;
+
+    await typed.runFolderRecoveryTick();
+    expect(mountFloatingPanelMock).not.toHaveBeenCalled();
+
+    vi.setSystemTime(new Date('2026-06-12T00:00:06.001Z'));
+    await typed.runFolderRecoveryTick();
+
+    expect(mountFloatingPanelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leave a FAB or immediately reopen after closing an automatic fallback', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-12T00:00:00.000Z'));
+
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+    typed.folderEnabled = true;
+    typed.floatingModeActive = false;
+
+    await typed.runFolderRecoveryTick();
+    vi.setSystemTime(new Date('2026-06-12T00:00:06.001Z'));
+    await typed.runFolderRecoveryTick();
+
+    const calls = mountFloatingPanelMock.mock.calls as unknown as Array<[{ onClose?: () => void }]>;
+    const panelArgs = calls[0]?.[0];
+    panelArgs?.onClose?.();
+
+    expect(mountFloatingFabMock).not.toHaveBeenCalled();
+    expect(typed.floatingFallbackActive).toBe(true);
+
+    await typed.runFolderRecoveryTick();
+    expect(mountFloatingPanelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears every floating fallback entry point when the sidebar recovers', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-12T00:00:00.000Z'));
+
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+    typed.folderEnabled = true;
+    typed.floatingModeActive = false;
+
+    await typed.runFolderRecoveryTick();
+    vi.setSystemTime(new Date('2026-06-12T00:00:06.001Z'));
+    await typed.runFolderRecoveryTick();
+
+    const panelHandle = mountFloatingPanelMock.mock.results[0]?.value;
+    const { sidebar, sectionParent, recentsSection } = mountSidebar();
+    const container = mountFolderContainer(sectionParent, recentsSection);
+    mockRect(sidebar, 280, 800);
+    typed.sidebarContainer = sidebar;
+    typed.recentSection = recentsSection;
+    typed.containerElement = container;
+
+    await typed.runFolderRecoveryTick();
+
+    expect(panelHandle.destroy).toHaveBeenCalledTimes(1);
+    expect(unmountFloatingFabMock).toHaveBeenCalled();
+    expect(typed.floatingFallbackActive).toBe(false);
   });
 
   // Regression: dragging the window across Gemini's mobile breakpoint strips the

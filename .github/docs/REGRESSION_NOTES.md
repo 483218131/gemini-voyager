@@ -77,6 +77,32 @@ Regression test:
 Commit:
 `fix(folder): remove cloned sidebar duplicates`
 
+## Automatic folder fallback must not become a sticky floating mode
+
+Symptom:
+Folders briefly disappeared, then returned as a floating panel even though the
+floating-mode setting was off. Closing that panel could leave a FAB that the
+already-off popup toggle could not remove.
+
+Root cause:
+The recovery watchdog applied its grace period only when the sidebar container
+existed. A transiently missing sidebar opened the fallback immediately, and the
+shared panel-close callback always restored the explicit-mode FAB.
+
+Fix:
+Apply the same grace period to a missing sidebar, restore the FAB only for
+explicit floating mode, and clear all fallback entry points when the sidebar
+recovers.
+
+Regression test:
+`src/pages/content/folder/__tests__/folderPositionEnforcer.test.ts`
+(`waits before opening the floating fallback when the whole sidebar is temporarily missing`,
+`does not leave a FAB or immediately reopen after closing an automatic fallback`, and
+`clears every floating fallback entry point when the sidebar recovers`).
+
+Commit:
+`fix(folder): prevent sticky automatic floating fallback`
+
 ## Firefox content scripts must not hold Web Locks with async callbacks
 
 Symptom:
