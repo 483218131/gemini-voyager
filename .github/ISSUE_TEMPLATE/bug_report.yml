@@ -120,11 +120,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        ![Open Issue diagnostics, preview the sanitized report, then download the JSON file](https://raw.githubusercontent.com/Nagi-ovo/voyager/main/.github/assets/issue-diagnostics-guide.png)
-  - type: upload
+        ![Open Issue diagnostics, preview the sanitized report, then copy the Markdown into the issue](https://raw.githubusercontent.com/Nagi-ovo/voyager/main/.github/assets/issue-diagnostics-guide.png)
+  - type: textarea
     attributes:
       label: '⚙️ 脱敏诊断信息 | Sanitized Diagnostics'
-      description: 'Recommended: open Issue diagnostics at the bottom of the Voyager popup, select Preview → Download JSON, and attach voyager-diagnostics.json here. It excludes prompts, conversations, account data, and credentials. Do not upload a complete backup. / 推荐：打开 Voyager 弹窗底部的问题诊断，选择“预览 → 下载 JSON”，再将 voyager-diagnostics.json 附在这里。文件不包含提示词、对话、账号数据或凭证。请勿上传完整备份。'
+      description: 'Recommended: open Issue diagnostics at the bottom of the Voyager popup, select Preview → Copy Markdown, then paste it here. If copying fails, download the JSON and drag it here instead. Diagnostics exclude prompts, conversations, account data, and credentials. Do not share a complete backup. / 推荐：打开 Voyager 弹窗底部的问题诊断，选择“预览 → 复制 Markdown”，然后直接粘贴到这里。若复制失败，也可下载 JSON 后拖到这里。诊断信息不包含提示词、对话、账号数据或凭证。请勿分享完整备份。'
+      placeholder: 'Paste the copied Voyager diagnostics Markdown here / 在此粘贴已复制的 Voyager 诊断 Markdown'
   - type: textarea
     attributes:
       label: '📝 补充信息 | Additional Information'
