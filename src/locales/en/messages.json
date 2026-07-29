@@ -2523,5 +2523,22 @@
   },
   "highlightCloudSyncHint": {
     "message": "Keep highlights in a separate account-scoped Drive file. Highlights are included by default when Drive sync is enabled and always merge safely."
-  }
+  },
+  "diagnosticsTitle": { "message": "Issue diagnostics" },
+  "diagnosticsHint": {
+    "message": "Preview sanitized environment and plugin settings for issue reports."
+  },
+  "diagnosticsPreview": { "message": "Preview" },
+  "diagnosticsPreviewTitle": { "message": "Diagnostics preview" },
+  "diagnosticsPrivacyNote": {
+    "message": "Review before sharing. Prompts, conversations, accounts, credentials, and private URLs are excluded."
+  },
+  "diagnosticsClose": { "message": "Close" },
+  "diagnosticsCopyMarkdown": { "message": "Copy Markdown" },
+  "diagnosticsCopying": { "message": "Copying…" },
+  "diagnosticsCopied": { "message": "Copied" },
+  "diagnosticsCopyFailed": {
+    "message": "Clipboard unavailable. Select the preview manually or download JSON."
+  },
+  "diagnosticsDownloadJson": { "message": "Download JSON" }
 }

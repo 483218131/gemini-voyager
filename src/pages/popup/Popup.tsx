@@ -9,6 +9,10 @@ import {
   detectAccountPlatformFromUrl,
   getAccountIsolationStorageKey,
 } from '@/core/services/AccountIsolationService';
+import {
+  type DiagnosticPluginInput,
+  diagnosticPluginSourceFromId,
+} from '@/core/services/DiagnosticsExportService';
 import { StorageKeys, type TimelineStyle } from '@/core/types/common';
 import type { ConversationReference, Folder } from '@/core/types/folder';
 import {
@@ -33,8 +37,8 @@ import { resolveWatermarkSettings } from '@/core/utils/watermarkSettings';
 import { PromptImportExportService } from '@/features/backup/services/PromptImportExportService';
 import { matchesAnyPattern } from '@/features/plugins/sites/matchPattern';
 import {
-  listPluginManifests,
-  refreshPluginManifests,
+  listPluginManifestsWithSources,
+  refreshPluginManifestsWithSources,
 } from '@/features/plugins/sources/defaultSources';
 import {
   type PluginStateMap,
@@ -69,6 +73,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useWidthAdjuster } from '../../hooks/useWidthAdjuster';
 import { CloudSyncSettings } from './components/CloudSyncSettings';
 import { ContextSyncSettings } from './components/ContextSyncSettings';
+import { DiagnosticsExportCard } from './components/DiagnosticsExportCard';
 import { KeyboardShortcutSettings } from './components/KeyboardShortcutSettings';
 import { PluginManager } from './components/PluginManager';
 import { StarredHistory } from './components/StarredHistory';
@@ -1031,7 +1036,9 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   const [activeAccountPlatform, setActiveAccountPlatform] = useState<AccountPlatform>('gemini');
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [pluginManifests, setPluginManifests] = useState<readonly PluginManifest[]>([]);
+  const [pluginSourceIds, setPluginSourceIds] = useState<Readonly<Record<string, string>>>({});
   const [pluginState, setPluginState] = useState<PluginStateMap>({});
+  const [pluginStateLoaded, setPluginStateLoaded] = useState(false);
   // Per-site custom accent overrides: Record<siteId, hex>.
   const [accentColors, setAccentColors] = useState<Record<string, string>>({});
   // Debounce timer for persisting accent changes to throttled sync storage.
@@ -1054,6 +1061,21 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   const siteScopedManifests = useMemo(
     () => pluginManifests.filter((plugin) => matchesAnyPattern(activeUrl, plugin.matches)),
     [activeUrl, pluginManifests],
+  );
+  const diagnosticPlugins = useMemo<readonly DiagnosticPluginInput[]>(
+    () =>
+      pluginManifests.map((plugin) => {
+        const state = pluginState[plugin.id];
+        return {
+          id: plugin.id,
+          version: plugin.version,
+          source: diagnosticPluginSourceFromId(pluginSourceIds[plugin.id]),
+          enabled: state?.enabled ?? false,
+          settingsSchema: plugin.contributes.settings,
+          settings: state?.settings,
+        };
+      }),
+    [pluginManifests, pluginSourceIds, pluginState],
   );
   // True for non-native web pages even before the plugin manifest list loads.
   // Keeps Claude / ChatGPT / Grok and arbitrary third-party sites in their
@@ -1167,7 +1189,11 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   const handleRefreshPlugins = useCallback(async () => {
     setPluginsRefreshing(true);
     try {
-      setPluginManifests(await refreshPluginManifests());
+      const records = await refreshPluginManifestsWithSources();
+      setPluginManifests(records.map(({ manifest }) => manifest));
+      setPluginSourceIds(
+        Object.fromEntries(records.map(({ manifest, sourceId }) => [manifest.id, sourceId])),
+      );
     } finally {
       setPluginsRefreshing(false);
     }
@@ -1193,9 +1219,13 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   // Load plugin manifests from bundled sources plus the remote marketplace.
   useEffect(() => {
     let active = true;
-    void listPluginManifests()
-      .then((manifests) => {
-        if (active) setPluginManifests(manifests);
+    void listPluginManifestsWithSources()
+      .then((records) => {
+        if (!active) return;
+        setPluginManifests(records.map(({ manifest }) => manifest));
+        setPluginSourceIds(
+          Object.fromEntries(records.map(({ manifest, sourceId }) => [manifest.id, sourceId])),
+        );
       })
       .finally(() => {
         if (active) setPluginsLoading(false);
@@ -1208,7 +1238,10 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   useEffect(() => {
     let active = true;
     void loadPluginState().then((state) => {
-      if (active) setPluginState(state);
+      if (active) {
+        setPluginState(state);
+        setPluginStateLoaded(true);
+      }
     });
     const unsubscribe = subscribePluginState((state) => {
       if (active) setPluginState(state);
@@ -4494,6 +4527,12 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
 
       {/* Footer */}
       <div className="border-border/50 flex flex-col gap-3 border-t px-5 py-4">
+        <DiagnosticsExportCard
+          activeUrl={activeUrl}
+          loading={pluginsLoading || !pluginStateLoaded}
+          plugins={diagnosticPlugins}
+        />
+
         <div className="flex w-full items-center justify-between">
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <span className="text-foreground/80 font-semibold">{t('extensionVersion')}</span>

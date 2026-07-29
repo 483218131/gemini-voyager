@@ -2499,5 +2499,22 @@
   "highlightCloudSync": { "message": "مزامنة التمييزات" },
   "highlightCloudSyncHint": {
     "message": "يحفظ التمييزات في ملف Drive منفصل لكل حساب. تُضمّن افتراضيًا عند تشغيل مزامنة Drive وتُدمج دائمًا بأمان."
-  }
+  },
+  "diagnosticsTitle": { "message": "تشخيص المشكلة" },
+  "diagnosticsHint": {
+    "message": "عاين معلومات البيئة وإعدادات الإضافات المنقّحة لإرفاقها بتقرير المشكلة."
+  },
+  "diagnosticsPreview": { "message": "معاينة" },
+  "diagnosticsPreviewTitle": { "message": "معاينة معلومات التشخيص" },
+  "diagnosticsPrivacyNote": {
+    "message": "راجعها قبل المشاركة. لا تتضمن المطالبات أو المحادثات أو الحسابات أو بيانات الاعتماد أو الروابط الخاصة."
+  },
+  "diagnosticsClose": { "message": "إغلاق" },
+  "diagnosticsCopyMarkdown": { "message": "نسخ Markdown" },
+  "diagnosticsCopying": { "message": "جارٍ النسخ…" },
+  "diagnosticsCopied": { "message": "تم النسخ" },
+  "diagnosticsCopyFailed": {
+    "message": "الحافظة غير متاحة. حدّد نص المعاينة يدويًا أو نزّل ملف JSON."
+  },
+  "diagnosticsDownloadJson": { "message": "تنزيل JSON" }
 }

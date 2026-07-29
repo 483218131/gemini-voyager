@@ -2497,5 +2497,22 @@
   "highlightCloudSync": { "message": "同步高亮" },
   "highlightCloudSyncHint": {
     "message": "将高亮保存在按账号隔离的独立 Drive 文件中。开启 Drive 同步后默认包含高亮，并始终安全合并。"
-  }
+  },
+  "diagnosticsTitle": { "message": "问题诊断" },
+  "diagnosticsHint": {
+    "message": "预览用于 Issue 反馈的脱敏环境与插件设置。"
+  },
+  "diagnosticsPreview": { "message": "预览" },
+  "diagnosticsPreviewTitle": { "message": "诊断信息预览" },
+  "diagnosticsPrivacyNote": {
+    "message": "分享前请先检查。不包含提示词、对话、账号、凭证和私有网址。"
+  },
+  "diagnosticsClose": { "message": "关闭" },
+  "diagnosticsCopyMarkdown": { "message": "复制 Markdown" },
+  "diagnosticsCopying": { "message": "正在复制…" },
+  "diagnosticsCopied": { "message": "已复制" },
+  "diagnosticsCopyFailed": {
+    "message": "无法访问剪贴板，请手动选择预览内容或下载 JSON。"
+  },
+  "diagnosticsDownloadJson": { "message": "下载 JSON" }
 }

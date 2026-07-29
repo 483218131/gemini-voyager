@@ -24,8 +24,11 @@ export {
   createDefaultPluginSources,
   dedupeManifestsById,
   listPluginManifests,
+  listPluginManifestsWithSources,
   refreshPluginManifests,
+  refreshPluginManifestsWithSources,
 } from './sources/defaultSources';
+export type { SourcedPluginManifest } from './sources/defaultSources';
 export * from './types';
 
 let host: PluginHost | null = null;

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PluginManifest, PluginSource } from '../types';
-import { createDefaultPluginSources, listPluginManifests } from './defaultSources';
+import {
+  createDefaultPluginSources,
+  listPluginManifests,
+  listPluginManifestsWithSources,
+} from './defaultSources';
 
 function manifest(id: string, name = id): PluginManifest {
   return {
@@ -52,6 +56,21 @@ describe('default plugin sources', () => {
       'voyager.native:voyager.native',
       'voyager.same:official',
       'voyager.remote:voyager.remote',
+    ]);
+  });
+
+  it('retains only the safe source id for diagnostics', async () => {
+    const result = await listPluginManifestsWithSources([
+      new StaticSource('builtin', [manifest('voyager.same', 'native')]),
+      new StaticSource('marketplace', [
+        manifest('voyager.same', 'remote duplicate'),
+        manifest('voyager.remote'),
+      ]),
+    ]);
+
+    expect(result.map(({ manifest: plugin, sourceId }) => `${plugin.id}:${sourceId}`)).toEqual([
+      'voyager.same:builtin',
+      'voyager.remote:marketplace',
     ]);
   });
 });

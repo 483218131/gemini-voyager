@@ -2499,5 +2499,22 @@
   "highlightCloudSync": { "message": "ハイライトを同期" },
   "highlightCloudSyncHint": {
     "message": "ハイライトをアカウント別の Drive ファイルに保存します。Drive 同期を有効にすると既定で含まれ、常に安全にマージされます。"
-  }
+  },
+  "diagnosticsTitle": { "message": "問題診断" },
+  "diagnosticsHint": {
+    "message": "Issue 報告用に匿名化された環境情報とプラグイン設定を確認します。"
+  },
+  "diagnosticsPreview": { "message": "プレビュー" },
+  "diagnosticsPreviewTitle": { "message": "診断情報のプレビュー" },
+  "diagnosticsPrivacyNote": {
+    "message": "共有前に確認してください。プロンプト、会話、アカウント、認証情報、非公開 URL は含まれません。"
+  },
+  "diagnosticsClose": { "message": "閉じる" },
+  "diagnosticsCopyMarkdown": { "message": "Markdown をコピー" },
+  "diagnosticsCopying": { "message": "コピー中…" },
+  "diagnosticsCopied": { "message": "コピーしました" },
+  "diagnosticsCopyFailed": {
+    "message": "クリップボードを使用できません。プレビューを手動で選択するか JSON をダウンロードしてください。"
+  },
+  "diagnosticsDownloadJson": { "message": "JSON をダウンロード" }
 }

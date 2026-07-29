@@ -13,22 +13,48 @@ export function createDefaultPluginSources(): readonly PluginSource[] {
   return [new BuiltinPluginSource(), new BundledCatalogPluginSource()];
 }
 
-export async function listPluginManifests(
+export interface SourcedPluginManifest {
+  readonly manifest: PluginManifest;
+  /** Stable source identifier only; never contains a marketplace URL. */
+  readonly sourceId: string;
+}
+
+export async function listPluginManifestsWithSources(
   sources: readonly PluginSource[] = createDefaultPluginSources(),
-): Promise<readonly PluginManifest[]> {
-  const lists: Array<readonly PluginManifest[]> = [];
+): Promise<readonly SourcedPluginManifest[]> {
+  const seen = new Set<string>();
+  const manifests: SourcedPluginManifest[] = [];
   for (const source of sources) {
     try {
-      lists.push(await source.list());
+      for (const manifest of await source.list()) {
+        if (seen.has(manifest.id)) continue;
+        seen.add(manifest.id);
+        manifests.push({ manifest, sourceId: source.id });
+      }
     } catch (error) {
       logger.warn('Plugin source failed to list', { source: source.id, error: String(error) });
     }
   }
-  return dedupeManifestsById(lists);
+  return manifests;
+}
+
+export async function listPluginManifests(
+  sources: readonly PluginSource[] = createDefaultPluginSources(),
+): Promise<readonly PluginManifest[]> {
+  return (await listPluginManifestsWithSources(sources)).map(({ manifest }) => manifest);
 }
 
 export async function refreshPluginManifests(): Promise<readonly PluginManifest[]> {
   return listPluginManifests([new BuiltinPluginSource(), new BundledCatalogPluginSource()]);
+}
+
+export async function refreshPluginManifestsWithSources(): Promise<
+  readonly SourcedPluginManifest[]
+> {
+  return listPluginManifestsWithSources([
+    new BuiltinPluginSource(),
+    new BundledCatalogPluginSource(),
+  ]);
 }
 
 /** Merge manifest lists from multiple sources; first occurrence of an id wins. */

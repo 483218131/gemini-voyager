@@ -2499,5 +2499,22 @@
   "highlightCloudSync": { "message": "Синхронизировать выделения" },
   "highlightCloudSyncHint": {
     "message": "Хранит выделения в отдельном файле Drive для каждой учётной записи. При включении синхронизации Drive они добавляются по умолчанию и всегда безопасно объединяются."
-  }
+  },
+  "diagnosticsTitle": { "message": "Диагностика проблемы" },
+  "diagnosticsHint": {
+    "message": "Просмотрите обезличенные сведения о среде и настройках плагинов для отчёта об ошибке."
+  },
+  "diagnosticsPreview": { "message": "Предпросмотр" },
+  "diagnosticsPreviewTitle": { "message": "Предпросмотр диагностики" },
+  "diagnosticsPrivacyNote": {
+    "message": "Проверьте перед отправкой. Промпты, переписки, аккаунты, учётные данные и частные URL исключены."
+  },
+  "diagnosticsClose": { "message": "Закрыть" },
+  "diagnosticsCopyMarkdown": { "message": "Копировать Markdown" },
+  "diagnosticsCopying": { "message": "Копирование…" },
+  "diagnosticsCopied": { "message": "Скопировано" },
+  "diagnosticsCopyFailed": {
+    "message": "Буфер обмена недоступен. Выделите текст вручную или скачайте JSON."
+  },
+  "diagnosticsDownloadJson": { "message": "Скачать JSON" }
 }

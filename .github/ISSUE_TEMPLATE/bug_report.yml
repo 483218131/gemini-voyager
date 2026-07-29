@@ -117,6 +117,10 @@ body:
       label: '📸 截图 | Screenshots'
       description: 'REQUIRED for UI issues. If we cannot see it, we will not fix it. / UI 问题必填。如果看不到问题，我们将不会修复。'
       placeholder: 'Drag and drop images here or paste image URLs'
+  - type: upload
+    attributes:
+      label: '⚙️ 脱敏诊断信息 | Sanitized Diagnostics'
+      description: 'Recommended: export voyager-diagnostics.json from the bottom of the Voyager popup and attach it here. It excludes prompts, conversations, account data, and credentials. Do not upload a complete backup. / 推荐：从 Voyager 弹窗底部导出 voyager-diagnostics.json 并附在这里。文件不包含提示词、对话、账号数据或凭证。请勿上传完整备份。'
   - type: textarea
     attributes:
       label: '📝 补充信息 | Additional Information'

@@ -2497,5 +2497,22 @@
   "highlightCloudSync": { "message": "同步醒目標示" },
   "highlightCloudSyncHint": {
     "message": "將醒目標示儲存在依帳號隔離的獨立 Drive 檔案中。啟用 Drive 同步後預設包含醒目標示，並一律安全合併。"
-  }
+  },
+  "diagnosticsTitle": { "message": "問題診斷" },
+  "diagnosticsHint": {
+    "message": "預覽用於 Issue 回報的脫敏環境與外掛設定。"
+  },
+  "diagnosticsPreview": { "message": "預覽" },
+  "diagnosticsPreviewTitle": { "message": "診斷資訊預覽" },
+  "diagnosticsPrivacyNote": {
+    "message": "分享前請先檢查。不包含提示詞、對話、帳號、憑證及私人網址。"
+  },
+  "diagnosticsClose": { "message": "關閉" },
+  "diagnosticsCopyMarkdown": { "message": "複製 Markdown" },
+  "diagnosticsCopying": { "message": "正在複製…" },
+  "diagnosticsCopied": { "message": "已複製" },
+  "diagnosticsCopyFailed": {
+    "message": "無法存取剪貼簿，請手動選取預覽內容或下載 JSON。"
+  },
+  "diagnosticsDownloadJson": { "message": "下載 JSON" }
 }

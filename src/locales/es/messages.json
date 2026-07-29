@@ -2501,5 +2501,22 @@
   "highlightCloudSync": { "message": "Sincronizar resaltados" },
   "highlightCloudSyncHint": {
     "message": "Guarda los resaltados en un archivo de Drive separado por cuenta. Se incluyen de forma predeterminada al activar la sincronización y siempre se combinan de forma segura."
-  }
+  },
+  "diagnosticsTitle": { "message": "Diagnóstico del problema" },
+  "diagnosticsHint": {
+    "message": "Previsualiza el entorno y los ajustes de plugins anonimizados para informar de un problema."
+  },
+  "diagnosticsPreview": { "message": "Vista previa" },
+  "diagnosticsPreviewTitle": { "message": "Vista previa del diagnóstico" },
+  "diagnosticsPrivacyNote": {
+    "message": "Revísalo antes de compartir. No incluye prompts, conversaciones, cuentas, credenciales ni URL privadas."
+  },
+  "diagnosticsClose": { "message": "Cerrar" },
+  "diagnosticsCopyMarkdown": { "message": "Copiar Markdown" },
+  "diagnosticsCopying": { "message": "Copiando…" },
+  "diagnosticsCopied": { "message": "Copiado" },
+  "diagnosticsCopyFailed": {
+    "message": "El portapapeles no está disponible. Selecciona la vista previa o descarga el JSON."
+  },
+  "diagnosticsDownloadJson": { "message": "Descargar JSON" }
 }

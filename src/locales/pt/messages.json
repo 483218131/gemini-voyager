@@ -2499,5 +2499,22 @@
   "highlightCloudSync": { "message": "Sincronizar destaques" },
   "highlightCloudSyncHint": {
     "message": "Mantém os destaques em um arquivo do Drive separado por conta. Eles são incluídos por padrão ao ativar a sincronização e sempre são combinados com segurança."
-  }
+  },
+  "diagnosticsTitle": { "message": "Diagnóstico do problema" },
+  "diagnosticsHint": {
+    "message": "Visualize o ambiente e as configurações de plugins sanitizados para relatar um problema."
+  },
+  "diagnosticsPreview": { "message": "Visualizar" },
+  "diagnosticsPreviewTitle": { "message": "Prévia do diagnóstico" },
+  "diagnosticsPrivacyNote": {
+    "message": "Revise antes de compartilhar. Prompts, conversas, contas, credenciais e URLs privadas não são incluídos."
+  },
+  "diagnosticsClose": { "message": "Fechar" },
+  "diagnosticsCopyMarkdown": { "message": "Copiar Markdown" },
+  "diagnosticsCopying": { "message": "Copiando…" },
+  "diagnosticsCopied": { "message": "Copiado" },
+  "diagnosticsCopyFailed": {
+    "message": "Área de transferência indisponível. Selecione a prévia manualmente ou baixe o JSON."
+  },
+  "diagnosticsDownloadJson": { "message": "Baixar JSON" }
 }

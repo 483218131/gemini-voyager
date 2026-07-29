@@ -2503,5 +2503,22 @@
   "highlightCloudSync": { "message": "Synchroniser les surlignages" },
   "highlightCloudSyncHint": {
     "message": "Conserve les surlignages dans un fichier Drive distinct par compte. Ils sont inclus par défaut lorsque la synchronisation Drive est activée et sont toujours fusionnés en toute sécurité."
-  }
+  },
+  "diagnosticsTitle": { "message": "Diagnostic du problème" },
+  "diagnosticsHint": {
+    "message": "Prévisualisez l’environnement et les réglages de plugins anonymisés pour un signalement."
+  },
+  "diagnosticsPreview": { "message": "Prévisualiser" },
+  "diagnosticsPreviewTitle": { "message": "Aperçu du diagnostic" },
+  "diagnosticsPrivacyNote": {
+    "message": "Vérifiez avant de partager. Les prompts, conversations, comptes, identifiants et URL privées sont exclus."
+  },
+  "diagnosticsClose": { "message": "Fermer" },
+  "diagnosticsCopyMarkdown": { "message": "Copier le Markdown" },
+  "diagnosticsCopying": { "message": "Copie…" },
+  "diagnosticsCopied": { "message": "Copié" },
+  "diagnosticsCopyFailed": {
+    "message": "Presse-papiers indisponible. Sélectionnez l’aperçu manuellement ou téléchargez le JSON."
+  },
+  "diagnosticsDownloadJson": { "message": "Télécharger le JSON" }
 }
