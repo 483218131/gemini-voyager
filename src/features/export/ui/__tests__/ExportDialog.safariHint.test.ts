@@ -37,6 +37,8 @@ describe('ExportDialog (Safari hint)', () => {
       imageWidthNarrow: 'Narrow',
       imageWidthMedium: 'Medium',
       imageWidthWide: 'Wide',
+      promptHeadingLabel: 'Use prompts as turn headings',
+      promptHeadingHint: 'Put each prompt in its turn heading.',
       formatDescriptions: {
         json: 'JSON desc',
         markdown: 'MD desc',

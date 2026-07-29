@@ -1844,6 +1844,14 @@
     "message": "吾輩は猫である。名前はまだない。",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "プロンプトをターン見出しにする",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "各ユーザープロンプトをターン見出しに追加し、重複する「ユーザー」セクションを省略します。",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "画像の幅",
     "description": "Label for image width selection in export dialog"

@@ -436,6 +436,8 @@ function handleSaveReport(dict: Dictionaries, lang: AppLanguage): void {
         imageWidthNarrow: t('export_image_width_narrow'),
         imageWidthMedium: t('export_image_width_medium'),
         imageWidthWide: t('export_image_width_wide'),
+        promptHeadingLabel: t('export_markdown_prompt_heading'),
+        promptHeadingHint: t('export_markdown_prompt_heading_hint'),
         formatDescriptions: {
           json: t('export_format_json_description'),
           markdown: t('export_format_markdown_description'),

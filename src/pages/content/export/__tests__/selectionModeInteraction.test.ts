@@ -37,6 +37,13 @@ describe('selection mode interaction', () => {
     expect(css).toContain("body[data-theme='dark'] .gv-export-progress-card");
   });
 
+  it('styles the Markdown prompt heading switch for dark and RTL layouts', () => {
+    const css = readFileSync(resolve(process.cwd(), 'public/contentStyle.css'), 'utf8');
+
+    expect(css).toContain('.theme-host.dark-theme .gv-export-prompt-heading-section');
+    expect(css).toContain('body.gv-rtl .gv-export-prompt-heading-switch .gv-coach-knob');
+  });
+
   it('keeps logo wrapper from blocking top-bar button clicks', () => {
     const css = readFileSync(resolve(process.cwd(), 'public/contentStyle.css'), 'utf8');
     const wrapperBlock = css.match(/\.gv-logo-dropdown-wrapper\s*{([\s\S]*?)}/)?.[1] ?? '';

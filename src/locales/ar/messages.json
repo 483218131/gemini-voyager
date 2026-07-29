@@ -1844,6 +1844,14 @@
     "message": "نص عربي لمعاينة حجم الخط في التصدير.",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "استخدام المطالبات كعناوين للأدوار",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "يضيف مطالبة كل مستخدم إلى عنوان الدور ويحذف قسم المستخدم المكرر.",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "عرض الصورة",
     "description": "Label for image width selection in export dialog"

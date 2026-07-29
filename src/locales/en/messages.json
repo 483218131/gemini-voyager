@@ -1844,6 +1844,14 @@
     "message": "The quick brown fox jumps over the lazy dog.",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "Use prompts as turn headings",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "Adds each user prompt to its turn heading and omits the duplicate User section.",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "Image Width",
     "description": "Label for image width selection in export dialog"

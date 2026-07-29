@@ -233,6 +233,7 @@ interface PendingExportState {
   format: ExportFormat;
   fontSize?: number;
   imageWidth?: number;
+  usePromptAsTurnHeading?: boolean;
   initialSelectedMessageId?: string;
   attempt: number;
   url: string;
@@ -1399,6 +1400,7 @@ async function executeExportSequence(
   fontSize?: number,
   initialSelectedMessageId?: string,
   imageWidth?: number,
+  usePromptAsTurnHeading?: boolean,
 ): Promise<void> {
   // Cache Canvas documents at the very start of the export sequence,
   // before we click the top node or cause any DOM updates/scrolling.
@@ -1410,6 +1412,7 @@ async function executeExportSequence(
     format,
     fontSize,
     imageWidth,
+    usePromptAsTurnHeading,
     initialSelectedMessageId,
     attempt: 0,
     url: location.href,
@@ -1452,6 +1455,7 @@ async function executeExportSequence(
       state.fontSize,
       state.initialSelectedMessageId,
       state.imageWidth,
+      state.usePromptAsTurnHeading,
     );
     return;
   }
@@ -1510,6 +1514,7 @@ async function executeExportSequence(
     state.fontSize,
     state.initialSelectedMessageId,
     state.imageWidth,
+    state.usePromptAsTurnHeading,
   );
 }
 
@@ -1521,6 +1526,7 @@ async function executeExportSequenceWithProgress(
   fontSize?: number,
   initialSelectedMessageId?: string,
   imageWidth?: number,
+  usePromptAsTurnHeading?: boolean,
 ): Promise<void> {
   const t = (key: TranslationKey) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
   const hideProgress = showExportProgressOverlay(t);
@@ -1533,6 +1539,7 @@ async function executeExportSequenceWithProgress(
       fontSize,
       initialSelectedMessageId,
       imageWidth,
+      usePromptAsTurnHeading,
     );
   } finally {
     hideProgress();
@@ -1552,6 +1559,7 @@ async function performFinalExport(
   fontSize?: number,
   initialSelectedMessageId?: string,
   imageWidth?: number,
+  usePromptAsTurnHeading?: boolean,
 ) {
   const t = (key: TranslationKey) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
 
@@ -1912,6 +1920,7 @@ async function performFinalExport(
         fontSize,
         includeImageSource,
         imageWidth,
+        usePromptAsTurnHeading,
       });
       const minVisiblePromise = new Promise((resolve) => setTimeout(resolve, 420));
       const [result] = await Promise.all([resultPromise, minVisiblePromise]);
@@ -2024,6 +2033,7 @@ async function checkPendingExport() {
       format: parsed.format,
       fontSize: typeof parsed.fontSize === 'number' ? parsed.fontSize : undefined,
       imageWidth: typeof parsed.imageWidth === 'number' ? parsed.imageWidth : undefined,
+      usePromptAsTurnHeading: parsed.usePromptAsTurnHeading === true,
       initialSelectedMessageId:
         typeof parsed.initialSelectedMessageId === 'string'
           ? parsed.initialSelectedMessageId
@@ -2057,6 +2067,7 @@ async function checkPendingExport() {
       state.fontSize,
       state.initialSelectedMessageId,
       state.imageWidth,
+      state.usePromptAsTurnHeading,
     );
   } catch (e) {
     console.error('[Gemini Voyager] Failed to resume pending export:', e);
@@ -2728,7 +2739,7 @@ async function showExportDialog(
   const dialog = new ExportDialog();
 
   dialog.show({
-    onExport: async (format, fontSize, imageWidth) => {
+    onExport: async (format, fontSize, imageWidth, usePromptAsTurnHeading) => {
       try {
         await ensureGeneratedUiScreenshotPermission();
         if (format === 'image') {
@@ -2742,6 +2753,7 @@ async function showExportDialog(
           fontSize,
           options?.initialSelectedMessageId || undefined,
           imageWidth,
+          usePromptAsTurnHeading,
         );
       } catch (err) {
         console.error('[Gemini Voyager] Export error:', err);
@@ -2752,6 +2764,7 @@ async function showExportDialog(
       // Dialog closed
     },
     initialImageWidth,
+    showPromptHeadingOption: true,
     translations: {
       title: t('export_dialog_title'),
       selectFormat: t('export_dialog_select'),
@@ -2766,6 +2779,8 @@ async function showExportDialog(
       imageWidthNarrow: t('export_image_width_narrow'),
       imageWidthMedium: t('export_image_width_medium'),
       imageWidthWide: t('export_image_width_wide'),
+      promptHeadingLabel: t('export_markdown_prompt_heading'),
+      promptHeadingHint: t('export_markdown_prompt_heading_hint'),
       formatDescriptions: {
         json: t('export_format_json_description'),
         markdown: t('export_format_markdown_description'),

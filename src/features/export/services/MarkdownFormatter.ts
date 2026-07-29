@@ -3,7 +3,7 @@
  * Converts conversation to clean, standard Markdown format
  * Following the "paper book" philosophy - content over design
  */
-import type { ChatTurn, ConversationMetadata } from '../types/export';
+import type { ChatTurn, ConversationMetadata, MarkdownFormatOptions } from '../types/export';
 import { DOMContentExtractor } from './DOMContentExtractor';
 
 /**
@@ -73,7 +73,11 @@ export class MarkdownFormatter {
   /**
    * Format conversation as Markdown
    */
-  static format(turns: ChatTurn[], metadata: ConversationMetadata): string {
+  static format(
+    turns: ChatTurn[],
+    metadata: ConversationMetadata,
+    options: MarkdownFormatOptions = {},
+  ): string {
     const sections: string[] = [];
 
     // Header with metadata
@@ -86,7 +90,7 @@ export class MarkdownFormatter {
 
     // Conversation turns
     turns.forEach((turn, index) => {
-      sections.push(this.formatTurn(turn, index + 1));
+      sections.push(this.formatTurn(turn, index + 1, options));
       sections.push(''); // Empty line between turns
     });
 
@@ -120,28 +124,41 @@ export class MarkdownFormatter {
   /**
    * Format a single conversation turn
    */
-  private static formatTurn(turn: ChatTurn, index: number): string {
+  private static formatTurn(turn: ChatTurn, index: number, options: MarkdownFormatOptions): string {
     const lines: string[] = [];
+    const promptHeadingContent = options.usePromptAsTurnHeading
+      ? this.formatPromptHeading(turn)
+      : { hasMedia: false, text: '' };
+    const promptHeading = promptHeadingContent.text;
+    const omitUserSection = !!promptHeading && !promptHeadingContent.hasMedia;
+    const starredSuffix = turn.starred ? ' ⭐' : '';
 
-    lines.push(`## Turn ${index}${turn.starred ? ' ⭐' : ''}`);
+    lines.push(
+      promptHeading
+        ? `## Turn ${index}: ${promptHeading}${starredSuffix}`
+        : `## Turn ${index}${starredSuffix}`,
+    );
     lines.push('');
 
     if (!turn.omitEmptySections) {
-      lines.push('### 👤 User');
-      lines.push('');
+      if (!omitUserSection) {
+        lines.push('### 👤 User');
+        lines.push('');
 
-      if (turn.userElement) {
-        const extracted = DOMContentExtractor.extractUserContent(turn.userElement);
-        if (extracted.hasImages) {
-          lines.push('*[This turn includes uploaded images]*');
-          lines.push('');
+        if (turn.userElement) {
+          const extracted = DOMContentExtractor.extractUserContent(turn.userElement);
+          if (extracted.hasImages) {
+            lines.push('*[This turn includes uploaded images]*');
+            lines.push('');
+          }
+          lines.push(extracted.text || '_No content_');
+        } else {
+          lines.push(this.formatContent(turn.user) || '_No content_');
         }
-        lines.push(extracted.text || '_No content_');
-      } else {
-        lines.push(this.formatContent(turn.user) || '_No content_');
+
+        lines.push('');
       }
 
-      lines.push('');
       lines.push('### 🤖 Assistant');
       lines.push('');
 
@@ -160,7 +177,7 @@ export class MarkdownFormatter {
 
     const userFallback = this.formatContent(turn.user);
     const hasUser = !!turn.userElement || !!userFallback;
-    if (hasUser) {
+    if (hasUser && !omitUserSection) {
       lines.push('### 👤 User');
       lines.push('');
 
@@ -200,6 +217,26 @@ export class MarkdownFormatter {
     }
 
     return lines.join('\n');
+  }
+
+  private static formatPromptHeading(turn: ChatTurn): { hasMedia: boolean; text: string } {
+    const fallback = this.formatContent(turn.user);
+    const domContent = turn.userElement
+      ? DOMContentExtractor.extractUserContent(turn.userElement)
+      : null;
+    const extracted = domContent?.text || fallback;
+
+    if (!extracted) return { hasMedia: false, text: '' };
+
+    const singleLine = extracted
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return {
+      hasMedia: domContent?.hasImages === true || /!\[[^\]]*\]\([^)]*\)/.test(extracted),
+      text: singleLine ? this.escapeMarkdown(singleLine) : '',
+    };
   }
 
   /**

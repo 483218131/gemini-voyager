@@ -1846,6 +1846,14 @@
     "message": "Le vif renard brun saute par-dessus le chien paresseux.",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "Utiliser les prompts comme titres de tour",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "Ajoute chaque prompt utilisateur au titre du tour et omet la section Utilisateur en double.",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "Largeur de l'image",
     "description": "Label for image width selection in export dialog"

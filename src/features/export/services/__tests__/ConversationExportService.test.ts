@@ -105,6 +105,19 @@ describe('ConversationExportService', () => {
       expect(result.filename).toBe('Premier-League-Fantasy.md');
     });
 
+    it('applies prompt headings only when requested for Markdown', async () => {
+      const downloadSpy = vi.spyOn(MarkdownFormatter, 'download').mockImplementation(() => {});
+
+      await ConversationExportService.export(mockTurns, mockMetadata, {
+        format: ExportFormat.MARKDOWN,
+        usePromptAsTurnHeading: true,
+      });
+
+      const markdown = downloadSpy.mock.calls[0][0];
+      expect(markdown).toContain('## Turn 1: Test question');
+      expect(markdown).not.toContain('### 👤 User');
+    });
+
     it('should export as PDF', async () => {
       const result = await ConversationExportService.export(mockTurns, mockMetadata, {
         format: ExportFormat.PDF,

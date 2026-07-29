@@ -53,6 +53,35 @@ describe('MarkdownFormatter', () => {
       expect(markdown).toContain('### 🤖 Assistant');
     });
 
+    it('can put prompts in turn headings without repeating User sections', () => {
+      const markdown = MarkdownFormatter.format(mockTurns, mockMetadata, {
+        usePromptAsTurnHeading: true,
+      });
+
+      expect(markdown).toContain('## Turn 1: Hello, how are you?');
+      expect(markdown).toContain('## Turn 2: Can you help me with TypeScript? ⭐');
+      expect(markdown).not.toContain('### 👤 User');
+      expect(markdown).toContain('### 🤖 Assistant');
+    });
+
+    it('uses a safe single-line heading without dropping uploaded media', () => {
+      const markdown = MarkdownFormatter.format(
+        [
+          {
+            user: 'Review this diagram:\n![Architecture](https://example.com/diagram.png)\nBe *brief*.',
+            assistant: 'Done.',
+            starred: false,
+          },
+        ],
+        mockMetadata,
+        { usePromptAsTurnHeading: true },
+      );
+
+      expect(markdown).toContain('## Turn 1: Review this diagram: Architecture Be \\*brief\\*\\.');
+      expect(markdown).toContain('### 👤 User');
+      expect(markdown).toContain('https://example.com/diagram.png');
+    });
+
     it('should include user content', () => {
       const markdown = MarkdownFormatter.format(mockTurns, mockMetadata);
 
@@ -78,6 +107,27 @@ describe('MarkdownFormatter', () => {
 
       expect(markdown).toContain('📎 meeting-notes.pdf');
       expect(markdown).toContain('Summarize it');
+    });
+
+    it('keeps uploaded file context when using prompt headings', () => {
+      const userElement = document.createElement('div');
+      userElement.innerHTML = `
+        <user-query-file-preview>
+          <div data-test-id="uploaded-file">
+            <button class="new-file-preview-file" aria-label="meeting-notes.pdf">PDF</button>
+          </div>
+        </user-query-file-preview>
+        <p class="query-text-line">Summarize it</p>
+      `;
+
+      const markdown = MarkdownFormatter.format(
+        [{ user: '', assistant: 'Done', starred: false, userElement }],
+        mockMetadata,
+        { usePromptAsTurnHeading: true },
+      );
+
+      expect(markdown).toContain('## Turn 1: 📎 meeting\\-notes\\.pdf Summarize it');
+      expect(markdown).not.toContain('### 👤 User');
     });
 
     it('should include assistant content', () => {

@@ -181,7 +181,9 @@ export class ConversationExportService {
     options: ExportOptions,
   ): Promise<ExportResult> {
     // First create a clean markdown (no inlining)
-    let markdown = MarkdownFormatter.format(turns, metadata);
+    let markdown = MarkdownFormatter.format(turns, metadata, {
+      usePromptAsTurnHeading: options.usePromptAsTurnHeading,
+    });
 
     // Strip image source attribution lines if user opted out
     if (options.includeImageSource === false) {

@@ -1842,6 +1842,14 @@
     "message": "天地玄黃，宇宙洪荒。日月盈昃，辰宿列張。",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "將提示詞用作回合標題",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "把每個使用者提示詞加入回合標題，並省略重複的「使用者」段落。",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "匯出圖片寬度",
     "description": "Label for image width selection in export dialog"

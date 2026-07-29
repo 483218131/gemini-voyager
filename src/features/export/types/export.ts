@@ -107,6 +107,12 @@ export interface ExportOptions {
   imageWidth?: number;
   /** Whether to include image source attribution in markdown (default: true) */
   includeImageSource?: boolean;
+  /** Put each user prompt in its turn heading and omit the duplicate User section. */
+  usePromptAsTurnHeading?: boolean;
+}
+
+export interface MarkdownFormatOptions {
+  usePromptAsTurnHeading?: boolean;
 }
 
 /**

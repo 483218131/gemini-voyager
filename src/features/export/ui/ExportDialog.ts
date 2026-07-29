@@ -16,9 +16,15 @@ import {
 } from '../types/export';
 
 export interface ExportDialogOptions {
-  onExport: (format: ExportFormat, fontSize?: number, imageWidth?: number) => void;
+  onExport: (
+    format: ExportFormat,
+    fontSize?: number,
+    imageWidth?: number,
+    usePromptAsTurnHeading?: boolean,
+  ) => void;
   onCancel: () => void;
   initialImageWidth?: ImageExportWidth;
+  showPromptHeadingOption?: boolean;
   translations: {
     title: string;
     selectFormat: string;
@@ -33,6 +39,8 @@ export interface ExportDialogOptions {
     imageWidthNarrow: string;
     imageWidthMedium: string;
     imageWidthWide: string;
+    promptHeadingLabel: string;
+    promptHeadingHint: string;
     formatDescriptions: Record<ExportFormat, string>;
   };
 }
@@ -53,12 +61,14 @@ export class ExportDialog {
   private selectedFormat: ExportFormat = 'markdown' as ExportFormat;
   private fontSize: number = PDF_DEFAULT_FONT_SIZE;
   private imageWidth: ImageExportWidth = DEFAULT_IMAGE_EXPORT_WIDTH;
+  private usePromptAsTurnHeading = false;
 
   /**
    * Show export dialog
    */
   show(options: ExportDialogOptions): void {
     this.imageWidth = normalizeImageExportWidth(options.initialImageWidth);
+    this.usePromptAsTurnHeading = false;
     this.overlay = this.createDialog(options);
     document.body.appendChild(this.overlay);
 
@@ -121,6 +131,9 @@ export class ExportDialog {
     // Image width section (visible only for Image)
     const imageWidthSection = this.createImageWidthSection(options);
 
+    // Prompt heading section (visible only for chat Markdown exports)
+    const promptHeadingSection = this.createPromptHeadingSection(options);
+
     // Buttons
     const buttons = document.createElement('div');
     buttons.className = 'gv-export-dialog-buttons';
@@ -141,10 +154,12 @@ export class ExportDialog {
     exportBtn.addEventListener('click', () => {
       const isPdf = this.selectedFormat === ('pdf' as ExportFormat);
       const isImage = this.selectedFormat === ('image' as ExportFormat);
+      const isMarkdown = this.selectedFormat === ('markdown' as ExportFormat);
       options.onExport(
         this.selectedFormat,
         isPdf || isImage ? this.fontSize : undefined,
         isImage ? this.imageWidth : undefined,
+        isMarkdown ? this.usePromptAsTurnHeading : undefined,
       );
       this.hide();
     });
@@ -162,6 +177,7 @@ export class ExportDialog {
       dialog.appendChild(warning);
     }
     dialog.appendChild(formatsList);
+    dialog.appendChild(promptHeadingSection);
     dialog.appendChild(fontSizeSection);
     dialog.appendChild(imageWidthSection);
     dialog.appendChild(buttons);
@@ -368,6 +384,47 @@ export class ExportDialog {
     return section;
   }
 
+  private createPromptHeadingSection(options: ExportDialogOptions): HTMLElement {
+    const section = document.createElement('div');
+    section.className = 'gv-export-prompt-heading-section';
+    section.dataset.enabled = options.showPromptHeadingOption ? 'true' : 'false';
+    section.style.display = options.showPromptHeadingOption ? 'flex' : 'none';
+
+    const copy = document.createElement('div');
+    copy.className = 'gv-export-prompt-heading-copy';
+
+    const label = document.createElement('div');
+    label.className = 'gv-export-fontsize-label gv-export-prompt-heading-label';
+    label.textContent = options.translations.promptHeadingLabel;
+
+    const hint = document.createElement('div');
+    hint.className = 'gv-export-format-description gv-export-prompt-heading-hint';
+    hint.textContent = options.translations.promptHeadingHint;
+
+    copy.appendChild(label);
+    copy.appendChild(hint);
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'gv-coach-switch gv-export-prompt-heading-switch';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', options.translations.promptHeadingLabel);
+    toggle.setAttribute('aria-checked', 'false');
+
+    const knob = document.createElement('span');
+    knob.className = 'gv-coach-knob';
+    toggle.appendChild(knob);
+
+    toggle.addEventListener('click', () => {
+      this.usePromptAsTurnHeading = !this.usePromptAsTurnHeading;
+      toggle.setAttribute('aria-checked', this.usePromptAsTurnHeading ? 'true' : 'false');
+    });
+
+    section.appendChild(copy);
+    section.appendChild(toggle);
+    return section;
+  }
+
   /**
    * Update optional sections visibility and slider range based on selected format
    */
@@ -380,14 +437,20 @@ export class ExportDialog {
     const imageWidthSection = this.overlay.querySelector(
       '.gv-export-imagewidth-section',
     ) as HTMLElement | null;
+    const promptHeadingSection = this.overlay.querySelector(
+      '.gv-export-prompt-heading-section',
+    ) as HTMLElement | null;
 
-    if (!fontSizeSection || !imageWidthSection) return;
+    if (!fontSizeSection || !imageWidthSection || !promptHeadingSection) return;
 
     const isPdf = this.selectedFormat === ('pdf' as ExportFormat);
     const isImage = this.selectedFormat === ('image' as ExportFormat);
+    const isMarkdown = this.selectedFormat === ('markdown' as ExportFormat);
 
     fontSizeSection.style.display = isPdf || isImage ? 'block' : 'none';
     imageWidthSection.style.display = isImage ? 'block' : 'none';
+    promptHeadingSection.style.display =
+      isMarkdown && promptHeadingSection.dataset.enabled === 'true' ? 'flex' : 'none';
 
     if (isPdf || isImage) {
       const slider = fontSizeSection.querySelector(

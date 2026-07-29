@@ -1844,6 +1844,14 @@
     "message": "Съешь ещё этих мягких французских булок, да выпей чаю.",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "Использовать запросы как заголовки ходов",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "Добавляет каждый запрос пользователя в заголовок хода и убирает дублирующий раздел «Пользователь».",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "Ширина изображения",
     "description": "Label for image width selection in export dialog"

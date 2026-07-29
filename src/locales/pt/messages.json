@@ -1844,6 +1844,14 @@
     "message": "A rápida raposa marrom salta sobre o cão preguiçoso.",
     "description": "Preview text for font size slider in export dialog"
   },
+  "export_markdown_prompt_heading": {
+    "message": "Usar prompts como títulos de turno",
+    "description": "Toggle label for putting user prompts in Markdown turn headings"
+  },
+  "export_markdown_prompt_heading_hint": {
+    "message": "Adiciona cada prompt do usuário ao título do turno e omite a seção Usuário duplicada.",
+    "description": "Hint for the Markdown prompt heading toggle"
+  },
   "export_image_width_label": {
     "message": "Largura da imagem",
     "description": "Label for image width selection in export dialog"

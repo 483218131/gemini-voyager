@@ -8004,6 +8004,56 @@ body[data-color-scheme='dark'] .gv-export-dialog-btn-secondary:hover {
   background: #2d2e30;
 }
 
+/* Markdown prompt heading option */
+.gv-export-prompt-heading-section {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.gv-export-prompt-heading-copy {
+  min-width: 0;
+}
+
+.gv-export-prompt-heading-label {
+  margin-bottom: 3px;
+}
+
+.gv-export-prompt-heading-hint {
+  font-size: 12px;
+}
+
+.gv-export-prompt-heading-switch[aria-checked='true'] {
+  border-color: #1a73e8;
+  background: #1a73e8;
+}
+
+html.dark .gv-export-prompt-heading-section,
+[data-theme='dark'] .gv-export-prompt-heading-section,
+[data-color-scheme='dark'] .gv-export-prompt-heading-section,
+.theme-host.dark-theme .gv-export-prompt-heading-section,
+html.dark-theme .gv-export-prompt-heading-section,
+body.dark-theme .gv-export-prompt-heading-section,
+body[data-theme='dark'] .gv-export-prompt-heading-section,
+body[data-color-scheme='dark'] .gv-export-prompt-heading-section {
+  border-color: #3c4043;
+  background: #2d2e30;
+}
+
+body.gv-rtl .gv-export-prompt-heading-switch .gv-coach-knob {
+  right: 1px;
+  left: auto;
+}
+
+body.gv-rtl .gv-export-prompt-heading-switch[aria-checked='true'] .gv-coach-knob {
+  transform: translateX(-18px);
+}
+
 /* Font size control section in export dialog */
 .gv-export-fontsize-section {
   margin-bottom: 20px;
