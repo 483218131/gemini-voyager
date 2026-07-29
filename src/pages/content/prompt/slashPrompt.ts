@@ -15,6 +15,9 @@ const TOKEN_CLASS = 'gv-pm-slash-token';
 const TEXTAREA_TOKEN_CLASS = 'gv-pm-slash-textarea-token';
 const TEXTAREA_TOKEN_NAME_CLASS = 'gv-pm-slash-textarea-token-name';
 const NATIVE_TOKEN_MARKER_CLASS = 'gv-pm-slash-textarea-token-native';
+const COVERED_SOURCE_MARKER_CLASS = 'gv-pm-slash-textarea-token-covered-source';
+const SELECTED_TOKEN_MARKER_CLASS = 'gv-pm-slash-textarea-token-selected';
+const INPUT_PROMPT_SELECTION_CLASS = 'gv-pm-slash-prompt-only-selection';
 const TEXTAREA_HIDE_VALUE_CLASS = 'gv-pm-slash-textarea-hide-value';
 const MAX_RESULTS = 8;
 const TOKEN_SPACER = '\u00a0';
@@ -495,13 +498,12 @@ function detectTheme(): 'light' | 'dark' {
 function applyPromptTokenColor(token: HTMLElement): void {
   token.dataset.gvTheme = detectTheme();
   // Gemini's editor applies host styles to contenteditable=false spans. An
-  // inline important declaration keeps the selected prompt visibly branded in
-  // Firefox as well as Chromium, where the host selector can win over the
-  // injected stylesheet.
+  // inline custom property feeds the stylesheet's important declaration, so
+  // the selected prompt follows Voyager's configurable accent even when a
+  // Gemini host selector would otherwise win.
   token.style.setProperty(
-    'color',
-    token.dataset.gvTheme === 'light' ? '#0b57d0' : '#a8c7fa',
-    'important',
+    '--gv-pm-slash-token-color',
+    'var(--gv-pm-brand, var(--gv-pm-brand-default))',
   );
 }
 
@@ -525,21 +527,17 @@ function showTooltip(target: HTMLElement, text: string): void {
   let left: number;
   let top: number;
   if (target.closest(`#${ROOT_ID}`)) {
-    left = targetRect.right + 6;
-    if (left + tooltipRect.width <= window.innerWidth - padding) {
-      top = targetRect.top;
-    } else if (targetRect.left - tooltipRect.width - 6 >= padding) {
-      left = targetRect.left - tooltipRect.width - 6;
-      top = targetRect.top;
-    } else {
-      const listRect = target.closest<HTMLElement>(`#${ROOT_ID}`)!.getBoundingClientRect();
-      left = Math.max(
-        padding,
-        Math.min(targetRect.left, window.innerWidth - tooltipRect.width - padding),
-      );
-      top = listRect.top - tooltipRect.height - 6;
-      if (top < padding) top = listRect.bottom + 6;
-    }
+    // Slash completion is anchored to Gemini's bottom composer. Keep prompt
+    // previews above the whole result list so moving between rows never makes
+    // the preview jump from one side to the other. Only fall below when the
+    // viewport genuinely has no room above.
+    const listRect = target.closest<HTMLElement>(`#${ROOT_ID}`)!.getBoundingClientRect();
+    left = Math.max(
+      padding,
+      Math.min(listRect.left, window.innerWidth - tooltipRect.width - padding),
+    );
+    top = listRect.top - tooltipRect.height - 6;
+    if (top < padding) top = listRect.bottom + 6;
     top = Math.max(padding, Math.min(top, window.innerHeight - tooltipRect.height - padding));
   } else {
     left = Math.max(
@@ -636,8 +634,35 @@ function isRectInsideInput(rect: DOMRect, inputRect: DOMRect): boolean {
   );
 }
 
+function cssColorAlpha(color: string): number {
+  if (!color || color === 'transparent') return 0;
+  const slashAlpha = color.match(/\/\s*([\d.]+)(%)?\s*\)$/);
+  if (slashAlpha) {
+    const value = Number(slashAlpha[1]);
+    return slashAlpha[2] ? value / 100 : value;
+  }
+  const rgbaAlpha = color.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\s*\)$/i);
+  return rgbaAlpha ? Number(rgbaAlpha[1]) : 1;
+}
+
+function findInputSurfaceColor(input: HTMLElement): string | null {
+  let current: HTMLElement | null = input;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    if (
+      (!style.backgroundImage || style.backgroundImage === 'none') &&
+      cssColorAlpha(style.backgroundColor) >= 0.99
+    ) {
+      return style.backgroundColor;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
 function positionTextareaTokens(container: HTMLElement, input: HTMLElement): void {
   const rect = input.getBoundingClientRect();
+  const inputSurfaceColor = findInputSurfaceColor(input);
   if (input instanceof HTMLTextAreaElement) {
     container.dataset.gvInputKind = 'textarea';
     container.style.left = `${Math.round(rect.left + 8)}px`;
@@ -645,6 +670,13 @@ function positionTextareaTokens(container: HTMLElement, input: HTMLElement): voi
     container.style.maxWidth = `${Math.max(120, rect.width - 16)}px`;
     container.querySelectorAll<HTMLElement>(`.${TEXTAREA_TOKEN_CLASS}`).forEach((marker) => {
       marker.classList.remove(NATIVE_TOKEN_MARKER_CLASS);
+      marker.classList.remove(COVERED_SOURCE_MARKER_CLASS);
+      marker.style.removeProperty('background-color');
+      if (inputSurfaceColor) {
+        marker.style.setProperty('--gv-pm-slash-input-surface', inputSurfaceColor);
+      } else {
+        marker.style.removeProperty('--gv-pm-slash-input-surface');
+      }
       marker.style.removeProperty('left');
       marker.style.removeProperty('top');
       marker.style.removeProperty('max-width');
@@ -665,7 +697,19 @@ function positionTextareaTokens(container: HTMLElement, input: HTMLElement): voi
     const anchorRect = anchor.rect;
     const left = anchorRect?.left ?? rect.left;
     syncMarkerTypography(marker, anchor.styleSource, anchorRect);
+    // Contenteditable markers keep this geometry for hover hit-testing, but
+    // only paint their glyphs when an opaque editor surface can cover the
+    // rebuilt plain-text source underneath without introducing a visible chip.
     marker.classList.toggle(NATIVE_TOKEN_MARKER_CLASS, Boolean(anchor.nativeToken));
+    const canCoverSource = !anchor.nativeToken && Boolean(inputSurfaceColor);
+    marker.classList.toggle(COVERED_SOURCE_MARKER_CLASS, canCoverSource);
+    if (canCoverSource) marker.style.backgroundColor = inputSurfaceColor!;
+    else marker.style.removeProperty('background-color');
+    if (inputSurfaceColor) {
+      marker.style.setProperty('--gv-pm-slash-input-surface', inputSurfaceColor);
+    } else {
+      marker.style.removeProperty('--gv-pm-slash-input-surface');
+    }
     // The marker is fixed to the viewport while the editor scrolls its own
     // content. Hide it once the prompt range leaves the editor's visible area;
     // otherwise a long collapsed composer can leak the name outside the box.
@@ -683,6 +727,7 @@ function removeTextareaTokens(container: HTMLElement, input: HTMLElement | null 
   delete container.dataset.gvInputKind;
   if (input) {
     selectedPrompts.delete(input);
+    input.classList.remove(INPUT_PROMPT_SELECTION_CLASS);
     input.classList.remove('gv-pm-slash-textarea-has-token');
     input.classList.remove(TEXTAREA_HIDE_VALUE_CLASS);
     input.classList.remove('gv-pm-slash-contenteditable-hide-value');
@@ -754,6 +799,7 @@ function expandPromptTokens(input?: HTMLElement | null): void {
   }
   if (input && (tokens.length > 0 || selectedPrompts.has(input))) {
     selectedPrompts.delete(input);
+    input.classList.remove(INPUT_PROMPT_SELECTION_CLASS);
     dispatchInput(input);
   }
 }
@@ -775,6 +821,7 @@ function expandTextareaPromptTokens(input: HTMLTextAreaElement): void {
     dispatchInput(input);
   }
   selectedPrompts.delete(input);
+  input.classList.remove(INPUT_PROMPT_SELECTION_CLASS);
 }
 
 function hasPromptToken(input: HTMLElement): boolean {
@@ -812,6 +859,24 @@ function getSelectedPromptIndexes(input: HTMLElement): number[] {
     const promptEnd = prompt.start + prompt.name.length;
     return selection.start < promptEnd && selection.end > prompt.start ? [index] : [];
   });
+}
+
+function isPromptOnlySelection(input: HTMLElement, selectedIndexes: number[]): boolean {
+  if (selectedIndexes.length === 0) return false;
+  const selection = getInputSelectionOffsets(input);
+  if (!selection || selection.start === selection.end) return false;
+  const prompts = selectedPrompts.get(input) || [];
+  const inputText = readText(input);
+
+  for (let offset = selection.start; offset < selection.end; offset++) {
+    if (/\s/.test(inputText[offset] || '')) continue;
+    const belongsToPrompt = selectedIndexes.some((index) => {
+      const prompt = prompts[index];
+      return prompt && offset >= prompt.start && offset < prompt.start + prompt.name.length;
+    });
+    if (!belongsToPrompt) return false;
+  }
+  return true;
 }
 
 function findPromptInputForSendButton(button: HTMLElement): HTMLElement | null {
@@ -906,7 +971,9 @@ function handlePromptBackspace(input: HTMLElement): PromptBackspaceResult | null
       }
       input.setRangeText('', start, caret, 'end');
       prompts.splice(index, 1);
-      if (prompts.length === 0) selectedPrompts.delete(input);
+      if (prompts.length === 0) {
+        selectedPrompts.delete(input);
+      }
       return { kind: 'prompt', index, caretOffset: start };
     }
     return null;
@@ -967,7 +1034,9 @@ function handlePromptBackspace(input: HTMLElement): PromptBackspaceResult | null
     selection.removeAllRanges();
     selection.addRange(deleteRange);
     prompts.splice(index, 1);
-    if (prompts.length === 0) selectedPrompts.delete(input);
+    if (prompts.length === 0) {
+      selectedPrompts.delete(input);
+    }
     return { kind: 'prompt', index, caretOffset: startOffset };
   }
   return null;
@@ -1016,6 +1085,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
   const root = document.createElement('div');
   root.id = ROOT_ID;
   root.className = 'gv-pm-slash-root';
+  root.dataset.gvInteraction = 'keyboard';
   root.hidden = true;
   const list = document.createElement('div');
   list.id = LIST_ID;
@@ -1048,6 +1118,30 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     activeQuery = null;
     results = [];
     hideTooltip();
+  }
+
+  function syncPromptSelectionVisuals(): void {
+    document
+      .querySelectorAll<HTMLElement>(`.${INPUT_PROMPT_SELECTION_CLASS}`)
+      .forEach((input) => input.classList.remove(INPUT_PROMPT_SELECTION_CLASS));
+    textareaTokens
+      .querySelectorAll<HTMLElement>(`.${SELECTED_TOKEN_MARKER_CLASS}`)
+      .forEach((marker) => marker.classList.remove(SELECTED_TOKEN_MARKER_CLASS));
+
+    for (const input of selectedPrompts.keys()) {
+      const selectedIndexes = getSelectedPromptIndexes(input);
+      if (selectedIndexes.length === 0) continue;
+      if (isPromptOnlySelection(input, selectedIndexes)) {
+        input.classList.add(INPUT_PROMPT_SELECTION_CLASS);
+      }
+      if (textareaTokenInput === input) {
+        const markers = textareaTokens.querySelectorAll<HTMLElement>(`.${TEXTAREA_TOKEN_CLASS}`);
+        selectedIndexes.forEach((index) =>
+          markers[index]?.classList.add(SELECTED_TOKEN_MARKER_CLASS),
+        );
+      }
+      break;
+    }
   }
 
   function expandTokensForSend(input: HTMLElement): void {
@@ -1089,10 +1183,12 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
       } else {
         selectedPrompts.delete(input);
       }
+      syncPromptSelectionVisuals();
       return;
     }
     selectedPrompts.set(input, prompts);
     input.classList.remove(TEXTAREA_HIDE_VALUE_CLASS);
+    syncPromptSelectionVisuals();
   }
 
   function position(): void {
@@ -1163,6 +1259,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     };
     syncTokenOffset();
     requestAnimationFrame(syncTokenOffset);
+    syncPromptSelectionVisuals();
   }
 
   function confirm(index: number): boolean {
@@ -1215,6 +1312,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
       }
       row.appendChild(tags);
       row.addEventListener('mouseenter', () => {
+        root.dataset.gvInteraction = 'pointer';
         selectedIndex = index;
         renderSelectionState();
         showTooltip(row, prompt.text);
@@ -1306,6 +1404,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
         }
       });
     }
+    syncPromptSelectionVisuals();
     refresh(event.target);
   }
 
@@ -1369,6 +1468,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         event.stopPropagation();
+        root.dataset.gvInteraction = 'keyboard';
         selectedIndex =
           (selectedIndex + (event.key === 'ArrowDown' ? 1 : results.length - 1)) % results.length;
         renderSelectionState();
@@ -1507,6 +1607,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
   document.addEventListener('submit', onSubmit, true);
   document.addEventListener('pointerover', onPointerOver, true);
   document.addEventListener('pointerout', onPointerOut, true);
+  document.addEventListener('selectionchange', syncPromptSelectionVisuals);
   document.addEventListener('scroll', onScrollOrResize, true);
   window.addEventListener('resize', onScrollOrResize);
   browser.storage.onChanged.addListener(onStorageChanged);
@@ -1521,6 +1622,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
       document.removeEventListener('submit', onSubmit, true);
       document.removeEventListener('pointerover', onPointerOver, true);
       document.removeEventListener('pointerout', onPointerOut, true);
+      document.removeEventListener('selectionchange', syncPromptSelectionVisuals);
       document.removeEventListener('scroll', onScrollOrResize, true);
       window.removeEventListener('resize', onScrollOrResize);
       browser.storage.onChanged.removeListener(onStorageChanged);

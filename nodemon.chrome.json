@@ -4,6 +4,7 @@
   },
   "watch": [
     "src",
+    "public",
     "utils",
     "vite.config.base.ts",
     "vite.config.chrome.ts",

@@ -181,6 +181,114 @@ describe('slash prompt completion', () => {
     );
   });
 
+  it('lets keyboard navigation replace a hovered selection', () => {
+    const input = createContentEditable('/');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+
+    const root = document.getElementById('gv-pm-slash-root')!;
+    const options = Array.from(root.querySelectorAll<HTMLElement>('.gv-pm-slash-option'));
+    options[1].dispatchEvent(new MouseEvent('mouseenter'));
+    expect(root.dataset.gvInteraction).toBe('pointer');
+    expect(options[1].getAttribute('aria-selected')).toBe('true');
+
+    press(input, 'ArrowUp');
+
+    expect(root.dataset.gvInteraction).toBe('keyboard');
+    expect(options.map((option) => option.getAttribute('aria-selected'))).toEqual([
+      'true',
+      'false',
+    ]);
+  });
+
+  it('lets the overlay own the complete prompt-only selection area', () => {
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const token = input.querySelector<HTMLElement>('.gv-pm-slash-token')!;
+    const spacer = token.nextSibling!;
+    const range = document.createRange();
+    range.setStart(token.firstChild!, 0);
+    range.setEndAfter(spacer);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+
+    expect(input.classList.contains('gv-pm-slash-prompt-only-selection')).toBe(true);
+    expect(
+      document
+        .querySelector('.gv-pm-slash-textarea-token')
+        ?.classList.contains('gv-pm-slash-textarea-token-selected'),
+    ).toBe(true);
+
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+
+    expect(input.classList.contains('gv-pm-slash-prompt-only-selection')).toBe(false);
+    expect(
+      document
+        .querySelector('.gv-pm-slash-textarea-token')
+        ?.classList.contains('gv-pm-slash-textarea-token-selected'),
+    ).toBe(false);
+  });
+
+  it('keeps Prompt and ordinary text visibly selected together', () => {
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const token = input.querySelector<HTMLElement>('.gv-pm-slash-token')!;
+    const ordinaryText = document.createTextNode('ordinary text');
+    input.append(ordinaryText);
+    const range = document.createRange();
+    range.setStart(token.firstChild!, 0);
+    range.setEnd(ordinaryText, ordinaryText.data.length);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+
+    expect(input.classList.contains('gv-pm-slash-prompt-only-selection')).toBe(false);
+    expect(
+      document
+        .querySelector('.gv-pm-slash-textarea-token')
+        ?.classList.contains('gv-pm-slash-textarea-token-selected'),
+    ).toBe(true);
+  });
+
+  it('keeps result previews above the completion list instead of flipping sides', () => {
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+
+    const root = document.getElementById('gv-pm-slash-root')!;
+    const option = root.querySelector<HTMLElement>('.gv-pm-slash-option')!;
+    setRect(root, {
+      left: 220,
+      top: 500,
+      right: 600,
+      bottom: 650,
+      width: 380,
+      height: 150,
+    });
+
+    // The first hover creates the shared tooltip; the second uses its measured
+    // size and verifies the stable above-list placement.
+    option.dispatchEvent(new MouseEvent('mouseenter'));
+    const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
+    setRect(tooltip, { width: 320, height: 220 });
+    option.dispatchEvent(new MouseEvent('mouseenter'));
+
+    expect(tooltip.style.left).toBe('220px');
+    expect(tooltip.style.top).toBe('274px');
+  });
+
   it('anchors completion beside the slash inside a fullscreen composer', () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(
       Range.prototype,
@@ -277,8 +385,9 @@ describe('slash prompt completion', () => {
     expect(token.dataset.gvPromptText).toBe('Translate the following text into Chinese.');
     expect(token.hasAttribute('title')).toBe(false);
     expect(input.classList.contains('gv-pm-slash-contenteditable-hide-value')).toBe(false);
-    expect(token.style.getPropertyValue('color')).toBe('rgb(11, 87, 208)');
-    expect(token.style.getPropertyPriority('color')).toBe('important');
+    expect(token.style.getPropertyValue('--gv-pm-slash-token-color')).toBe(
+      'var(--gv-pm-brand, var(--gv-pm-brand-default))',
+    );
     const marker = document.querySelector<HTMLElement>('.gv-pm-slash-textarea-token')!;
     expect(marker.classList.contains('gv-pm-slash-textarea-token-native')).toBe(true);
     expect(marker.style.left).toBe('20px');
@@ -340,6 +449,7 @@ describe('slash prompt completion', () => {
 
   it('keeps an external marker when Gemini rebuilds the editor and sends the body', async () => {
     const input = createContentEditable('/review');
+    input.closest<HTMLElement>('rich-textarea')!.style.backgroundColor = 'rgb(255, 251, 239)';
     input.addEventListener('input', () => {
       if (input.querySelector('.gv-pm-slash-token')) input.textContent = 'Code Review';
     });
@@ -352,6 +462,9 @@ describe('slash prompt completion', () => {
     const marker = document.querySelector<HTMLElement>('.gv-pm-slash-textarea-token')!;
     expect(marker.textContent).toBe('Code Review');
     expect(marker.classList.contains('gv-pm-slash-textarea-token-native')).toBe(false);
+    expect(marker.classList.contains('gv-pm-slash-textarea-token-covered-source')).toBe(true);
+    expect(marker.style.backgroundColor).toBe('rgb(255, 251, 239)');
+    expect(marker.style.getPropertyValue('--gv-pm-slash-input-surface')).toBe('rgb(255, 251, 239)');
     marker.dispatchEvent(new MouseEvent('mouseenter'));
     expect(document.getElementById('gv-pm-slash-tooltip')?.textContent).toBe(
       'Review this code and report correctness issues.',
@@ -1076,7 +1189,7 @@ describe('slash prompt completion', () => {
     typeInto(input);
     press(input, 'Enter');
     const firstToken = input.querySelector<HTMLElement>('.gv-pm-slash-token')!;
-    const firstColor = firstToken.style.getPropertyValue('color');
+    const firstColor = firstToken.style.getPropertyValue('--gv-pm-slash-token-color');
 
     input.append(document.createTextNode('hello /trans'));
     const secondCaret = document.createRange();
@@ -1095,8 +1208,7 @@ describe('slash prompt completion', () => {
     expect(firstToken.isConnected).toBe(true);
     expect(secondToken.isConnected).toBe(false);
     expect(document.querySelectorAll('.gv-pm-slash-textarea-token')).toHaveLength(1);
-    expect(firstToken.style.getPropertyValue('color')).toBe(firstColor);
-    expect(firstToken.style.getPropertyPriority('color')).toBe('important');
+    expect(firstToken.style.getPropertyValue('--gv-pm-slash-token-color')).toBe(firstColor);
 
     const spacer = firstToken.nextSibling!;
     while (spacer.nextSibling) spacer.nextSibling.remove();

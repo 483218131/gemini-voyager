@@ -10271,9 +10271,9 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
   text-align: start;
 }
 
-.gv-pm-slash-option:hover,
+.gv-pm-slash-root[data-gv-interaction='pointer'] .gv-pm-slash-option:hover,
 .gv-pm-slash-option[aria-selected='true'] {
-  background: rgba(79, 195, 157, 0.16);
+  background: var(--gv-pm-brand-soft);
 }
 
 .gv-pm-slash-option-name {
@@ -10298,9 +10298,10 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
   max-width: 104px;
   overflow: hidden;
   padding: 2px 6px;
-  border: 1px solid rgba(138, 180, 248, 0.28);
+  border: 1px solid
+    color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 32%, transparent);
   border-radius: 999px;
-  color: #aecbfa;
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default));
   font-size: 10px;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -10314,32 +10315,15 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
   box-shadow: 0 12px 32px rgba(60, 64, 67, 0.2);
 }
 
-.gv-pm-slash-root[data-gv-theme='light'] .gv-pm-slash-option:hover,
-.gv-pm-slash-root[data-gv-theme='light'] .gv-pm-slash-option[aria-selected='true'] {
-  background: rgba(19, 115, 51, 0.1);
-}
-
-.gv-pm-slash-root[data-gv-theme='light'] .gv-pm-slash-option-tag {
-  border-color: rgba(25, 103, 210, 0.22);
-  color: #185abc;
-}
-
 .gv-pm-slash-token[contenteditable='false'] {
   display: inline-flex;
   max-width: min(280px, 80%);
   align-items: center;
-  color: #a8c7fa;
+  color: var(--gv-pm-slash-token-color, var(--gv-pm-brand, var(--gv-pm-brand-default))) !important;
   cursor: default;
   font: inherit;
   font-weight: inherit;
   vertical-align: baseline;
-}
-
-.theme-host.light-theme .gv-pm-slash-token[contenteditable='false'],
-body.light-theme .gv-pm-slash-token[contenteditable='false'],
-html.light .gv-pm-slash-token[contenteditable='false'],
-.gv-pm-slash-token[contenteditable='false'][data-gv-theme='light'] {
-  color: #0b57d0;
 }
 
 .gv-pm-slash-textarea-tokens {
@@ -10366,7 +10350,7 @@ html.light .gv-pm-slash-token[contenteditable='false'],
   position: fixed;
   display: inline-flex;
   max-width: 180px;
-  color: #a8c7fa !important;
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default)) !important;
   cursor: default;
   font-weight: inherit;
   pointer-events: auto;
@@ -10381,6 +10365,18 @@ html.light .gv-pm-slash-token[contenteditable='false'],
   position: static;
 }
 
+/* Gemini can rebuild an inline prompt token as ordinary editor text. Keep the
+   fixed marker as a transparent hover target in contenteditable editors so it
+   never paints a second, fractionally offset copy of the prompt name. */
+.gv-pm-slash-textarea-tokens[data-gv-input-kind='contenteditable'] .gv-pm-slash-textarea-token {
+  color: transparent !important;
+}
+
+.gv-pm-slash-textarea-tokens[data-gv-input-kind='contenteditable']
+  .gv-pm-slash-textarea-token-covered-source {
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default)) !important;
+}
+
 .gv-pm-slash-textarea-token-name {
   min-width: 0;
   max-width: 100%;
@@ -10389,12 +10385,43 @@ html.light .gv-pm-slash-token[contenteditable='false'],
   white-space: nowrap;
 }
 
-.gv-pm-slash-textarea-tokens[data-gv-theme='light'] .gv-pm-slash-textarea-token {
-  color: #0b57d0 !important;
+/* The native marker only exists for hover/hit-testing on top of the editor's
+   real token. It must stay invisible in every theme, so it carries both
+   classes and outranks any single-class colour rule above. */
+.gv-pm-slash-textarea-token.gv-pm-slash-textarea-token-native {
+  color: transparent !important;
 }
 
-.gv-pm-slash-textarea-token-native {
+/* A browser text selection is painted underneath fixed Prompt markers. Let the
+   geometry-matched marker own the Prompt part of every selection; only suppress
+   native paint when no ordinary text is selected, so mixed selections remain
+   continuous without hiding Gemini's selection over the ordinary text. */
+.gv-pm-slash-prompt-only-selection::selection,
+.gv-pm-slash-prompt-only-selection *::selection {
+  background: transparent !important;
   color: transparent !important;
+}
+
+.gv-pm-slash-textarea-token-selected {
+  --gv-pm-slash-selection-surface: color-mix(
+    in srgb,
+    var(--gv-pm-brand, var(--gv-pm-brand-default)) 18%,
+    var(--gv-pm-slash-input-surface, transparent)
+  );
+  /* A text Range starts 1px above the glyph box Gemini exposes to JS. Shift
+     only the painted selection surface upward; the marker text stays on the
+     original baseline. The editor surface in the final layer also masks the
+     now-unused bottom pixel instead of leaving native blue selection visible. */
+  background:
+    linear-gradient(var(--gv-pm-slash-selection-surface), var(--gv-pm-slash-selection-surface))
+      0 -1px / 100% 100% no-repeat,
+    var(--gv-pm-slash-input-surface, transparent) !important;
+  border-radius: 3px;
+  box-shadow: 0 -1px 0 var(--gv-pm-slash-selection-surface);
+}
+
+.gv-pm-slash-textarea-token.gv-pm-slash-textarea-token-native.gv-pm-slash-textarea-token-selected {
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default)) !important;
 }
 
 textarea.gv-pm-slash-textarea-has-token {
