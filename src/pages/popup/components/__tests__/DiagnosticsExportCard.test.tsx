@@ -81,12 +81,18 @@ describe('DiagnosticsExportCard', () => {
       ],
     });
     expect(container.querySelector('[role="dialog"]')).toBeTruthy();
-    expect((container.querySelector('textarea') as HTMLTextAreaElement).value).toBe(
-      '```json\n{}\n```',
-    );
+    const preview = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(preview.value).toBe('```json\n{}\n```');
+    expect(preview.wrap).toBe('off');
+    expect(preview.getAttribute('spellcheck')).toBe('false');
+
+    const downloadButton = buttonWithText(container, 'diagnosticsDownloadJson');
+    const copyButton = buttonWithText(container, 'diagnosticsCopyMarkdown');
+    expect(downloadButton?.firstElementChild?.classList.contains('inline-flex')).toBe(true);
+    expect(copyButton?.firstElementChild?.classList.contains('inline-flex')).toBe(true);
 
     await act(async () => {
-      buttonWithText(container, 'diagnosticsCopyMarkdown')?.click();
+      copyButton?.click();
       await Promise.resolve();
     });
 

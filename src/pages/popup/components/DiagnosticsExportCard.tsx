@@ -93,7 +93,7 @@ export function DiagnosticsExportCard({
 
       {payload && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setPayload(null);
@@ -103,10 +103,10 @@ export function DiagnosticsExportCard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="diagnostics-dialog-title"
-            className="border-border bg-background flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-2xl border shadow-2xl"
+            className="border-border bg-background flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-2xl border shadow-2xl"
           >
             <div className="border-border/70 flex items-start justify-between gap-3 border-b px-4 py-3">
-              <div>
+              <div className="min-w-0">
                 <h2 id="diagnostics-dialog-title" className="text-sm font-semibold">
                   {t('diagnosticsPreviewTitle')}
                 </h2>
@@ -116,7 +116,7 @@ export function DiagnosticsExportCard({
               </div>
               <button
                 type="button"
-                className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+                className="text-muted-foreground hover:text-foreground shrink-0 rounded-md p-1 transition-colors"
                 onClick={() => setPayload(null)}
                 aria-label={t('diagnosticsClose')}
               >
@@ -128,10 +128,12 @@ export function DiagnosticsExportCard({
               <textarea
                 readOnly
                 dir="ltr"
+                wrap="off"
+                spellCheck={false}
                 value={markdown}
                 aria-label={t('diagnosticsPreviewTitle')}
                 onFocus={(event) => event.currentTarget.select()}
-                className="border-border bg-muted/35 text-foreground focus:ring-primary/40 h-64 w-full resize-none rounded-xl border p-3 font-mono text-[10px] leading-relaxed outline-none focus:ring-2"
+                className="border-border bg-muted/35 text-foreground focus:ring-primary/40 h-[min(16rem,calc(100vh-12rem))] min-h-40 w-full resize-none overflow-auto rounded-xl border p-3 font-mono text-[10px] leading-relaxed outline-none focus:ring-2"
               />
               {copyStatus === 'error' && (
                 <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400" role="status">
@@ -145,20 +147,20 @@ export function DiagnosticsExportCard({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-1.5 text-xs"
+                className="shrink-0 gap-1.5 text-xs"
                 onClick={() => downloadVoyagerDiagnostics(payload)}
               >
-                <Download className="size-3.5" aria-hidden="true" />
+                <Download className="size-3.5 shrink-0" aria-hidden="true" />
                 {t('diagnosticsDownloadJson')}
               </Button>
               <Button
                 type="button"
                 size="sm"
-                className="gap-1.5 text-xs"
+                className="shrink-0 gap-1.5 text-xs"
                 disabled={copyStatus === 'copying'}
                 onClick={() => void handleCopy()}
               >
-                <Copy className="size-3.5" aria-hidden="true" />
+                <Copy className="size-3.5 shrink-0" aria-hidden="true" />
                 {copyLabel}
               </Button>
             </div>

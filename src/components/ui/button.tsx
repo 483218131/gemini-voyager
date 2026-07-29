@@ -45,7 +45,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, children, ...props }, ref) => {
     return (
       <button className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
-        <span className="relative z-10">{children}</span>
+        <span className="relative z-10 inline-flex items-center justify-center gap-[inherit]">
+          {children}
+        </span>
       </button>
     );
   },
