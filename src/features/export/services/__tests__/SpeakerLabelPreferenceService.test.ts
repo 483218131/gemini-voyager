@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StorageKeys } from '@/core/types/common';
 
 import type { ExportSpeakerLabels } from '../../types/export';
 import {
+  SpeakerLabelPreferenceSaver,
   getSavedSpeakerLabelOverrides,
   normalizeSpeakerLabelOverrides,
   resolveExportSpeakerLabels,
@@ -34,6 +35,10 @@ describe('SpeakerLabelPreferenceService', () => {
     getMock.mockReset();
     removeMock.mockReset();
     setMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it.each([
@@ -157,5 +162,38 @@ describe('SpeakerLabelPreferenceService', () => {
     setMock.mockRejectedValue(new Error('context invalidated'));
 
     await expect(saveSpeakerLabelOverrides({ user: 'Erik' })).resolves.toBe(false);
+  });
+
+  it('debounces speaker label preference writes while the user is typing', async () => {
+    vi.useFakeTimers();
+    setMock.mockResolvedValue({ success: true, data: undefined });
+    const saver = new SpeakerLabelPreferenceSaver(300);
+
+    saver.schedule({ user: 'E' });
+    saver.schedule({ user: ' Erik ' });
+
+    await vi.advanceTimersByTimeAsync(299);
+    expect(setMock).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(setMock).toHaveBeenCalledTimes(1);
+    expect(setMock).toHaveBeenCalledWith(StorageKeys.EXPORT_SPEAKER_LABELS, { user: 'Erik' });
+  });
+
+  it('flushes the latest speaker labels before the dialog closes', async () => {
+    vi.useFakeTimers();
+    setMock.mockResolvedValue({ success: true, data: undefined });
+    const saver = new SpeakerLabelPreferenceSaver(300);
+
+    saver.schedule({ user: 'Erik', assistant: 'Nova' });
+    await expect(saver.flush()).resolves.toBe(true);
+
+    expect(setMock).toHaveBeenCalledTimes(1);
+    expect(setMock).toHaveBeenCalledWith(StorageKeys.EXPORT_SPEAKER_LABELS, {
+      user: 'Erik',
+      assistant: 'Nova',
+    });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(setMock).toHaveBeenCalledTimes(1);
   });
 });

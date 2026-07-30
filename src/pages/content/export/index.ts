@@ -15,8 +15,8 @@ import {
   saveImageExportWidth,
 } from '../../../features/export/services/ImageExportPreferenceService';
 import {
+  SpeakerLabelPreferenceSaver,
   getSavedSpeakerLabelOverrides,
-  saveSpeakerLabelOverrides,
 } from '../../../features/export/services/SpeakerLabelPreferenceService';
 import {
   DEFAULT_IMAGE_EXPORT_WIDTH,
@@ -2683,23 +2683,15 @@ async function showExportDialog(
   // We defer collection until after the export sequence (scrolling/refresh checks)
 
   const dialog = new ExportDialog();
+  const speakerLabelPreferenceSaver = new SpeakerLabelPreferenceSaver();
 
   dialog.show({
-    onExport: async (
-      format,
-      fontSize,
-      imageWidth,
-      usePromptAsTurnHeading,
-      speakerLabels,
-      speakerLabelOverrides,
-    ) => {
+    onExport: async (format, fontSize, imageWidth, usePromptAsTurnHeading, speakerLabels) => {
       try {
+        await speakerLabelPreferenceSaver.flush();
         await ensureGeneratedUiScreenshotPermission();
         if (format === 'image') {
           await saveImageExportWidth(imageWidth);
-        }
-        if (speakerLabelOverrides) {
-          await saveSpeakerLabelOverrides(speakerLabelOverrides);
         }
         await executeExportSequenceWithProgress(
           format,
@@ -2718,7 +2710,10 @@ async function showExportDialog(
     },
 
     onCancel: () => {
-      // Dialog closed
+      void speakerLabelPreferenceSaver.flush();
+    },
+    onSpeakerLabelOverridesChange: (speakerLabelOverrides) => {
+      speakerLabelPreferenceSaver.schedule(speakerLabelOverrides);
     },
     initialImageWidth,
     showPromptHeadingOption: true,

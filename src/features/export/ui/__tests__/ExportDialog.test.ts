@@ -402,6 +402,62 @@ describe('ExportDialog', () => {
     );
   });
 
+  it('reports edited speaker labels before the dialog is closed', () => {
+    const onSpeakerLabelOverridesChange = vi.fn();
+    const onCancel = vi.fn();
+    const dialog = new ExportDialog();
+    dialog.show({
+      onExport: () => {},
+      onCancel,
+      onSpeakerLabelOverridesChange,
+      speakerNames: {
+        title: 'Speaker names',
+        userLabel: 'User label',
+        assistantLabel: 'AI label',
+        userDefault: 'User',
+        assistantDefault: 'Assistant',
+      },
+      translations: {
+        title: 'Export',
+        selectFormat: 'Select format',
+        warning: '',
+        safariCmdpHint: 'Safari tip',
+        safariMarkdownHint: 'Safari markdown tip',
+        cancel: 'Cancel',
+        export: 'Export',
+        fontSizeLabel: 'Font Size',
+        fontSizePreview: 'Preview',
+        imageWidthLabel: 'Image Width',
+        imageWidthNarrow: 'Narrow',
+        imageWidthMedium: 'Medium',
+        imageWidthWide: 'Wide',
+        promptHeadingLabel: 'Use prompts as turn headings',
+        promptHeadingHint: 'Put each prompt in its turn heading.',
+        formatDescriptions: {
+          json: 'JSON format',
+          markdown: 'Markdown format',
+          pdf: 'PDF format',
+          image: 'Image format',
+        },
+      },
+    });
+
+    const userInput = document.querySelector('#gv-export-speaker-user') as HTMLInputElement | null;
+    if (userInput) userInput.value = ' Erik ';
+    userInput?.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(onSpeakerLabelOverridesChange).toHaveBeenLastCalledWith({ user: 'Erik' });
+
+    if (userInput) userInput.value = '   ';
+    userInput?.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onSpeakerLabelOverridesChange).toHaveBeenLastCalledWith({});
+
+    (
+      document.querySelector('.gv-export-dialog-btn-secondary') as HTMLButtonElement | null
+    )?.click();
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
   it('hides labels for JSON without clearing values and restores them for human-readable formats', () => {
     const onExport = vi.fn();
     const dialog = new ExportDialog();

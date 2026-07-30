@@ -28,6 +28,7 @@ export interface ExportDialogOptions {
     speakerLabelOverrides?: ExportSpeakerLabelOverrides,
   ) => void;
   onCancel: () => void;
+  onSpeakerLabelOverridesChange?: (overrides: ExportSpeakerLabelOverrides) => void;
   initialImageWidth?: ImageExportWidth;
   showPromptHeadingOption?: boolean;
   initialSpeakerLabelOverrides?: ExportSpeakerLabelOverrides;
@@ -293,6 +294,7 @@ export class ExportDialog {
         } else {
           speakerLabelOverrides[key] = normalized;
         }
+        options.onSpeakerLabelOverridesChange?.({ ...speakerLabelOverrides });
       });
 
       field.appendChild(label);
