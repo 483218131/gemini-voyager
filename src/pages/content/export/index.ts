@@ -10,15 +10,18 @@ import { type AppLanguage, normalizeLanguage } from '@/utils/language';
 import { extractMessageDictionary } from '@/utils/localeMessages';
 import type { TranslationKey } from '@/utils/translations';
 
-import { ConversationExportService } from '../../../features/export/services/ConversationExportService';
 import {
   getSavedImageExportWidth,
   saveImageExportWidth,
 } from '../../../features/export/services/ImageExportPreferenceService';
-import { ImageExportService } from '../../../features/export/services/ImageExportService';
+import {
+  getSavedSpeakerLabelOverrides,
+  saveSpeakerLabelOverrides,
+} from '../../../features/export/services/SpeakerLabelPreferenceService';
 import {
   DEFAULT_IMAGE_EXPORT_WIDTH,
   type ExportFormat,
+  type ExportSpeakerLabels,
 } from '../../../features/export/types/export';
 import type {
   CanvasDoc,
@@ -39,6 +42,15 @@ import {
   injectResponseMenuExportButton,
 } from './conversationMenuInjection';
 import { resolveExportLogoAnchor } from './exportLogoAnchor';
+import {
+  type PendingExportState,
+  advancePendingExportState,
+  clearPendingExportState,
+  createPendingExportState,
+  exportPendingConversation,
+  persistPendingExportState,
+  restorePendingExportState,
+} from './pendingExportState';
 import { mountPersistentExportToolbar } from './persistentExportToolbar';
 import { injectResponseActionCopyImageButtons } from './responseActionImageButton';
 import { showResponseActionCopyImageMenu } from './responseActionImageMenu';
@@ -46,6 +58,7 @@ import {
   copyImageBlobToClipboard,
   copyImageBlobViaSafariNativePasteboard,
   downloadImageBlob,
+  renderResponseImageBlob,
 } from './responseImageCopy';
 import { resolveUniqueExportTurnIds } from './selectionIds';
 import { groupSelectedMessagesByTurn, resolveInitialSelectedMessageIds } from './selectionUtils';
@@ -55,8 +68,6 @@ import {
   waitForConversationFingerprintChangeOrTimeout,
 } from './topNodePreload';
 
-// Storage key to persist export state across reloads (e.g. when clicking top node triggers refresh)
-const SESSION_KEY_PENDING_EXPORT = 'gv_export_pending';
 const CONVERSATION_MENU_SELECTOR = '.mat-mdc-menu-panel[role="menu"], gem-menu';
 const CONVERSATION_MENU_TRIGGER_TEST_IDS = [
   'actions-menu-button',
@@ -227,22 +238,6 @@ async function captureGeneratedUiScreenshots(): Promise<void> {
       overlay.style.display = previousDisplay[index] || '';
     });
   }
-}
-
-interface PendingExportState {
-  format: ExportFormat;
-  fontSize?: number;
-  imageWidth?: number;
-  usePromptAsTurnHeading?: boolean;
-  initialSelectedMessageId?: string;
-  attempt: number;
-  url: string;
-  status: 'clicking';
-  timestamp: number;
-}
-
-function isExportFormat(value: unknown): value is ExportFormat {
-  return value === 'json' || value === 'markdown' || value === 'pdf' || value === 'image';
 }
 
 function waitForElement(selector: string, timeoutMs: number = 6000): Promise<Element | null> {
@@ -1401,6 +1396,7 @@ async function executeExportSequence(
   initialSelectedMessageId?: string,
   imageWidth?: number,
   usePromptAsTurnHeading?: boolean,
+  speakerLabels?: ExportSpeakerLabels,
 ): Promise<void> {
   // Cache Canvas documents at the very start of the export sequence,
   // before we click the top node or cause any DOM updates/scrolling.
@@ -1408,21 +1404,19 @@ async function executeExportSequence(
     cachedCanvasDocs = extractAllCanvasDocs();
   }
 
-  const state: PendingExportState = paramState || {
-    format,
-    fontSize,
-    imageWidth,
-    usePromptAsTurnHeading,
-    initialSelectedMessageId,
-    attempt: 0,
-    url: location.href,
-    status: 'clicking',
-    timestamp: Date.now(),
-  };
+  const state =
+    paramState ||
+    createPendingExportState(format, location.href, Date.now(), {
+      fontSize,
+      imageWidth,
+      usePromptAsTurnHeading,
+      speakerLabels,
+      initialSelectedMessageId,
+    });
 
   if (state.attempt > 25) {
     console.warn('[Gemini Voyager] Export aborted: too many attempts.');
-    sessionStorage.removeItem(SESSION_KEY_PENDING_EXPORT);
+    clearPendingExportState(sessionStorage);
     alert('Export stopped: Too many attempts detected.');
     return;
   }
@@ -1447,16 +1441,8 @@ async function executeExportSequence(
 
   if (!topNode) {
     console.log('[Gemini Voyager] No top node found, proceeding to export directly.');
-    sessionStorage.removeItem(SESSION_KEY_PENDING_EXPORT);
-    await performFinalExport(
-      format,
-      dict,
-      lang,
-      state.fontSize,
-      state.initialSelectedMessageId,
-      state.imageWidth,
-      state.usePromptAsTurnHeading,
-    );
+    clearPendingExportState(sessionStorage);
+    await performFinalExport(state, dict, lang);
     return;
   }
 
@@ -1466,14 +1452,7 @@ async function executeExportSequence(
   console.log(`[Gemini Voyager] Simulating click on top node (Attempt ${state.attempt + 1})...`);
 
   // Update state before action to persist across potential reload
-  sessionStorage.setItem(
-    SESSION_KEY_PENDING_EXPORT,
-    JSON.stringify({
-      ...state,
-      attempt: state.attempt + 1,
-      timestamp: Date.now(),
-    }),
-  );
+  persistPendingExportState(sessionStorage, state, Date.now());
 
   // Dispatch click logic
   try {
@@ -1497,25 +1476,13 @@ async function executeExportSequence(
 
   if (changed) {
     console.log('[Gemini Voyager] History expanded (soft refresh). Clicking top node again...');
-    await executeExportSequence(format, dict, lang, {
-      ...state,
-      attempt: state.attempt + 1,
-      timestamp: Date.now(),
-    });
+    await executeExportSequence(format, dict, lang, advancePendingExportState(state, Date.now()));
     return;
   }
 
   console.log('[Gemini Voyager] No refresh or update detected. Exporting...');
-  sessionStorage.removeItem(SESSION_KEY_PENDING_EXPORT);
-  await performFinalExport(
-    format,
-    dict,
-    lang,
-    state.fontSize,
-    state.initialSelectedMessageId,
-    state.imageWidth,
-    state.usePromptAsTurnHeading,
-  );
+  clearPendingExportState(sessionStorage);
+  await performFinalExport(state, dict, lang);
 }
 
 async function executeExportSequenceWithProgress(
@@ -1527,6 +1494,7 @@ async function executeExportSequenceWithProgress(
   initialSelectedMessageId?: string,
   imageWidth?: number,
   usePromptAsTurnHeading?: boolean,
+  speakerLabels?: ExportSpeakerLabels,
 ): Promise<void> {
   const t = (key: TranslationKey) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
   const hideProgress = showExportProgressOverlay(t);
@@ -1540,6 +1508,7 @@ async function executeExportSequenceWithProgress(
       initialSelectedMessageId,
       imageWidth,
       usePromptAsTurnHeading,
+      speakerLabels,
     );
   } finally {
     hideProgress();
@@ -1553,13 +1522,9 @@ async function executeExportSequenceWithProgress(
  * Performs the actual file generation and download.
  */
 async function performFinalExport(
-  format: ExportFormat,
+  state: PendingExportState,
   dict: Record<AppLanguage, Record<string, string>>,
   lang: AppLanguage,
-  fontSize?: number,
-  initialSelectedMessageId?: string,
-  imageWidth?: number,
-  usePromptAsTurnHeading?: boolean,
 ) {
   const t = (key: TranslationKey) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
 
@@ -1579,7 +1544,7 @@ async function performFinalExport(
   const idToHost = new Map<string, HTMLElement>();
   const idToCheckbox = new Map<string, HTMLButtonElement>();
   const knownIds = new Set<string>();
-  let pendingInitialSelectionId: string | null = initialSelectedMessageId || null;
+  let pendingInitialSelectionId: string | null = state.initialSelectedMessageId || null;
 
   let autoSelectAll = false;
 
@@ -1903,7 +1868,7 @@ async function performFinalExport(
     };
 
     let includeImageSource = true;
-    if (format === 'markdown') {
+    if (state.format === 'markdown') {
       const hasSearchImages = turnsForExport.some(
         (turn) =>
           turn.assistantElement?.querySelector('.attachment-container.search-images') != null,
@@ -1915,19 +1880,18 @@ async function performFinalExport(
 
     const hideProgress = showExportProgressOverlay(t);
     try {
-      const resultPromise = ConversationExportService.export(turnsForExport, metadata, {
-        format,
-        fontSize,
+      const resultPromise = exportPendingConversation(
+        state,
+        turnsForExport,
+        metadata,
         includeImageSource,
-        imageWidth,
-        usePromptAsTurnHeading,
-      });
+      );
       const minVisiblePromise = new Promise((resolve) => setTimeout(resolve, 420));
       const [result] = await Promise.all([resultPromise, minVisiblePromise]);
 
       if (!result.success) {
         alert(resolveExportErrorMessage(result.error, t));
-      } else if (format === 'pdf' && isSafari()) {
+      } else if (state.format === 'pdf' && isSafari()) {
         showExportToast(t('export_toast_safari_pdf_ready'), {
           autoDismissMs: 5000,
         });
@@ -2015,41 +1979,8 @@ function showExportProgressOverlay(t: (key: TranslationKey) => string): () => vo
  */
 async function checkPendingExport() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY_PENDING_EXPORT);
-    if (!raw) return;
-
-    const parsed = JSON.parse(raw) as Partial<PendingExportState>;
-    if (
-      !isExportFormat(parsed.format) ||
-      typeof parsed.attempt !== 'number' ||
-      typeof parsed.url !== 'string' ||
-      parsed.status !== 'clicking' ||
-      typeof parsed.timestamp !== 'number'
-    ) {
-      sessionStorage.removeItem(SESSION_KEY_PENDING_EXPORT);
-      return;
-    }
-    const state: PendingExportState = {
-      format: parsed.format,
-      fontSize: typeof parsed.fontSize === 'number' ? parsed.fontSize : undefined,
-      imageWidth: typeof parsed.imageWidth === 'number' ? parsed.imageWidth : undefined,
-      usePromptAsTurnHeading: parsed.usePromptAsTurnHeading === true,
-      initialSelectedMessageId:
-        typeof parsed.initialSelectedMessageId === 'string'
-          ? parsed.initialSelectedMessageId
-          : undefined,
-      attempt: parsed.attempt,
-      url: parsed.url,
-      status: parsed.status,
-      timestamp: parsed.timestamp,
-    };
-
-    // Validate context
-    if (state.url !== location.href) {
-      // User navigated away? Abort.
-      sessionStorage.removeItem(SESSION_KEY_PENDING_EXPORT);
-      return;
-    }
+    const state = restorePendingExportState(sessionStorage, location.href);
+    if (!state) return;
 
     // If state exists, it means we clicked and page refreshed.
     // So we resume the sequence.
@@ -2068,10 +1999,11 @@ async function checkPendingExport() {
       state.initialSelectedMessageId,
       state.imageWidth,
       state.usePromptAsTurnHeading,
+      state.speakerLabels,
     );
   } catch (e) {
     console.error('[Gemini Voyager] Failed to resume pending export:', e);
-    sessionStorage.removeItem(SESSION_KEY_PENDING_EXPORT);
+    clearPendingExportState(sessionStorage);
   }
 }
 
@@ -2192,7 +2124,13 @@ async function handleResponseCopyImageClick(
   }
   trigger.dataset.gvCopyImageBusy = '1';
 
-  const texts = getResponseCopyImageTexts(getCurrentLanguage(), dict);
+  const lang = getCurrentLanguage();
+  const texts = getResponseCopyImageTexts(lang, dict);
+  const t = (key: TranslationKey) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
+  const speakerDefaults: ExportSpeakerLabels = {
+    user: t('export_speaker_user_default'),
+    assistant: t('export_speaker_assistant_default'),
+  };
   const messageId = resolveAssistantMessageIdFromMenuTrigger(trigger);
   let blobForFallback: Blob | null = null;
   try {
@@ -2215,8 +2153,9 @@ async function handleResponseCopyImageClick(
       title: getConversationTitleForExport(),
     };
 
-    const blob = await ImageExportService.renderConversationBlob(turnsForExport, metadata, {
+    const blob = await renderResponseImageBlob(turnsForExport, metadata, {
       imageWidth,
+      speakerDefaults,
     });
     blobForFallback = blob;
     await copyImageBlobToClipboard(blob);
@@ -2732,18 +2671,35 @@ async function showExportDialog(
   },
 ): Promise<void> {
   const t = (key: TranslationKey) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
-  const initialImageWidth = await getSavedImageExportWidth();
+  const speakerDefaults: ExportSpeakerLabels = {
+    user: t('export_speaker_user_default'),
+    assistant: t('export_speaker_assistant_default'),
+  };
+  const [initialImageWidth, savedSpeakerLabelOverrides] = await Promise.all([
+    getSavedImageExportWidth(),
+    getSavedSpeakerLabelOverrides(),
+  ]);
 
   // We defer collection until after the export sequence (scrolling/refresh checks)
 
   const dialog = new ExportDialog();
 
   dialog.show({
-    onExport: async (format, fontSize, imageWidth, usePromptAsTurnHeading) => {
+    onExport: async (
+      format,
+      fontSize,
+      imageWidth,
+      usePromptAsTurnHeading,
+      speakerLabels,
+      speakerLabelOverrides,
+    ) => {
       try {
         await ensureGeneratedUiScreenshotPermission();
         if (format === 'image') {
           await saveImageExportWidth(imageWidth);
+        }
+        if (speakerLabelOverrides) {
+          await saveSpeakerLabelOverrides(speakerLabelOverrides);
         }
         await executeExportSequenceWithProgress(
           format,
@@ -2754,6 +2710,7 @@ async function showExportDialog(
           options?.initialSelectedMessageId || undefined,
           imageWidth,
           usePromptAsTurnHeading,
+          speakerLabels,
         );
       } catch (err) {
         console.error('[Gemini Voyager] Export error:', err);
@@ -2765,6 +2722,14 @@ async function showExportDialog(
     },
     initialImageWidth,
     showPromptHeadingOption: true,
+    initialSpeakerLabelOverrides: savedSpeakerLabelOverrides,
+    speakerNames: {
+      title: t('export_speaker_names'),
+      userLabel: t('export_speaker_user_label'),
+      assistantLabel: t('export_speaker_ai_label'),
+      userDefault: speakerDefaults.user,
+      assistantDefault: speakerDefaults.assistant,
+    },
     translations: {
       title: t('export_dialog_title'),
       selectFormat: t('export_dialog_select'),

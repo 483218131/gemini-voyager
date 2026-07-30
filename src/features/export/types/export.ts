@@ -59,6 +59,49 @@ export enum ExportFormat {
 export type ExportLayout = 'conversation' | 'document';
 export type ImageExportWidth = 620 | 960 | 1360;
 
+export interface ExportSpeakerLabels {
+  user: string;
+  assistant: string;
+}
+
+export type ExportSpeakerLabelOverrides = Partial<ExportSpeakerLabels>;
+
+export const DEFAULT_EXPORT_SPEAKER_LABELS: Readonly<ExportSpeakerLabels> = {
+  user: 'User',
+  assistant: 'Assistant',
+};
+
+function normalizeSpeakerLabel(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  const normalized = value.trim();
+  return normalized || undefined;
+}
+
+export function normalizeSpeakerLabelOverrides(value: unknown): ExportSpeakerLabelOverrides {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  const candidate = value as Record<string, unknown>;
+  const user = normalizeSpeakerLabel(candidate.user);
+  const assistant = normalizeSpeakerLabel(candidate.assistant);
+
+  return {
+    ...(user ? { user } : {}),
+    ...(assistant ? { assistant } : {}),
+  };
+}
+
+export function resolveExportSpeakerLabels(
+  value: unknown,
+  defaults: ExportSpeakerLabels,
+): ExportSpeakerLabels {
+  const overrides = normalizeSpeakerLabelOverrides(value);
+  return {
+    user: overrides.user ?? defaults.user,
+    assistant: overrides.assistant ?? defaults.assistant,
+  };
+}
+
 export const IMAGE_EXPORT_WIDTH_NARROW: ImageExportWidth = 620;
 export const IMAGE_EXPORT_WIDTH_MEDIUM: ImageExportWidth = 960;
 export const IMAGE_EXPORT_WIDTH_WIDE: ImageExportWidth = 1360;
@@ -109,10 +152,13 @@ export interface ExportOptions {
   includeImageSource?: boolean;
   /** Put each user prompt in its turn heading and omit the duplicate User section. */
   usePromptAsTurnHeading?: boolean;
+  /** Human-readable labels used by conversation exports; ignored by JSON and document layouts. */
+  speakerLabels?: ExportSpeakerLabels;
 }
 
 export interface MarkdownFormatOptions {
   usePromptAsTurnHeading?: boolean;
+  speakerLabels?: ExportSpeakerLabels;
 }
 
 /**
