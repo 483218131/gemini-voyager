@@ -704,16 +704,16 @@
     "description": "导出对话框标题"
   },
   "export_speaker_names": {
-    "message": "说话者名称",
-    "description": "导出对话框中说话者标签字段的标题"
+    "message": "角色称呼",
+    "description": "导出对话框中角色称呼字段的标题"
   },
   "export_speaker_user_label": {
-    "message": "用户标签",
-    "description": "用户说话者名称字段的标签"
+    "message": "你的称呼",
+    "description": "用户称呼字段的标签"
   },
   "export_speaker_ai_label": {
-    "message": "AI 标签",
-    "description": "AI 说话者名称字段的标签"
+    "message": "AI 的称呼",
+    "description": "AI 称呼字段的标签"
   },
   "export_speaker_user_default": {
     "message": "用户",
