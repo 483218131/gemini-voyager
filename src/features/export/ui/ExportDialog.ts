@@ -288,7 +288,7 @@ export class ExportDialog {
       input.value = speakerLabelOverrides[key] ?? defaultValue;
       input.addEventListener('input', () => {
         const normalized = input.value.trim();
-        if (!normalized || normalized === defaultValue) {
+        if (!normalized) {
           delete speakerLabelOverrides[key];
         } else {
           speakerLabelOverrides[key] = normalized;

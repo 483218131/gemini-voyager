@@ -344,7 +344,7 @@ describe('ExportDialog', () => {
     );
   });
 
-  it('clears only the edited explicit override and falls back to its localized default', () => {
+  it('preserves an edited explicit override that matches the localized default', () => {
     const onExport = vi.fn();
     const dialog = new ExportDialog();
     dialog.show({
@@ -398,7 +398,7 @@ describe('ExportDialog', () => {
         user: 'User',
         assistant: 'Nova',
       },
-      { assistant: 'Nova' },
+      { user: 'User', assistant: 'Nova' },
     );
   });
 
