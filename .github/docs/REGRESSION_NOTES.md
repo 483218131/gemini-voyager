@@ -95,6 +95,52 @@ Commit:
 
 `fix(watermark): distinguish dark restoration from clipping damage`
 
+## Watermark toggles must reconfigure already-open Gemini tabs
+
+Symptom:
+
+Changing either watermark-removal toggle in the popup had no effect in an
+already-open Gemini tab until the page was refreshed.
+
+Root cause:
+
+The content runtime read both settings only during startup. Background
+registration kept future documents in sync, but dynamically registering
+`fetchInterceptor.js` did not install it into a document that was already open
+when download removal changed from disabled to enabled.
+
+Fix:
+
+Route watermark storage changes through the existing content-script storage
+listener only after normal Gemini startup has activated the watermark runtime,
+reuse its initialized engine, and reject stale async starts and in-flight
+preview writes with a lifecycle generation. Reconfigure preview and download
+as separate lifecycles: if download removal stays enabled, preserve its bridge,
+intent, observers, and active feedback while preview changes; only a true
+download disable performs the full download teardown. Tag each download intent
+and MAIN-world status with the same token so a late result from an older
+download cannot finalize a newer sequence. If a restart leaves preview removal
+enabled, retry stale preview work after releasing its queue slot. Clear preview
+bookkeeping without restoring the current image source, so Gemini can reuse the
+same image node without stale markers blocking a later preview. When download
+removal is enabled, also inject the guarded MAIN-world interceptor once into
+matching open tabs; disabling keeps installed wrappers in immediate
+pass-through mode through the DOM bridge.
+
+Regression test:
+
+`src/pages/content/watermarkRemover/__tests__/runtimeToggle.test.ts` verifies
+bidirectional runtime changes, engine reuse, stale-start and stale-preview
+rejection, latest-lifecycle preview retry, reused-node processing, preview-only
+download preservation, stopped-download cleanup, stale-status rejection, and
+startup-gated content entry wiring.
+`src/pages/background/__tests__/watermarkOpenTabs.test.ts` verifies targeted
+MAIN-world injection and closed-tab failure handling.
+
+Commit:
+
+`fix(watermark): apply toggles to open Gemini tabs`
+
 ## Mermaid must honor Gemini explicit light theme
 
 Symptom:

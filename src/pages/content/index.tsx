@@ -6,6 +6,7 @@ import {
   isExtensionContextInvalidatedError,
 } from '@/core/utils/extensionContext';
 import { isGeminiEnterpriseEnvironment } from '@/core/utils/gemini';
+import { WATERMARK_STORAGE_KEYS } from '@/core/utils/watermarkSettings';
 import { startFormulaCopy, stopFormulaCopy } from '@/features/formulaCopy';
 import { startPluginHost } from '@/features/plugins';
 import {
@@ -69,7 +70,11 @@ import { startUsageStatus } from './usageStatus/index';
 import { usageCoachmarkStep } from './usageStatus/usageCoachmark';
 import { startUserLatex } from './userLatex/index';
 import { startVisualEffects } from './visualEffects';
-import { startWatermarkRemover, stopWatermarkRemover } from './watermarkRemover/index';
+import {
+  restartWatermarkRemover,
+  startWatermarkRemover,
+  stopWatermarkRemover,
+} from './watermarkRemover/index';
 
 // Suppress Vite's CSS preload errors in the Chrome extension content script context.
 // Dynamic imports (e.g., mermaid) trigger Vite's __vitePreload helper which tries to
@@ -119,6 +124,7 @@ let remoteAnnouncementsCleanup: (() => void) | null = null;
 let storageQuotaWarningCleanup: (() => void) | null = null;
 let accountContextBridgeCleanup: (() => void) | null = null;
 let codeBlockCollapseCleanup: (() => void) | null = null;
+let watermarkRemoverStarted = false;
 
 async function isForkFeatureEnabled(): Promise<boolean> {
   try {
@@ -316,7 +322,8 @@ async function initializeFeatures(): Promise<void> {
       await delay(LIGHT_FEATURE_INIT_DELAY);
 
       // Independent content helpers can initialize in the same idle slice.
-      startWatermarkRemover();
+      watermarkRemoverStarted = true;
+      void startWatermarkRemover();
       startDeepResearchExport();
       startContextSync();
       startGemsHider();
@@ -531,6 +538,14 @@ function handleVisibilityChange(): void {
       changes: Record<string, chrome.storage.StorageChange>,
       areaName: string,
     ) => {
+      if (
+        watermarkRemoverStarted &&
+        areaName === 'sync' &&
+        WATERMARK_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key))
+      ) {
+        void restartWatermarkRemover();
+      }
+
       if (
         (areaName !== 'sync' && areaName !== 'local') ||
         location.hostname !== 'gemini.google.com'

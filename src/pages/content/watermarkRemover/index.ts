@@ -27,6 +27,9 @@ import { WatermarkEngine } from './watermarkEngine';
 let engine: WatermarkEngine | null = null;
 let enginePromise: Promise<WatermarkEngine> | null = null;
 const processingQueue = new Set<HTMLImageElement>();
+let lifecycleGeneration = 0;
+let downloadRemovalEnabled = false;
+let previewRemovalEnabled = false;
 
 // Observers are kept at module scope so they can be disconnected on teardown
 // and so re-running startWatermarkRemover() can't stack duplicate observers.
@@ -107,6 +110,24 @@ const findGeminiImages = (): HTMLImageElement[] =>
   );
 
 /**
+ * Clear preview bookkeeping without restoring the current image source.
+ * Gemini can reuse an existing <img> for a later generated image, so stale
+ * processed markers must not prevent the replacement source from being handled
+ * after preview removal is re-enabled.
+ */
+const clearPreviewImageState = (): void => {
+  document
+    .querySelectorAll<HTMLImageElement>(
+      'img[data-watermark-processed], img[data-watermark-original-src]',
+    )
+    .forEach((img) => {
+      delete img.dataset.watermarkProcessed;
+      delete img.dataset.watermarkOriginalSrc;
+      delete img.dataset.processedUrl;
+    });
+};
+
+/**
  * Replace image URL size parameter to get full resolution
  */
 const replaceWithNormalSize = (src: string): string => {
@@ -173,6 +194,13 @@ function addDownloadIndicator(imgElement: HTMLImageElement): void {
 async function processImage(imgElement: HTMLImageElement): Promise<void> {
   if (!engine || processingQueue.has(imgElement)) return;
 
+  const generation = lifecycleGeneration;
+  let stale = false;
+  const isStale = (): boolean => {
+    stale = generation !== lifecycleGeneration || !previewRemovalEnabled;
+    return stale;
+  };
+
   processingQueue.add(imgElement);
   imgElement.dataset.watermarkProcessed = 'processing';
 
@@ -181,10 +209,13 @@ async function processImage(imgElement: HTMLImageElement): Promise<void> {
     // Fetch full resolution image via background script (bypasses CORS)
     const normalSizeSrc = replaceWithNormalSize(originalSrc);
     const normalSizeImg = await fetchImageViaBackground(normalSizeSrc);
+    if (isStale()) return;
 
     // Process image to remove watermark
     const processedCanvas = await engine.removeWatermarkFromImage(normalSizeImg);
+    if (isStale()) return;
     const processedBlob = await canvasToBlob(processedCanvas);
+    if (isStale()) return;
 
     // Replace image source with processed blob URL
     const processedUrl = URL.createObjectURL(processedBlob);
@@ -195,13 +226,26 @@ async function processImage(imgElement: HTMLImageElement): Promise<void> {
 
     console.log('[Gemini Voyager] Watermark removed from preview image');
 
-    // Add indicator to download button
-    addDownloadIndicator(imgElement);
+    if (downloadRemovalEnabled) {
+      addDownloadIndicator(imgElement);
+    }
   } catch (error) {
+    if (isStale()) return;
     console.warn('[Gemini Voyager] Failed to process image for watermark removal:', error);
     imgElement.dataset.watermarkProcessed = 'failed';
   } finally {
     processingQueue.delete(imgElement);
+    if (stale) {
+      if (imgElement.dataset.watermarkProcessed === 'processing') {
+        delete imgElement.dataset.watermarkProcessed;
+      }
+      // A full restart can invalidate this task while leaving preview removal
+      // enabled (for example, when only the download toggle changed). Retry
+      // after releasing the queue slot so the latest lifecycle owns the write.
+      if (previewRemovalEnabled && imgElement.isConnected && isValidGeminiImage(imgElement)) {
+        void processImage(imgElement);
+      }
+    }
   }
 }
 
@@ -212,9 +256,11 @@ const processAllImages = (): void => {
   const images = findGeminiImages();
   images.forEach(processImage);
 
-  // Always re-run the indicator pass so blob-src previews and late-loading
-  // native buttons still pick up the 🍌 badge (idempotent).
-  decorateDownloadButtons();
+  if (downloadRemovalEnabled) {
+    // Re-run the indicator pass so blob-src previews and late-loading native
+    // buttons still pick up the 🍌 badge (idempotent).
+    decorateDownloadButtons();
+  }
 };
 
 /**
@@ -372,9 +418,14 @@ async function processImageRequest(
 }
 
 /**
- * Start the watermark remover
+ * Read the latest settings and configure the watermark runtime.
+ * Reconfiguration tears down preview work every time, but keeps an unchanged
+ * download runtime alive so an in-flight native download cannot lose its
+ * bridge request, intent, or feedback sequence.
  */
-export async function startWatermarkRemover(): Promise<void> {
+async function configureWatermarkRemover(reconfigure: boolean): Promise<void> {
+  const generation = ++lifecycleGeneration;
+
   try {
     // Initialize bridge element first (so it exists when fetch interceptor loads)
     getBridgeElement();
@@ -384,6 +435,14 @@ export async function startWatermarkRemover(): Promise<void> {
     const { download: downloadEnabled, preview: previewEnabled } = resolveWatermarkSettings(
       result ?? null,
     );
+    if (generation !== lifecycleGeneration) return;
+
+    if (reconfigure) {
+      teardownWatermarkRemover(downloadRemovalEnabled && downloadEnabled);
+    }
+
+    downloadRemovalEnabled = downloadEnabled;
+    previewRemovalEnabled = previewEnabled;
     notifyFetchInterceptor(downloadEnabled);
 
     if (!downloadEnabled && !previewEnabled) {
@@ -391,16 +450,15 @@ export async function startWatermarkRemover(): Promise<void> {
       return;
     }
 
-    // Setup status listener for UI feedback ASAP (avoid missing early signals).
-    // Both paths benefit from the toast/status pipeline when downloads happen.
-    setupStatusListener();
-    setupDownloadButtonTracking();
-
     console.log(
       `[Gemini Voyager] Initializing watermark remover (download=${downloadEnabled}, preview=${previewEnabled})`,
     );
 
     if (downloadEnabled) {
+      // Setup download feedback and intent tracking only for the download path.
+      setupStatusListener();
+      setupDownloadButtonTracking();
+
       // Install the bridge observer BEFORE awaiting engine init so requests
       // that arrive during the asset-loading window (typically 100ms-2s, and
       // larger after a hard navigation like an account switch) are not lost.
@@ -408,8 +466,12 @@ export async function startWatermarkRemover(): Promise<void> {
       setupFetchInterceptorBridge();
     }
 
-    enginePromise = WatermarkEngine.create();
-    engine = await enginePromise;
+    if (!enginePromise) {
+      enginePromise = WatermarkEngine.create();
+    }
+    const initializedEngine = engine ?? (await enginePromise);
+    if (generation !== lifecycleGeneration) return;
+    engine = initializedEngine;
 
     if (previewEnabled) {
       // Heavy path: replace each image's src with a watermark-stripped blob.
@@ -426,6 +488,8 @@ export async function startWatermarkRemover(): Promise<void> {
 
     console.log('[Gemini Voyager] Watermark remover ready');
   } catch (error) {
+    if (!engine) enginePromise = null;
+    if (generation !== lifecycleGeneration) return;
     if (isExtensionContextInvalidatedError(error)) {
       return;
     }
@@ -434,22 +498,47 @@ export async function startWatermarkRemover(): Promise<void> {
 }
 
 /**
- * Fully tear down the watermark remover. Safe to call when nothing was started.
- * Wired into the content-script beforeunload teardown so the two document.body
- * subtree observers don't outlive the page; also written to be a complete stop
- * (observers + MAIN-world interceptor + document listeners) so it can be reused
- * for SPA teardown/restart without leaving the interceptor thinking it's enabled.
+ * Start the watermark remover.
  */
-export function stopWatermarkRemover(): void {
-  for (const observer of [previewObserver, indicatorObserver, bridgeObserver, statusObserver]) {
+export function startWatermarkRemover(): Promise<void> {
+  return configureWatermarkRemover(false);
+}
+
+/**
+ * Re-read storage and apply the latest watermark mode to the current page.
+ * The shared generation guard makes rapid restarts
+ * latest-wins even while the engine is still loading.
+ */
+export async function restartWatermarkRemover(): Promise<void> {
+  await configureWatermarkRemover(true);
+}
+
+/**
+ * Tear down preview work and, unless it is unchanged and still enabled, the
+ * download runtime. Keeping download state is what makes preview-only toggles
+ * safe while a native download is already in progress.
+ */
+function teardownWatermarkRemover(preserveDownloadRuntime: boolean): void {
+  const keepDownloadRuntime = preserveDownloadRuntime && downloadRemovalEnabled;
+  previewRemovalEnabled = false;
+
+  for (const observer of [previewObserver, indicatorObserver]) {
     observer?.disconnect();
   }
   previewObserver = null;
   indicatorObserver = null;
-  bridgeObserver = null;
-  statusObserver = null;
   for (const timeout of pendingDebounceTimeouts) clearTimeout(timeout);
   pendingDebounceTimeouts.clear();
+  clearPreviewImageState();
+
+  if (keepDownloadRuntime) return;
+
+  downloadRemovalEnabled = false;
+  bridgeObserver?.disconnect();
+  statusObserver?.disconnect();
+  bridgeObserver = null;
+  statusObserver = null;
+  clearActiveDownloadSequence();
 
   // Tell the MAIN-world fetch interceptor the feature is off, so it stops
   // intercepting and doesn't wait on bridge responses that will never come.
@@ -458,7 +547,13 @@ export function stopWatermarkRemover(): void {
   const existingBridge = document.getElementById(GV_BRIDGE_ID);
   if (existingBridge) {
     existingBridge.dataset.enabled = 'false';
+    existingBridge.removeAttribute('data-download-intent-expires-at');
+    existingBridge.removeAttribute('data-download-intent-token');
   }
+
+  document
+    .querySelectorAll<HTMLElement>('.nanobanana-indicator')
+    .forEach((indicator) => indicator.remove());
 
   // Remove the global download-button tracking listeners.
   if (downloadCaptureHandler) {
@@ -467,6 +562,16 @@ export function stopWatermarkRemover(): void {
     downloadCaptureHandler = null;
   }
   downloadTrackingReady = false;
+}
+
+/**
+ * Fully tear down the watermark remover. Safe to call when nothing was started.
+ * Wired into the content-script beforeunload teardown so document observers,
+ * the MAIN-world bridge, and global listeners cannot outlive the page.
+ */
+export function stopWatermarkRemover(): void {
+  lifecycleGeneration += 1;
+  teardownWatermarkRemover(false);
 }
 
 let statusToastManager: StatusToastManager | null = null;
@@ -483,6 +588,7 @@ const DOWNLOAD_INTENT_TTL_MS = 60000;
 
 type DownloadToastSequence = {
   id: number;
+  token: string;
   downloadToastId: string | null;
   warningToastId: string | null;
   processingToastId: string | null;
@@ -490,6 +596,26 @@ type DownloadToastSequence = {
 };
 
 let activeSequence: DownloadToastSequence | null = null;
+
+function clearActiveDownloadSequence(): void {
+  if (!activeSequence) return;
+
+  if (activeSequence.processingTimer) {
+    clearTimeout(activeSequence.processingTimer);
+  }
+
+  if (statusToastManager) {
+    for (const toastId of [
+      activeSequence.downloadToastId,
+      activeSequence.warningToastId,
+      activeSequence.processingToastId,
+    ]) {
+      if (toastId) statusToastManager.removeToast(toastId);
+    }
+  }
+
+  activeSequence = null;
+}
 
 const getStatusToastManager = (): StatusToastManager => {
   if (!statusToastManager) {
@@ -503,16 +629,18 @@ const t = (key: TranslationKey, fallback: string): string => {
   return value === key ? fallback : value;
 };
 
-function markDownloadIntent(): void {
+function markDownloadIntent(token: string): void {
   const bridge = getBridgeElement();
   bridge.dataset.downloadIntentExpiresAt = String(Date.now() + DOWNLOAD_INTENT_TTL_MS);
+  bridge.dataset.downloadIntentToken = token;
 }
 
 function showImmediateDownloadToast(button: HTMLButtonElement): void {
-  markDownloadIntent();
-
   const now = Date.now();
-  if (now - lastImmediateToastAt < 300) return;
+  if (now - lastImmediateToastAt < 300 && activeSequence) {
+    markDownloadIntent(activeSequence.token);
+    return;
+  }
   lastImmediateToastAt = now;
 
   const manager = getStatusToastManager();
@@ -526,6 +654,8 @@ function showImmediateDownloadToast(button: HTMLButtonElement): void {
   }
 
   const sequenceId = ++sequenceCounter;
+  const token = `gv_download_${now}_${sequenceId}`;
+  markDownloadIntent(token);
   const downloadToastId = manager.addToast(downloadMessage, 'info', {
     pending: true,
     autoDismissMs: 3000,
@@ -547,6 +677,7 @@ function showImmediateDownloadToast(button: HTMLButtonElement): void {
 
   activeSequence = {
     id: sequenceId,
+    token,
     downloadToastId,
     warningToastId: null,
     processingToastId: null,
@@ -624,8 +755,9 @@ function setupStatusListener(): void {
     if (!statusData) return;
 
     try {
-      const { type, message } = JSON.parse(statusData);
+      const { type, message, intentToken } = JSON.parse(statusData);
       bridge.removeAttribute('data-status');
+      if (!activeSequence || intentToken !== activeSequence.token) return;
 
       switch (type) {
         case 'DOWNLOADING':
