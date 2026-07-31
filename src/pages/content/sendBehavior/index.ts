@@ -39,6 +39,7 @@ import { getTextOffset, setCaretPosition } from './utils';
 
 /** Selector for editable elements */
 const EDITABLE_SELECTORS = '[contenteditable="true"], [role="textbox"], textarea';
+const PENDING_UPLOAD_SELECTOR = 'progress, [role="progressbar"]';
 
 /** Log prefix for consistent logging */
 const LOG_PREFIX = '[SendBehavior]';
@@ -111,6 +112,11 @@ function findSendButton(inputElement: HTMLElement): HTMLElement | null {
       break;
     }
   }
+
+  // Gemini renders a semantic progressbar inside the composer while an
+  // attachment is still uploading. Its native Enter handler waits for that
+  // state to clear, but a programmatic button click bypasses the guard.
+  if (container?.querySelector(PENDING_UPLOAD_SELECTOR)) return null;
 
   // 2. Search for the button strictly WITHIN the container or via bounded upward traversal
   // If we found a known cohesive container, just search in it

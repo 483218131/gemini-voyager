@@ -174,6 +174,39 @@ describe('sendBehavior', () => {
     cleanup();
   });
 
+  it('waits for an attachment upload to finish before clicking send', async () => {
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'text-input-field';
+
+    const input = document.createElement('div');
+    input.setAttribute('contenteditable', 'true');
+
+    const uploadProgress = document.createElement('div');
+    uploadProgress.setAttribute('role', 'progressbar');
+
+    const sendButton = document.createElement('button');
+    sendButton.setAttribute('aria-label', 'Send message');
+    markElementVisible(sendButton);
+
+    inputContainer.append(input, uploadProgress, sendButton);
+    document.body.append(inputContainer);
+
+    const sendClickSpy = vi.spyOn(sendButton, 'click');
+    const { startSendBehavior } = await import('../index');
+    const cleanup = await startSendBehavior();
+
+    const uploadingEvent = fireCtrlEnter(input);
+    expect(sendClickSpy).not.toHaveBeenCalled();
+    expect(uploadingEvent.defaultPrevented).toBe(false);
+
+    uploadProgress.remove();
+    const readyEvent = fireCtrlEnter(input);
+    expect(sendClickSpy).toHaveBeenCalledOnce();
+    expect(readyEvent.defaultPrevented).toBe(true);
+
+    cleanup();
+  });
+
   it('debounces listener attachment for inputs added by streaming mutations', async () => {
     vi.useFakeTimers();
     const inputContainer = document.createElement('div');
