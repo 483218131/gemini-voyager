@@ -90,6 +90,7 @@ import {
   IconQwen,
 } from './components/WebsiteLogos';
 import WidthSlider from './components/WidthSlider';
+import { usePopupScrollRestoration } from './hooks/usePopupScrollRestoration';
 import { type SettingsSearchItem, getSettingsSearchMatches } from './utils/settingsSearch';
 
 /**
@@ -1035,6 +1036,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
     useState<boolean>(true);
   const [activeAccountPlatform, setActiveAccountPlatform] = useState<AccountPlatform>('gemini');
   const [activeUrl, setActiveUrl] = useState<string>('');
+  const [activeTabContextLoaded, setActiveTabContextLoaded] = useState(false);
   const [pluginManifests, setPluginManifests] = useState<readonly PluginManifest[]>([]);
   const [pluginSourceIds, setPluginSourceIds] = useState<Readonly<Record<string, string>>>({});
   const [pluginState, setPluginState] = useState<PluginStateMap>({});
@@ -1209,7 +1211,11 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
       const url = tab?.url || '';
       setActiveUrl(url);
       setActiveAccountPlatform(detectAccountPlatformFromUrl(url));
-    } catch {}
+    } catch {
+      // Keep the default empty URL when the tab cannot be inspected.
+    } finally {
+      setActiveTabContextLoaded(true);
+    }
   }, [sourceTabId]);
 
   useEffect(() => {
@@ -2396,6 +2402,13 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
 
   const visibleSections = sectionOrder.filter(isSectionVisible);
   const hasSettingsSearch = settingsSearchQuery.trim().length > 0;
+  usePopupScrollRestoration({
+    activeTabContextLoaded,
+    hasSettingsSearch,
+    isPluginSite,
+    showStarredHistory,
+    showStorageManager,
+  });
   const settingsSearchMatches = useMemo(
     () => getSettingsSearchMatches(POPUP_SETTINGS_SEARCH_ITEMS, settingsSearchQuery),
     [settingsSearchQuery],
