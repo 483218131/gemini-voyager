@@ -1995,8 +1995,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "이 팝업 대신 플로팅 버튼의 NEW 배지로 알림",
+    "message": "NEW 배지로 업데이트 알림",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "새 버전이 출시되면 변경 기록을 자동으로 열지 않고 플로팅 버튼에 NEW 배지를 표시합니다.",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",

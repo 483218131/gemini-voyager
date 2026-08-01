@@ -2009,8 +2009,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "Notifier via un badge NEW sur le bouton flottant au lieu de cette fenêtre",
+    "message": "Signaler les mises à jour avec un badge NEW",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "Lorsqu’une nouvelle version est publiée, affiche NEW sur le bouton flottant au lieu d’ouvrir automatiquement le journal des modifications.",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",

@@ -1998,8 +1998,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "الإشعار عبر شارة NEW على الزر العائم بدلاً من هذه النافذة",
+    "message": "التنبيه بالتحديثات عبر شارة NEW",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "عند إصدار نسخة جديدة، تظهر شارة NEW على الزر العائم بدلاً من فتح سجل التغييرات تلقائياً.",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",

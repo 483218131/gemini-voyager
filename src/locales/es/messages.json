@@ -2007,8 +2007,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "Notificar con una insignia NEW en el botón flotante en lugar de esta ventana",
+    "message": "Avisar de actualizaciones con una insignia NEW",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "Cuando se publique una nueva versión, muestra NEW en el botón flotante en lugar de abrir automáticamente el registro de cambios.",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",

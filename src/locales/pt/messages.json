@@ -2004,8 +2004,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "Notificar com um selo NEW no botão flutuante em vez desta janela",
+    "message": "Avisar sobre atualizações com um selo NEW",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "Quando uma nova versão for lançada, mostra NEW no botão flutuante em vez de abrir automaticamente o histórico de alterações.",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",

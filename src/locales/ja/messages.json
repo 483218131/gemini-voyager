@@ -2004,8 +2004,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "このポップアップの代わりに、フローティングボタンの NEW バッジで通知する",
+    "message": "NEWバッジで更新を通知",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "新しいバージョンが公開されたとき、変更履歴を自動で開かず、フローティングボタンにNEWバッジを表示します。",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",

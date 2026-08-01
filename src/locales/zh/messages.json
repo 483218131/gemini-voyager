@@ -1996,8 +1996,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "通过悬浮球上的 NEW 标记提醒，而非弹出此窗口",
+    "message": "使用 NEW 标记提醒更新",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "新版本发布时，只在悬浮球上显示 NEW 标记，不自动打开更新日志。",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "分叉",

@@ -2004,8 +2004,12 @@
     "description": "Edge Add-ons store rating CTA button text"
   },
   "changelog_badge_mode": {
-    "message": "Уведомлять значком NEW на плавающей кнопке вместо этого окна",
+    "message": "Сообщать об обновлениях значком NEW",
     "description": "Changelog notification mode toggle label"
+  },
+  "changelog_badge_mode_hint": {
+    "message": "При выходе новой версии показывает NEW на плавающей кнопке вместо автоматического открытия списка изменений.",
+    "description": "Changelog notification mode toggle hint"
   },
   "forkConversation": {
     "message": "Fork",
