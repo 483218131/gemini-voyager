@@ -4124,6 +4124,11 @@ body.light-theme {
 
 /* Folder Container */
 .gv-folder-container {
+  --gv-folder-section-gutter: 14px;
+  --gv-folder-list-edge: 4px;
+  --gv-folder-activity-row-inset: calc(
+    var(--gv-folder-section-gutter) - var(--gv-folder-list-edge)
+  );
   /* Top padding is 0 so the Folders title sits flush against the bottom of the
    * adjacent native section (Notebooks/Recents), matching Gemini's own
    * inter-section density after the 2026 redesign. Bottom uses a thin 4px
@@ -4135,12 +4140,14 @@ body.light-theme {
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
 }
 
-/* Folder Header — left padding matches Gemini's native expandable-section-header (14px). */
+/* Header, search, and Activity copy share Gemini's native 14px section axis. */
 .gv-folder-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 6px 4px 14px;
+  padding-block: 4px;
+  padding-inline-start: var(--gv-folder-section-gutter);
+  padding-inline-end: 6px;
   margin-bottom: 2px;
   border-radius: 8px;
   transition:
@@ -4164,7 +4171,6 @@ body.light-theme {
 .gv-folder-section-toggle {
   width: 20px;
   height: 20px;
-  margin-left: -6px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -4183,9 +4189,10 @@ body.light-theme {
     color 0.18s ease;
 }
 
-.gv-folder-section-toggle .google-symbols {
-  font-size: 20px;
-  line-height: 20px;
+.gv-folder-section-toggle svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .gv-folder-header:hover .gv-folder-section-toggle,
@@ -4217,7 +4224,9 @@ body.light-theme {
 
 .gv-folder-search {
   position: relative;
-  padding: 0 8px 4px 14px;
+  padding-block: 0 4px;
+  padding-inline-start: var(--gv-folder-section-gutter);
+  padding-inline-end: 8px;
 }
 
 .gv-folder-search-input {
@@ -4906,14 +4915,19 @@ body.light-theme {
   background-color: rgba(251, 191, 36, 0.15);
 }
 
-.gv-conversation-star-btn mat-icon {
-  font-size: 18px !important;
+.gv-conversation-star-btn mat-icon,
+.gv-conversation-star-btn > svg {
   width: 18px !important;
   height: 18px !important;
   transition: transform 0.2s;
 }
 
-.gv-conversation-star-btn:active mat-icon {
+.gv-conversation-star-btn > svg {
+  display: block;
+}
+
+.gv-conversation-star-btn:active mat-icon,
+.gv-conversation-star-btn:active > svg {
   transform: scale(0.9);
 }
 
@@ -5082,7 +5096,7 @@ body.light-theme .gv-folder-menu-item:hover {
 
 /* ── Folder Settings Popover ── */
 .gv-folder-settings-menu {
-  min-width: 220px;
+  min-width: 252px;
 }
 
 .gv-folder-settings-row {
@@ -5098,6 +5112,145 @@ body.light-theme .gv-folder-menu-item:hover {
   font-size: 13px;
   font-weight: 500;
   color: oklch(0.14 0.004 285);
+}
+
+.gv-folder-width-settings-row {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gv-folder-width-settings-header,
+.gv-folder-width-settings-controls {
+  display: flex;
+  align-items: center;
+}
+
+.gv-folder-width-settings-header {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gv-folder-width-settings-controls {
+  gap: 8px;
+}
+
+.gv-folder-width-value {
+  min-width: 42px;
+  color: oklch(0.38 0.008 285);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: opacity 0.15s ease;
+}
+
+.gv-folder-width-switch {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid oklch(0.62 0.008 285 / 0.5);
+  border-radius: 999px;
+  background: oklch(0.76 0.006 250 / 0.65);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.gv-folder-width-switch[aria-checked='true'] {
+  border-color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  background: var(--gv-pm-brand, var(--gv-pm-brand-default));
+}
+
+.gv-folder-width-switch:focus-visible,
+.gv-folder-width-slider:focus-visible {
+  outline: 2px solid var(--gv-pm-brand, var(--gv-pm-brand-default));
+  outline-offset: 2px;
+}
+
+.gv-folder-width-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: oklch(0.995 0.002 250);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.28);
+  transition: transform 0.15s ease;
+}
+
+.gv-folder-width-switch[aria-checked='true'] .gv-folder-width-switch-knob {
+  transform: translateX(14px);
+}
+
+.gv-folder-width-slider {
+  --gv-folder-width-progress: 36.67%;
+  --gv-folder-width-track: oklch(0.9 0.006 250);
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  direction: ltr;
+  transition: opacity 0.15s ease;
+}
+
+.gv-folder-width-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--gv-pm-brand, var(--gv-pm-brand-default)) 0,
+    var(--gv-pm-brand, var(--gv-pm-brand-default)) var(--gv-folder-width-progress),
+    var(--gv-folder-width-track) var(--gv-folder-width-progress),
+    var(--gv-folder-width-track) 100%
+  );
+}
+
+.gv-folder-width-slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  appearance: none;
+  border: 2px solid var(--gv-pm-brand, var(--gv-pm-brand-default));
+  border-radius: 50%;
+  background: oklch(0.995 0.002 250);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.18);
+}
+
+.gv-folder-width-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--gv-folder-width-track);
+}
+
+.gv-folder-width-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--gv-pm-brand, var(--gv-pm-brand-default));
+}
+
+.gv-folder-width-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--gv-pm-brand, var(--gv-pm-brand-default));
+  border-radius: 50%;
+  background: oklch(0.995 0.002 250);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.18);
+}
+
+.gv-folder-width-settings-row.is-disabled .gv-folder-width-value,
+.gv-folder-width-slider:disabled {
+  opacity: 0.45;
+}
+
+.gv-folder-width-slider:disabled {
+  cursor: default;
 }
 
 .gv-folder-sort-options {
@@ -5142,6 +5295,45 @@ body.light-theme .gv-folder-menu-item:hover {
 .theme-host.dark-theme .gv-folder-settings-label,
 body.dark-theme .gv-folder-settings-label {
   color: oklch(0.92 0.004 250);
+}
+
+@media (prefers-color-scheme: dark) {
+  .gv-folder-width-value {
+    color: oklch(0.76 0.006 250);
+  }
+  .gv-folder-width-switch {
+    border-color: oklch(0.54 0.008 285 / 0.6);
+    background: oklch(0.38 0.008 285);
+  }
+  .gv-folder-width-switch[aria-checked='true'] {
+    border-color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+    background: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  }
+  .gv-folder-width-slider {
+    --gv-folder-width-track: oklch(0.36 0.008 285);
+  }
+}
+
+.theme-host.dark-theme .gv-folder-width-value,
+body.dark-theme .gv-folder-width-value {
+  color: oklch(0.76 0.006 250);
+}
+
+.theme-host.dark-theme .gv-folder-width-switch,
+body.dark-theme .gv-folder-width-switch {
+  border-color: oklch(0.54 0.008 285 / 0.6);
+  background: oklch(0.38 0.008 285);
+}
+
+.theme-host.dark-theme .gv-folder-width-switch[aria-checked='true'],
+body.dark-theme .gv-folder-width-switch[aria-checked='true'] {
+  border-color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  background: var(--gv-pm-brand, var(--gv-pm-brand-default));
+}
+
+.theme-host.dark-theme .gv-folder-width-slider,
+body.dark-theme .gv-folder-width-slider {
+  --gv-folder-width-track: oklch(0.36 0.008 285);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -6082,14 +6274,16 @@ body.light-theme ms-katex:hover {
 .gv-folder-header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
 }
 
 /* Action buttons (import/export) */
 .gv-folder-action-btn {
+  width: 32px;
+  height: 32px;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 0;
   cursor: pointer;
   border-radius: 50%;
   color: var(--folder-icon-color);
@@ -6098,6 +6292,7 @@ body.light-theme ms-katex:hover {
   justify-content: center;
   transition: background-color 0.2s ease;
   opacity: 0.9;
+  flex: 0 0 auto;
 }
 
 .gv-folder-action-btn:hover {
@@ -6112,10 +6307,12 @@ body.dark-theme .gv-folder-action-btn:hover,
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-.gv-folder-action-btn mat-icon {
-  font-size: 18px;
+.gv-folder-action-btn mat-icon,
+.gv-folder-action-btn svg,
+.gv-folder-add-btn svg {
   width: 18px;
   height: 18px;
+  display: block;
 }
 
 .gv-folder-activity-toggle svg {
@@ -6156,7 +6353,8 @@ body.dark-theme .gv-folder-activity-toggle.is-active,
  * folder context visible without turning every row into a card. */
 .gv-folder-activity-list {
   gap: 0;
-  padding: 0 4px 2px;
+  padding-block: 0 2px;
+  padding-inline: var(--gv-folder-list-edge);
 }
 
 .gv-folder-activity-group {
@@ -6166,36 +6364,35 @@ body.dark-theme .gv-folder-activity-toggle.is-active,
 }
 
 .gv-folder-activity-group + .gv-folder-activity-group {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .gv-folder-activity-heading {
   margin: 0;
-  padding: 5px 10px 3px;
+  padding-block: 6px 4px;
+  padding-inline: var(--gv-folder-activity-row-inset);
   color: var(--folder-icon-color);
   font:
-    500 12px/16px 'Google Sans',
+    400 13px/17px 'Google Sans',
     Roboto,
     Arial,
     sans-serif;
-  opacity: 0.72;
+  opacity: 0.78;
   user-select: none;
 }
 
 .gv-folder-activity-item {
-  min-height: 42px;
-  padding: 5px 8px;
-  gap: 5px;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding-block: 6px;
+  padding-inline: var(--gv-folder-activity-row-inset);
+  gap: 8px;
   cursor: default;
 }
 
 .gv-folder-activity-link {
-  align-items: flex-start;
-  gap: 5px;
-}
-
-.gv-folder-activity-link .gv-conversation-icon {
-  margin-top: 5px;
+  align-items: center;
+  gap: 0;
 }
 
 .gv-folder-activity-text {
@@ -6207,8 +6404,8 @@ body.dark-theme .gv-folder-activity-toggle.is-active,
 
 .gv-folder-activity-text .gv-conversation-title {
   display: block;
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .gv-folder-activity-context {
@@ -6216,11 +6413,11 @@ body.dark-theme .gv-folder-activity-toggle.is-active,
   overflow: hidden;
   color: var(--folder-icon-color);
   font:
-    400 11px/15px 'Google Sans',
+    400 12px/16px 'Google Sans',
     Roboto,
     Arial,
     sans-serif;
-  opacity: 0.72;
+  opacity: 0.7;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6230,12 +6427,49 @@ body.dark-theme .gv-folder-activity-toggle.is-active,
   align-self: center;
   color: var(--folder-icon-color);
   font:
-    400 10px/14px 'Google Sans',
+    400 11px/16px 'Google Sans',
     Roboto,
     Arial,
     sans-serif;
-  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.68;
   white-space: nowrap;
+}
+
+/* Priority is already communicated by its section and star. Avoid a second
+ * orange card treatment, and let the active row use Gemini's flat surface. */
+.gv-folder-activity-item.gv-starred {
+  background: transparent;
+}
+
+.gv-folder-activity-item.gv-starred::before,
+.gv-folder-activity-item.gv-folder-conversation-selected::before {
+  content: none;
+}
+
+.gv-folder-activity-item.gv-folder-conversation-selected {
+  background: var(--gm3-sys-color-surface-container-highest, rgba(31, 31, 31, 0.07)) !important;
+  border-radius: 10px;
+}
+
+.gv-folder-activity-item:hover {
+  background: var(--gm3-sys-color-surface-container-highest, rgba(31, 31, 31, 0.055));
+}
+
+html.dark .gv-folder-activity-item.gv-folder-conversation-selected,
+body.dark-theme .gv-folder-activity-item.gv-folder-conversation-selected,
+.theme-host.dark-theme .gv-folder-activity-item.gv-folder-conversation-selected,
+[data-theme='dark'] .gv-folder-activity-item.gv-folder-conversation-selected,
+[data-color-scheme='dark'] .gv-folder-activity-item.gv-folder-conversation-selected {
+  background: var(--gm3-sys-color-surface-container-highest, rgba(255, 255, 255, 0.1)) !important;
+}
+
+html.dark .gv-folder-activity-item:hover,
+body.dark-theme .gv-folder-activity-item:hover,
+.theme-host.dark-theme .gv-folder-activity-item:hover,
+[data-theme='dark'] .gv-folder-activity-item:hover,
+[data-color-scheme='dark'] .gv-folder-activity-item:hover {
+  background: var(--gm3-sys-color-surface-container-highest, rgba(255, 255, 255, 0.075));
 }
 
 .gv-folder-activity-item .gv-conversation-star-btn.starred {

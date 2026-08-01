@@ -90,7 +90,7 @@ describe('folder section collapse', () => {
     expect(button).not.toBeNull();
     expect(container?.classList.contains('gv-folder-collapsed')).toBe(false);
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(button?.querySelector('.google-symbols')?.textContent).toBe('expand_more');
+    expect(button?.querySelector('.lucide-chevron-down')).not.toBeNull();
     expect(container?.querySelector('.gv-folder-search')).not.toBeNull();
     expect(container?.querySelector('.gv-folder-list')).not.toBeNull();
 
@@ -99,7 +99,7 @@ describe('folder section collapse', () => {
 
     expect(container?.classList.contains('gv-folder-collapsed')).toBe(true);
     expect(button?.getAttribute('aria-expanded')).toBe('false');
-    expect(button?.querySelector('.google-symbols')?.textContent).toBe('chevron_right');
+    expect(button?.querySelector('.lucide-chevron-right')).not.toBeNull();
     expect(browser.storage.local.set).toHaveBeenCalledWith({
       [StorageKeys.FOLDERS_COLLAPSED]: true,
     });
@@ -109,7 +109,7 @@ describe('folder section collapse', () => {
 
     expect(container?.classList.contains('gv-folder-collapsed')).toBe(false);
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(button?.querySelector('.google-symbols')?.textContent).toBe('expand_more');
+    expect(button?.querySelector('.lucide-chevron-down')).not.toBeNull();
     expect(browser.storage.local.set).toHaveBeenLastCalledWith({
       [StorageKeys.FOLDERS_COLLAPSED]: false,
     });
@@ -128,9 +128,8 @@ describe('folder section collapse', () => {
 
     expect(typed.containerElement?.classList.contains('gv-folder-collapsed')).toBe(true);
     expect(
-      typed.containerElement?.querySelector('.gv-folder-section-toggle .google-symbols')
-        ?.textContent,
-    ).toBe('chevron_right');
+      typed.containerElement?.querySelector('.gv-folder-section-toggle .lucide-chevron-right'),
+    ).not.toBeNull();
   });
 
   it('migrates the retired hidden-eye state into the built-in collapsed state', async () => {

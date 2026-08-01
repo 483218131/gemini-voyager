@@ -183,8 +183,22 @@ describe('folder Activity view', () => {
     expect(bellIcon?.getAttribute('viewBox')).toBe('0 0 24 24');
     expect(bellIcon?.getAttribute('stroke-width')).toBe('2');
     expect(bellIcon?.querySelectorAll('path')).toHaveLength(2);
+    expect(container?.querySelector('.lucide-user-round')).not.toBeNull();
+    expect(container?.querySelector('.lucide-folder')).not.toBeNull();
+    expect(container?.querySelector('.lucide-cloud')).not.toBeNull();
+    expect(container?.querySelector('.lucide-settings')).not.toBeNull();
+    expect(container?.querySelector('.lucide-plus')).not.toBeNull();
     expect(container?.querySelector('.gv-sidebar-section-toggle-btn')).toBeNull();
     expect(container?.querySelectorAll('.gv-folder-activity-item')).toHaveLength(2);
+    expect(container?.querySelector('.gv-folder-activity-item .gv-conversation-icon')).toBeNull();
+    expect(
+      container?.querySelector('.gv-folder-activity-group-priority .lucide-star'),
+    ).not.toBeNull();
+    expect(
+      container
+        ?.querySelector('.gv-folder-activity-group-priority .lucide-star')
+        ?.getAttribute('fill'),
+    ).toBe('currentColor');
     expect(
       container?.querySelectorAll('.gv-folder-activity-group-priority .gv-folder-activity-item'),
     ).toHaveLength(1);
@@ -251,10 +265,9 @@ describe('folder Activity view', () => {
 
     const container = typed.containerElement;
     const bell = container?.querySelector<HTMLButtonElement>('.gv-folder-activity-toggle');
-    const personIcon = Array.from(container?.querySelectorAll('mat-icon') ?? []).find(
-      (icon) => icon.textContent === 'person',
+    const userFilterButton = container?.querySelector<HTMLButtonElement>(
+      '.gv-folder-user-filter-toggle',
     );
-    const userFilterButton = personIcon?.closest('button');
 
     userFilterButton?.click();
     await Promise.resolve();

@@ -2,6 +2,16 @@ import browser, { type Runtime } from 'webextension-polyfill';
 
 import { createBellIcon } from '@/core/icons/bellIcon';
 import {
+  createChevronDownIcon,
+  createChevronRightIcon,
+  createCloudIcon,
+  createFolderIcon,
+  createPlusIcon,
+  createSettingsIcon,
+  createStarIcon,
+  createUserRoundIcon,
+} from '@/core/icons/folderIcons';
+import {
   type AccountScope,
   accountIsolationService,
   buildScopedFolderStorageKey,
@@ -83,6 +93,12 @@ const AI_ORG_COLLECT_POLL_MS = 150;
 const ROOT_CONVERSATIONS_ID = '__root_conversations__'; // Special ID for root-level conversations
 const NOTIFICATION_TIMEOUT_MS = 10000; // Duration to show data loss notification
 const FOLDER_TREE_INDENT_MIN = -8;
+const GEMINI_SIDEBAR_WIDTH_MIN_PX = 180;
+const GEMINI_SIDEBAR_WIDTH_MAX_PX = 540;
+const GEMINI_SIDEBAR_WIDTH_DEFAULT_PX = 312;
+const GEMINI_SIDEBAR_WIDTH_STEP_PX = 8;
+const LEGACY_SIDEBAR_WIDTH_MAX_PERCENT = 45;
+const LEGACY_SIDEBAR_WIDTH_BASELINE_PX = 1200;
 const FOLDER_TREE_INDENT_MAX = 32;
 const FOLDER_TREE_INDENT_DEFAULT = -8;
 const NATIVE_TITLE_SYNC_DEBOUNCE_MS = 300;
@@ -1865,10 +1881,10 @@ export class FolderManager {
       e.preventDefault();
       void this.toggleFoldersCollapsed();
     });
-    collapseButton.innerHTML = '<span class="google-symbols" aria-hidden="true"></span>';
+    collapseButton.replaceChildren(createChevronDownIcon(16));
 
-    titleContainer.appendChild(collapseButton);
     titleContainer.appendChild(title);
+    titleContainer.appendChild(collapseButton);
 
     // Actions container for buttons
     const actionsContainer = document.createElement('div');
@@ -1891,7 +1907,7 @@ export class FolderManager {
     const filterUserButton = document.createElement('button');
     filterUserButton.className = 'gv-folder-action-btn gv-folder-user-filter-toggle';
     filterUserButton.type = 'button';
-    filterUserButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">person</mat-icon>`;
+    filterUserButton.replaceChildren(createUserRoundIcon(18));
     filterUserButton.title = this.t('folder_filter_current_user');
     filterUserButton.setAttribute('aria-label', this.t('folder_filter_current_user'));
     filterUserButton.setAttribute('aria-pressed', String(this.filterCurrentUserOnly));
@@ -1904,9 +1920,11 @@ export class FolderManager {
 
     // Import/Export combined button (shows dropdown menu)
     const importExportButton = document.createElement('button');
-    importExportButton.className = 'gv-folder-action-btn';
-    importExportButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">folder_managed</mat-icon>`;
+    importExportButton.className = 'gv-folder-action-btn gv-folder-import-export-btn';
+    importExportButton.type = 'button';
+    importExportButton.replaceChildren(createFolderIcon(18));
     importExportButton.title = this.t('folder_import_export');
+    importExportButton.setAttribute('aria-label', this.t('folder_import_export'));
     importExportButton.addEventListener('click', (e) => this.showImportExportMenu(e));
 
     actionsContainer.appendChild(filterUserButton);
@@ -1915,9 +1933,11 @@ export class FolderManager {
     // Cloud popover (single button → menu with Upload + Sync). Skipped on Safari.
     if (!isSafari()) {
       const cloudButton = document.createElement('button');
-      cloudButton.className = 'gv-folder-action-btn';
-      cloudButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">cloud</mat-icon>`;
+      cloudButton.className = 'gv-folder-action-btn gv-folder-cloud-btn';
+      cloudButton.type = 'button';
+      cloudButton.replaceChildren(createCloudIcon(18));
       cloudButton.title = this.t('folder_cloud');
+      cloudButton.setAttribute('aria-label', this.t('folder_cloud'));
       cloudButton.addEventListener('click', (e) => this.showCloudMenu(e));
       actionsContainer.appendChild(cloudButton);
     }
@@ -1925,16 +1945,20 @@ export class FolderManager {
     // Folder settings (conversation order, font size, spacing, and indentation).
     const settingsButton = document.createElement('button');
     settingsButton.className = 'gv-folder-action-btn gv-folder-settings-btn';
-    settingsButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">settings</mat-icon>`;
+    settingsButton.type = 'button';
+    settingsButton.replaceChildren(createSettingsIcon(18));
     settingsButton.title = this.t('folder_settings');
+    settingsButton.setAttribute('aria-label', this.t('folder_settings'));
     settingsButton.addEventListener('click', (e) => this.showFolderSettingsMenu(e));
     actionsContainer.appendChild(settingsButton);
 
     // Add folder button
     const addButton = document.createElement('button');
     addButton.className = 'gv-folder-add-btn';
-    addButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate gds-icon-l google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">add</mat-icon>`;
+    addButton.type = 'button';
+    addButton.replaceChildren(createPlusIcon(18));
     addButton.title = this.t('folder_create');
+    addButton.setAttribute('aria-label', this.t('folder_create'));
     addButton.addEventListener('click', () => this.createFolder());
 
     actionsContainer.appendChild(addButton);
@@ -2104,18 +2128,6 @@ export class FolderManager {
     link.href = this.getFolderConversationHref(conversation);
     link.draggable = false;
 
-    const icon = document.createElement('mat-icon');
-    icon.className =
-      'mat-icon notranslate gv-conversation-icon google-symbols mat-ligature-font mat-icon-no-color';
-    icon.setAttribute('role', 'img');
-    icon.setAttribute('aria-hidden', 'true');
-    const iconName =
-      conversation.isGem && conversation.gemId
-        ? getGemIcon(conversation.gemId)
-        : DEFAULT_CONVERSATION_ICON;
-    icon.setAttribute('fonticon', iconName);
-    icon.textContent = iconName;
-
     const text = document.createElement('span');
     text.className = 'gv-folder-activity-text';
 
@@ -2135,7 +2147,7 @@ export class FolderManager {
     link.addEventListener('blur', () => this.hideTooltip());
 
     text.append(title, context);
-    link.append(icon, text);
+    link.appendChild(text);
 
     const timeLabel = this.formatActivityTimestamp(item.lastTurnAt);
     if (timeLabel) {
@@ -2152,7 +2164,7 @@ export class FolderManager {
       ? 'gv-conversation-star-btn starred'
       : 'gv-conversation-star-btn';
     starButton.type = 'button';
-    starButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">${item.starred ? 'star' : 'star_outline'}</mat-icon>`;
+    starButton.replaceChildren(createStarIcon(18, item.starred));
     starButton.title = item.starred ? this.t('conversation_unstar') : this.t('conversation_star');
     starButton.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -2574,8 +2586,8 @@ export class FolderManager {
     starBtn.className = conv.starred
       ? 'gv-conversation-star-btn starred'
       : 'gv-conversation-star-btn';
-    const starIcon = conv.starred ? 'star' : 'star_outline';
-    starBtn.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">${starIcon}</mat-icon>`;
+    starBtn.type = 'button';
+    starBtn.replaceChildren(createStarIcon(18, Boolean(conv.starred)));
     starBtn.title = conv.starred ? this.t('conversation_unstar') : this.t('conversation_star');
     starBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -8404,10 +8416,9 @@ export class FolderManager {
     button.setAttribute('aria-label', label);
     button.setAttribute('aria-expanded', String(!this.foldersCollapsed));
 
-    const icon = button.querySelector<HTMLElement>('.google-symbols');
-    if (icon) {
-      icon.textContent = this.foldersCollapsed ? 'chevron_right' : 'expand_more';
-    }
+    button.replaceChildren(
+      this.foldersCollapsed ? createChevronRightIcon(16) : createChevronDownIcon(16),
+    );
   }
 
   private async toggleFoldersCollapsed(): Promise<void> {
@@ -9731,33 +9742,23 @@ export class FolderManager {
     if (actionsContainer) {
       const buttons = actionsContainer.querySelectorAll('button');
       buttons.forEach((btn) => {
-        // Identify buttons by their class or icon content
+        const setButtonLabel = (label: string): void => {
+          btn.title = label;
+          btn.setAttribute('aria-label', label);
+        };
+
         if (btn.classList.contains('gv-folder-add-btn')) {
-          btn.title = this.t('folder_create');
+          setButtonLabel(this.t('folder_create'));
         } else if (btn.classList.contains('gv-folder-activity-toggle')) {
           // Updated by applyFolderViewModeState above.
-        } else if (btn.classList.contains('gv-folder-action-btn')) {
-          // Check icon to identify button type
-          const icon = btn.querySelector('mat-icon');
-          if (icon?.textContent === 'person') {
-            btn.title = this.t('folder_filter_current_user');
-            btn.setAttribute('aria-label', this.t('folder_filter_current_user'));
-          } else if (icon?.textContent === 'folder_managed') {
-            btn.title = this.t('folder_import_export');
-          } else if (icon?.textContent === 'settings') {
-            btn.title = this.t('folder_settings');
-          }
-          // Cloud buttons use SVG, check for SVG content
-          const svg = btn.querySelector('svg');
-          if (svg) {
-            const path = svg.querySelector('path')?.getAttribute('d') || '';
-            // Cloud upload icon contains specific path pattern
-            if (path.includes('520q-33 0-56.5-23.5')) {
-              btn.title = this.t('folder_cloud_upload');
-            } else if (path.includes('520-716v242')) {
-              btn.title = this.t('folder_cloud_sync');
-            }
-          }
+        } else if (btn.classList.contains('gv-folder-user-filter-toggle')) {
+          setButtonLabel(this.t('folder_filter_current_user'));
+        } else if (btn.classList.contains('gv-folder-import-export-btn')) {
+          setButtonLabel(this.t('folder_import_export'));
+        } else if (btn.classList.contains('gv-folder-cloud-btn')) {
+          setButtonLabel(this.t('folder_cloud'));
+        } else if (btn.classList.contains('gv-folder-settings-btn')) {
+          setButtonLabel(this.t('folder_settings'));
         }
       });
     }
@@ -10661,6 +10662,7 @@ export class FolderManager {
     menu.style.top = `${event.clientY}px`;
 
     menu.appendChild(this.createConversationSortSettingsRow());
+    menu.appendChild(this.createSidebarWidthSettingsRow());
 
     const steppers: Array<{
       labelKey: string;
@@ -10758,6 +10760,129 @@ export class FolderManager {
 
     render();
     row.append(label, options);
+    return row;
+  }
+
+  private createSidebarWidthSettingsRow(): HTMLElement {
+    const clampWidth = (value: number) =>
+      Math.min(
+        GEMINI_SIDEBAR_WIDTH_MAX_PX,
+        Math.max(GEMINI_SIDEBAR_WIDTH_MIN_PX, Math.round(value)),
+      );
+    const normalizeStoredWidth = (value: unknown) => {
+      const numeric = typeof value === 'number' ? value : Number(value);
+      if (!Number.isFinite(numeric)) return GEMINI_SIDEBAR_WIDTH_DEFAULT_PX;
+      if (numeric <= LEGACY_SIDEBAR_WIDTH_MAX_PERCENT) {
+        return clampWidth((numeric / 100) * LEGACY_SIDEBAR_WIDTH_BASELINE_PX);
+      }
+      return clampWidth(numeric);
+    };
+
+    const row = document.createElement('div');
+    row.className = 'gv-folder-settings-row gv-folder-width-settings-row';
+
+    const header = document.createElement('div');
+    header.className = 'gv-folder-width-settings-header';
+
+    const label = document.createElement('span');
+    label.className = 'gv-folder-settings-label';
+    label.textContent = this.t('sidebarWidth');
+
+    const controls = document.createElement('div');
+    controls.className = 'gv-folder-width-settings-controls';
+
+    const value = document.createElement('output');
+    value.className = 'gv-folder-width-value';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'gv-folder-width-switch';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', this.t('sidebarWidth'));
+
+    const knob = document.createElement('span');
+    knob.className = 'gv-folder-width-switch-knob';
+    toggle.appendChild(knob);
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'gv-folder-width-slider';
+    slider.min = String(GEMINI_SIDEBAR_WIDTH_MIN_PX);
+    slider.max = String(GEMINI_SIDEBAR_WIDTH_MAX_PX);
+    slider.step = String(GEMINI_SIDEBAR_WIDTH_STEP_PX);
+    slider.setAttribute('aria-label', this.t('sidebarWidth'));
+
+    let current = GEMINI_SIDEBAR_WIDTH_DEFAULT_PX;
+    let enabled = false;
+
+    const render = () => {
+      const progress =
+        ((current - GEMINI_SIDEBAR_WIDTH_MIN_PX) /
+          (GEMINI_SIDEBAR_WIDTH_MAX_PX - GEMINI_SIDEBAR_WIDTH_MIN_PX)) *
+        100;
+      value.textContent = `${current}px`;
+      slider.value = String(current);
+      slider.disabled = !enabled;
+      slider.setAttribute('aria-valuetext', `${current}px`);
+      slider.style.setProperty('--gv-folder-width-progress', `${progress}%`);
+      toggle.setAttribute('aria-checked', String(enabled));
+      row.classList.toggle('is-disabled', !enabled);
+    };
+
+    toggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      enabled = !enabled;
+      render();
+      try {
+        void browser.storage.sync
+          .set({ [StorageKeys.SIDEBAR_WIDTH_ENABLED]: enabled })
+          .catch((error) => {
+            console.warn('[FolderManager] Failed to toggle sidebar width:', error);
+          });
+      } catch (error) {
+        console.warn('[FolderManager] Failed to toggle sidebar width:', error);
+      }
+    });
+
+    slider.addEventListener('input', (event) => {
+      event.stopPropagation();
+      current = clampWidth(Number((event.currentTarget as HTMLInputElement).value));
+      render();
+    });
+
+    slider.addEventListener('change', (event) => {
+      event.stopPropagation();
+      try {
+        void browser.storage.sync.set({ [StorageKeys.SIDEBAR_WIDTH]: current }).catch((error) => {
+          console.warn('[FolderManager] Failed to save sidebar width:', error);
+        });
+      } catch (error) {
+        console.warn('[FolderManager] Failed to save sidebar width:', error);
+      }
+    });
+
+    try {
+      void browser.storage.sync
+        .get({
+          [StorageKeys.SIDEBAR_WIDTH]: GEMINI_SIDEBAR_WIDTH_DEFAULT_PX,
+          [StorageKeys.SIDEBAR_WIDTH_ENABLED]: false,
+        })
+        .then((result) => {
+          current = normalizeStoredWidth(result?.[StorageKeys.SIDEBAR_WIDTH]);
+          enabled = result?.[StorageKeys.SIDEBAR_WIDTH_ENABLED] === true;
+          render();
+        })
+        .catch((error) => {
+          console.warn('[FolderManager] Failed to load sidebar width:', error);
+        });
+    } catch {
+      // Fall through to the defaults rendered below.
+    }
+
+    controls.append(value, toggle);
+    header.append(label, controls);
+    row.append(header, slider);
+    render();
     return row;
   }
 
