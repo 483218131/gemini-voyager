@@ -107,6 +107,10 @@
     "message": "エクスポート",
     "description": "Export button"
   },
+  "pm_export_format": {
+    "message": "エクスポート形式",
+    "description": "Saved Library export format menu button"
+  },
   "pm_prompt_placeholder": {
     "message": "プロンプトのテキスト",
     "description": "Prompt textarea placeholder"
@@ -279,6 +283,10 @@
     "message": "プロンプトマネージャー",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "プロンプト管理を開く",
+    "description": "Saved Library footer button for returning to Prompt Manager"
+  },
   "pm_starred_library": {
     "message": "保存済みライブラリ",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -363,7 +371,7 @@
     "message": "アクティビティ表示をオフ",
     "description": "アクティビティ表示を無効にする"
   },
-  "folder_activity_priority": { "message": "優先", "description": "スター付き会話" },
+  "folder_activity_priority": { "message": "優先", "description": "直近3時間にアクティブな会話" },
   "folder_activity_today": { "message": "今日", "description": "今日の会話" },
   "folder_activity_yesterday": { "message": "昨日", "description": "昨日の会話" },
   "folder_activity_empty": {

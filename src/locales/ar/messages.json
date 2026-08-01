@@ -107,6 +107,10 @@
     "message": "تصدير",
     "description": "Export button"
   },
+  "pm_export_format": {
+    "message": "تنسيق التصدير",
+    "description": "Saved Library export format menu button"
+  },
   "pm_prompt_placeholder": {
     "message": "نص المطالبة",
     "description": "Prompt textarea placeholder"
@@ -279,6 +283,10 @@
     "message": "مدير المطالبات",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "فتح مدير المطالبات",
+    "description": "Saved Library footer button for returning to Prompt Manager"
+  },
   "pm_starred_library": {
     "message": "مكتبة العناصر المحفوظة",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -357,7 +365,10 @@
   },
   "folder_activity_turn_on": { "message": "تشغيل عرض النشاط", "description": "تشغيل عرض النشاط" },
   "folder_activity_turn_off": { "message": "إيقاف عرض النشاط", "description": "إيقاف عرض النشاط" },
-  "folder_activity_priority": { "message": "الأولوية", "description": "المحادثات المميزة بنجمة" },
+  "folder_activity_priority": {
+    "message": "الأولوية",
+    "description": "المحادثات النشطة خلال الساعات الثلاث الماضية"
+  },
   "folder_activity_today": { "message": "اليوم", "description": "المحادثات النشطة اليوم" },
   "folder_activity_yesterday": { "message": "أمس", "description": "المحادثات النشطة أمس" },
   "folder_activity_empty": {

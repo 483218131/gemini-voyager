@@ -107,6 +107,10 @@
     "message": "导出",
     "description": "导出按钮"
   },
+  "pm_export_format": {
+    "message": "导出格式",
+    "description": "打开收藏库导出格式菜单的按钮"
+  },
   "pm_prompt_placeholder": {
     "message": "Prompt 文本",
     "description": "Prompt 输入占位符"
@@ -279,6 +283,10 @@
     "message": "提示词管理器",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "打开提示词管理器",
+    "description": "从收藏库返回提示词管理器的底部按钮"
+  },
   "pm_starred_library": {
     "message": "收藏库",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -363,7 +371,7 @@
     "message": "关闭动态视图",
     "description": "关闭注意力优先的动态视图"
   },
-  "folder_activity_priority": { "message": "优先", "description": "加星对话分组" },
+  "folder_activity_priority": { "message": "优先", "description": "最近三小时内活跃的对话" },
   "folder_activity_today": { "message": "今天", "description": "今天有对话的分组" },
   "folder_activity_yesterday": { "message": "昨天", "description": "昨天有对话的分组" },
   "folder_activity_empty": { "message": "文件夹中还没有对话", "description": "动态视图空状态" },

@@ -4,6 +4,9 @@ export type FolderViewMode = 'folders' | 'activity';
 export type ActivityRecentDayOffset = 2 | 3 | 4;
 export type ActivityGroupId = 'priority' | 'today' | 'yesterday' | `day-${ActivityRecentDayOffset}`;
 
+/** Conversations stay in Priority for three hours after their latest real turn. */
+export const ACTIVITY_PRIORITY_WINDOW_MS = 3 * 60 * 60 * 1000;
+
 export interface ActivityFolderContext {
   name: string;
   path: string;
@@ -94,9 +97,11 @@ export function formatActivityFolderSummary(
  * Build a read-only, attention-first projection over folder data.
  *
  * A conversation can exist in more than one folder. Activity renders it once,
- * keeps every folder name and full path for context, and treats starring as conversation-wide
- * for this projection. Explicitly starred items live only in Priority so the
- * same chat never appears twice in one view. Unstarred items are intentionally
+ * keeps every folder name and full path for context, and treats starring as
+ * conversation-wide for this projection. Priority is a short-lived activity
+ * window based only on real turn time; starring remains visible but does not
+ * affect grouping. Each chat is assigned to exactly one group, so a Priority
+ * item returns to its calendar-day group when the window expires. Items are
  * limited to today and the previous four local calendar days; older or unknown
  * activity stays in the folder tree instead of turning this view into an archive.
  */
@@ -190,7 +195,7 @@ export function buildConversationActivityGroups(
     };
 
     let groupId: ActivityGroupId | null = null;
-    if (item.starred) {
+    if (isFiniteTimestamp(item.lastTurnAt) && item.lastTurnAt > now - ACTIVITY_PRIORITY_WINDOW_MS) {
       groupId = 'priority';
     } else if (isFiniteTimestamp(item.lastTurnAt) && item.lastTurnAt >= todayStart) {
       groupId = 'today';

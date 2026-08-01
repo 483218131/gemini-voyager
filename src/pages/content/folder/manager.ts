@@ -50,6 +50,7 @@ import { TimestampService } from '../timestamp/TimestampService';
 import { historyTimestampStore } from '../timestamp/historyTimestamps';
 import { watchRouteChanges } from '../utils/routeWatcher';
 import {
+  ACTIVITY_PRIORITY_WINDOW_MS,
   type ConversationActivityGroup,
   type ConversationActivityItem,
   type FolderViewMode,
@@ -307,6 +308,7 @@ export class FolderManager {
   private activityTrackingPromise: Promise<void> | null = null;
   private activityTimestampUnsubscribe: (() => void) | null = null;
   private activitySendIntentHandler: ((event: Event) => void) | null = null;
+  private activityPriorityRefreshTimer: number | null = null;
   private accountIsolationEnabled: boolean = false; // Whether hard account isolation is enabled
   private accountScope: AccountScope | null = null; // Resolved account scope for current page
   private activeStorageKey: string = STORAGE_KEY; // Storage key currently used for folder data
@@ -2047,6 +2049,7 @@ export class FolderManager {
       list.classList.add('gv-folder-activity-list');
       return this.populateActivityList(list, isSearchActive);
     }
+    this.clearActivityPriorityRefreshTimer();
 
     // Native-title sync used to scan the whole sidebar once PER stored
     // conversation (O(M×N) per render). Build one lookup table per render
@@ -2083,6 +2086,7 @@ export class FolderManager {
       rootLabel: this.t('folder_activity_top_level'),
       matches,
     });
+    this.scheduleActivityPriorityRefresh(groups);
 
     if (groups.length === 0) {
       const emptyState = document.createElement('div');
@@ -2112,6 +2116,33 @@ export class FolderManager {
     });
 
     return list;
+  }
+
+  private clearActivityPriorityRefreshTimer(): void {
+    if (this.activityPriorityRefreshTimer === null) return;
+    window.clearTimeout(this.activityPriorityRefreshTimer);
+    this.activityPriorityRefreshTimer = null;
+  }
+
+  /** Reclassify the first Priority item exactly when its activity window ends. */
+  private scheduleActivityPriorityRefresh(groups: readonly ConversationActivityGroup[]): void {
+    this.clearActivityPriorityRefreshTimer();
+    if (this.folderViewMode !== 'activity') return;
+
+    const priorityGroup = groups.find((group) => group.id === 'priority');
+    const nextExpiry = priorityGroup?.items.reduce<number | null>((earliest, item) => {
+      if (!item.lastTurnAt || !Number.isFinite(item.lastTurnAt)) return earliest;
+      const expiry = item.lastTurnAt + ACTIVITY_PRIORITY_WINDOW_MS;
+      return earliest === null ? expiry : Math.min(earliest, expiry);
+    }, null);
+    if (nextExpiry === null || nextExpiry === undefined) return;
+
+    const delay = Math.max(1, nextExpiry - Date.now() + 1);
+    this.activityPriorityRefreshTimer = window.setTimeout(() => {
+      this.activityPriorityRefreshTimer = null;
+      if (this.isDestroyed || this.folderViewMode !== 'activity') return;
+      this.refresh();
+    }, delay);
   }
 
   private createActivityConversationElement(item: ConversationActivityItem): HTMLElement {
@@ -8288,6 +8319,7 @@ export class FolderManager {
   }
 
   private teardownConversationActivityTracking(): void {
+    this.clearActivityPriorityRefreshTimer();
     this.activityTimestampUnsubscribe?.();
     this.activityTimestampUnsubscribe = null;
 

@@ -107,6 +107,10 @@
     "message": "匯出",
     "description": "匯出按鈕"
   },
+  "pm_export_format": {
+    "message": "匯出格式",
+    "description": "開啟收藏庫匯出格式選單的按鈕"
+  },
   "pm_prompt_placeholder": {
     "message": "Prompt 文字",
     "description": "Prompt 輸入佔位符"
@@ -279,6 +283,10 @@
     "message": "提示詞管理器",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "開啟提示詞管理器",
+    "description": "從收藏庫返回提示詞管理器的底部按鈕"
+  },
   "pm_starred_library": {
     "message": "收藏庫",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -363,7 +371,7 @@
     "message": "關閉動態檢視",
     "description": "關閉注意力優先的動態檢視"
   },
-  "folder_activity_priority": { "message": "優先", "description": "加星對話分組" },
+  "folder_activity_priority": { "message": "優先", "description": "最近三小時內活躍的對話" },
   "folder_activity_today": { "message": "今天", "description": "今天有對話的分組" },
   "folder_activity_yesterday": { "message": "昨天", "description": "昨天有對話的分組" },
   "folder_activity_empty": { "message": "資料夾中還沒有對話", "description": "動態檢視空狀態" },

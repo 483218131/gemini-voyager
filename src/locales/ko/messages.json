@@ -107,6 +107,10 @@
     "message": "내보내기",
     "description": "Export button"
   },
+  "pm_export_format": {
+    "message": "내보내기 형식",
+    "description": "Saved Library export format menu button"
+  },
   "pm_prompt_placeholder": {
     "message": "프롬프트 텍스트",
     "description": "Prompt textarea placeholder"
@@ -279,6 +283,10 @@
     "message": "프롬프트 관리자",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "프롬프트 관리자 열기",
+    "description": "Saved Library footer button for returning to Prompt Manager"
+  },
   "pm_starred_library": {
     "message": "저장 보관함",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -357,7 +365,10 @@
   },
   "folder_activity_turn_on": { "message": "활동 보기 켜기", "description": "활동 보기를 켭니다" },
   "folder_activity_turn_off": { "message": "활동 보기 끄기", "description": "활동 보기를 끕니다" },
-  "folder_activity_priority": { "message": "우선순위", "description": "별표 표시된 대화" },
+  "folder_activity_priority": {
+    "message": "우선순위",
+    "description": "최근 3시간 이내에 활동한 대화"
+  },
   "folder_activity_today": { "message": "오늘", "description": "오늘 활동한 대화" },
   "folder_activity_yesterday": { "message": "어제", "description": "어제 활동한 대화" },
   "folder_activity_empty": {

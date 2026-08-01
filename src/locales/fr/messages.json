@@ -107,6 +107,10 @@
     "message": "Exporter",
     "description": "Export button"
   },
+  "pm_export_format": {
+    "message": "Format d’export",
+    "description": "Saved Library export format menu button"
+  },
   "pm_prompt_placeholder": {
     "message": "Texte du prompt",
     "description": "Prompt textarea placeholder"
@@ -279,6 +283,10 @@
     "message": "Gestionnaire de prompts",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "Ouvrir le gestionnaire de prompts",
+    "description": "Saved Library footer button for returning to Prompt Manager"
+  },
   "pm_starred_library": {
     "message": "Bibliothèque enregistrée",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -363,7 +371,10 @@
     "message": "Désactiver la vue Activité",
     "description": "Désactiver la vue Activité"
   },
-  "folder_activity_priority": { "message": "Priorité", "description": "Conversations favorites" },
+  "folder_activity_priority": {
+    "message": "Priorité",
+    "description": "Conversations actives au cours des trois dernières heures"
+  },
   "folder_activity_today": {
     "message": "Aujourd’hui",
     "description": "Conversations actives aujourd’hui"

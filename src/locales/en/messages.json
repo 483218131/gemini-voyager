@@ -107,6 +107,10 @@
     "message": "Export",
     "description": "Export button"
   },
+  "pm_export_format": {
+    "message": "Export format",
+    "description": "Button that opens the Saved Library export format menu"
+  },
   "pm_prompt_placeholder": {
     "message": "Prompt text",
     "description": "Prompt textarea placeholder"
@@ -279,6 +283,10 @@
     "message": "Prompt Manager",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "Open Prompt Manager",
+    "description": "Saved Library footer button for returning to Prompt Manager"
+  },
   "pm_starred_library": {
     "message": "Saved Library",
     "description": "Prompt Manager saved stars and highlights library title and entry button"
@@ -365,7 +373,7 @@
   },
   "folder_activity_priority": {
     "message": "Priority",
-    "description": "Starred conversation group"
+    "description": "Conversations active in the last three hours"
   },
   "folder_activity_today": { "message": "Today", "description": "Conversations active today" },
   "folder_activity_yesterday": {

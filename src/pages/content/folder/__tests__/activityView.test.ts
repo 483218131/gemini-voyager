@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildConversationActivityGroups, formatActivityFolderSummary } from '../activityView';
+import {
+  ACTIVITY_PRIORITY_WINDOW_MS,
+  buildConversationActivityGroups,
+  formatActivityFolderSummary,
+} from '../activityView';
 import type { FolderData } from '../types';
 
 const NOW = new Date(2026, 7, 1, 12, 0, 0).getTime();
@@ -32,6 +36,7 @@ function makeData(): FolderData {
           title: 'Priority chat',
           url: 'https://gemini.google.com/app/priority',
           addedAt: 1,
+          lastTurnAt: NOW - 4 * 60 * 60 * 1000,
           starred: true,
         },
         {
@@ -111,9 +116,14 @@ describe('buildConversationActivityGroups', () => {
       'day-3',
       'day-4',
     ]);
-    expect(groups[0].items.map((item) => item.conversation.conversationId)).toEqual(['c_priority']);
+    expect(groups[0].items.map((item) => item.conversation.conversationId)).toEqual(['today']);
+    expect(groups[0].items[0].starred).toBe(false);
     expect(groups[1].items).toHaveLength(1);
     expect(groups[1].items[0]).toMatchObject({
+      starred: true,
+      lastTurnAt: NOW - 4 * 60 * 60 * 1000,
+    });
+    expect(groups[0].items[0]).toMatchObject({
       lastTurnAt: NOW - 30_000,
       folderContexts: [
         { name: 'Work', path: 'Work' },
@@ -124,6 +134,48 @@ describe('buildConversationActivityGroups', () => {
     expect(
       groups.flatMap((group) => group.items).map((item) => item.conversation.title),
     ).not.toEqual(expect.arrayContaining(['Unknown chat', 'Older chat']));
+  });
+
+  it('returns an expired Priority item to Today without duplicating it', () => {
+    const lastTurnAt = NOW - ACTIVITY_PRIORITY_WINDOW_MS + 1_000;
+    const data: FolderData = {
+      folders: [
+        {
+          id: 'work',
+          name: 'Work',
+          parentId: null,
+          isExpanded: true,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      folderContents: {
+        work: [
+          {
+            conversationId: 'c_active',
+            title: 'Active chat',
+            url: 'https://gemini.google.com/app/active',
+            addedAt: 1,
+            lastTurnAt,
+            starred: true,
+          },
+        ],
+      },
+    };
+
+    const activeGroups = buildConversationActivityGroups(data, {
+      now: NOW,
+      rootLabel: 'Top level',
+    });
+    expect(activeGroups.map((group) => group.id)).toEqual(['priority']);
+
+    const expiredGroups = buildConversationActivityGroups(data, {
+      now: NOW + 1_001,
+      rootLabel: 'Top level',
+    });
+    expect(expiredGroups.map((group) => group.id)).toEqual(['today']);
+    expect(expiredGroups.flatMap((group) => group.items)).toHaveLength(1);
+    expect(expiredGroups[0].items[0].starred).toBe(true);
   });
 
   it('filters against both conversation titles and folder paths', () => {

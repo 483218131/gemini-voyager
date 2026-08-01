@@ -107,6 +107,10 @@
     "message": "Экспорт",
     "description": "Export button"
   },
+  "pm_export_format": {
+    "message": "Формат экспорта",
+    "description": "Saved Library export format menu button"
+  },
   "pm_prompt_placeholder": {
     "message": "Текст промпта",
     "description": "Prompt textarea placeholder"
@@ -279,6 +283,10 @@
     "message": "Менеджер промптов",
     "description": "Button label for returning from the starred library to Prompt Manager"
   },
+  "pm_open_prompt_manager": {
+    "message": "Открыть менеджер промптов",
+    "description": "Saved Library footer button for returning to Prompt Manager"
+  },
   "pm_starred_library": {
     "message": "Библиотека сохранённого",
     "description": "Prompt Manager starred messages library title and entry button"
@@ -363,7 +371,10 @@
     "message": "Выключить режим активности",
     "description": "Выключить режим активности"
   },
-  "folder_activity_priority": { "message": "Приоритет", "description": "Избранные разговоры" },
+  "folder_activity_priority": {
+    "message": "Приоритет",
+    "description": "Разговоры, активные за последние три часа"
+  },
   "folder_activity_today": { "message": "Сегодня", "description": "Активные сегодня разговоры" },
   "folder_activity_yesterday": { "message": "Вчера", "description": "Активные вчера разговоры" },
   "folder_activity_empty": {

@@ -3,6 +3,7 @@ import browser from 'webextension-polyfill';
 
 import { StorageKeys } from '@/core/types/common';
 
+import { ACTIVITY_PRIORITY_WINDOW_MS } from '../activityView';
 import { FolderManager } from '../manager';
 import type { FolderData } from '../types';
 
@@ -40,6 +41,8 @@ type TestableManager = {
   destroy: () => void;
 };
 
+const NOW = new Date(2026, 7, 1, 12, 0, 0).getTime();
+
 function mountSidebar(): HTMLElement {
   const sidebar = document.createElement('div');
   sidebar.setAttribute('data-test-id', 'overflow-container');
@@ -51,7 +54,7 @@ function mountSidebar(): HTMLElement {
 }
 
 function activityData(): FolderData {
-  const today = Date.now() - 60_000;
+  const recent = NOW - 60_000;
   return {
     folders: [
       {
@@ -78,7 +81,7 @@ function activityData(): FolderData {
           title: 'Starred chat',
           url: 'https://gemini.google.com/app/starred',
           addedAt: 1,
-          lastTurnAt: today,
+          lastTurnAt: NOW - 4 * 60 * 60 * 1000,
           starred: true,
         },
         {
@@ -87,7 +90,7 @@ function activityData(): FolderData {
           url: 'https://gemini.google.com/app/active',
           addedAt: 1,
           lastOpenedAt: Date.now(),
-          lastTurnAt: today - 1_000,
+          lastTurnAt: recent - 1_000,
         },
       ],
       copy: [
@@ -96,7 +99,7 @@ function activityData(): FolderData {
           title: 'Active chat',
           url: 'https://gemini.google.com/app/active',
           addedAt: 1,
-          lastTurnAt: today,
+          lastTurnAt: recent,
         },
         {
           conversationId: 'c_unknown',
@@ -150,6 +153,8 @@ describe('folder Activity view', () => {
   let manager: FolderManager | null = null;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     vi.clearAllMocks();
     vi.mocked(browser.storage.sync.get).mockResolvedValue({});
     vi.mocked(browser.storage.sync.set).mockResolvedValue(undefined);
@@ -161,6 +166,7 @@ describe('folder Activity view', () => {
     manager?.destroy();
     manager = null;
     document.body.innerHTML = '';
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -198,13 +204,18 @@ describe('folder Activity view', () => {
       container
         ?.querySelector('.gv-folder-activity-group-priority .lucide-star')
         ?.getAttribute('fill'),
-    ).toBe('currentColor');
+    ).toBe('none');
     expect(
       container?.querySelectorAll('.gv-folder-activity-group-priority .gv-folder-activity-item'),
     ).toHaveLength(1);
     expect(container?.querySelector('.gv-folder-activity-group-today')?.textContent).toContain(
-      'Active chat',
+      'Starred chat',
     );
+    expect(
+      container
+        ?.querySelector('.gv-folder-activity-group-today .lucide-star')
+        ?.getAttribute('fill'),
+    ).toBe('currentColor');
     expect(container?.textContent).not.toContain('Legacy chat');
     expect(container?.querySelector('.gv-folder-activity-context')?.textContent).toContain(
       'Project',
@@ -218,6 +229,34 @@ describe('folder Activity view', () => {
     expect(browser.storage.local.set).toHaveBeenCalledWith({
       [StorageKeys.FOLDERS_VIEW_MODE]: 'folders',
     });
+  });
+
+  it('automatically returns an expired Priority conversation to Today', () => {
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+    typed.recentSection = mountSidebar();
+    typed.data = activityData();
+    Object.values(typed.data.folderContents)
+      .flat()
+      .filter((conversation) => conversation.conversationId.replace(/^c_/, '') === 'active')
+      .forEach((conversation) => {
+        conversation.lastTurnAt = NOW - ACTIVITY_PRIORITY_WINDOW_MS + 1_000;
+      });
+    typed.folderSearchEnabled = false;
+    typed.folderViewMode = 'activity';
+    typed.foldersCollapsed = false;
+    typed.createFolderUI();
+
+    expect(
+      typed.containerElement?.querySelector('.gv-folder-activity-group-priority')?.textContent,
+    ).toContain('Active chat');
+
+    vi.advanceTimersByTime(1_002);
+
+    expect(typed.containerElement?.querySelector('.gv-folder-activity-group-priority')).toBeNull();
+    expect(
+      typed.containerElement?.querySelector('.gv-folder-activity-group-today')?.textContent,
+    ).toContain('Active chat');
   });
 
   it('shows leaf folder names while preserving full multi-folder paths for context', () => {
