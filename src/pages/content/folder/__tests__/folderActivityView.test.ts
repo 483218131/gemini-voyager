@@ -110,6 +110,42 @@ function activityData(): FolderData {
   };
 }
 
+function nestedMultiFolderActivityData(): FolderData {
+  const today = Date.now() - 60_000;
+  const conversation = {
+    conversationId: 'c_shared',
+    title: 'Shared chat',
+    url: 'https://gemini.google.com/app/shared',
+    addedAt: 1,
+    lastTurnAt: today,
+  };
+
+  return {
+    folders: [
+      {
+        id: 'parent',
+        name: 'Folder tests',
+        parentId: null,
+        isExpanded: true,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: 'child',
+        name: 'Food diary',
+        parentId: 'parent',
+        isExpanded: true,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ],
+    folderContents: {
+      parent: [conversation],
+      child: [{ ...conversation, conversationId: 'shared' }],
+    },
+  };
+}
+
 describe('folder Activity view', () => {
   let manager: FolderManager | null = null;
 
@@ -168,6 +204,24 @@ describe('folder Activity view', () => {
     expect(browser.storage.local.set).toHaveBeenCalledWith({
       [StorageKeys.FOLDERS_VIEW_MODE]: 'folders',
     });
+  });
+
+  it('shows leaf folder names while preserving full multi-folder paths for context', () => {
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+    typed.recentSection = mountSidebar();
+    typed.data = nestedMultiFolderActivityData();
+    typed.folderSearchEnabled = false;
+    typed.folderViewMode = 'activity';
+    typed.foldersCollapsed = false;
+    typed.createFolderUI();
+
+    const context = typed.containerElement?.querySelector<HTMLElement>(
+      '.gv-folder-activity-context',
+    );
+
+    expect(context?.textContent).toBe('Folder tests · Food diary');
+    expect(context?.getAttribute('aria-label')).toBe('Folder tests\nFolder tests / Food diary');
   });
 
   it('updates every folder reference when a real new turn is observed', () => {

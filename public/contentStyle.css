@@ -5889,6 +5889,7 @@ body.light-theme .gv-folder-dialog-cancel:hover {
   font-weight: 500;
   max-width: 300px;
   word-wrap: break-word;
+  white-space: pre-line;
   z-index: 10000;
   pointer-events: none;
   opacity: 0;

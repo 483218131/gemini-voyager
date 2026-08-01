@@ -4,10 +4,15 @@ export type FolderViewMode = 'folders' | 'activity';
 export type ActivityRecentDayOffset = 2 | 3 | 4;
 export type ActivityGroupId = 'priority' | 'today' | 'yesterday' | `day-${ActivityRecentDayOffset}`;
 
+export interface ActivityFolderContext {
+  name: string;
+  path: string;
+}
+
 export interface ConversationActivityItem {
   conversation: ConversationReference;
   sourceFolderId: string;
-  folderPaths: string[];
+  folderContexts: ActivityFolderContext[];
   starred: boolean;
   lastTurnAt?: number;
 }
@@ -21,7 +26,7 @@ export interface ConversationActivityGroup {
 interface ActivityAccumulator {
   conversation: ConversationReference;
   sourceFolderId: string;
-  folderPaths: string[];
+  folderContexts: ActivityFolderContext[];
   starred: boolean;
   lastTurnAt?: number;
 }
@@ -73,11 +78,23 @@ function getLocalDayStartDaysAgo(todayStart: number, daysAgo: number): number {
   return date.getTime();
 }
 
+export function formatActivityFolderSummary(
+  folderContexts: readonly ActivityFolderContext[],
+  maxVisible: number = 2,
+): string {
+  const visibleLimit = Math.max(1, Math.floor(maxVisible));
+  const visibleNames = folderContexts.slice(0, visibleLimit).map((context) => context.name);
+  const hiddenCount = Math.max(0, folderContexts.length - visibleNames.length);
+  const summary = visibleNames.join(' · ');
+
+  return hiddenCount > 0 ? `${summary} +${hiddenCount}` : summary;
+}
+
 /**
  * Build a read-only, attention-first projection over folder data.
  *
  * A conversation can exist in more than one folder. Activity renders it once,
- * keeps every folder path for context, and treats starring as conversation-wide
+ * keeps every folder name and full path for context, and treats starring as conversation-wide
  * for this projection. Explicitly starred items live only in Priority so the
  * same chat never appears twice in one view. Unstarred items are intentionally
  * limited to today and the previous four local calendar days; older or unknown
@@ -102,7 +119,9 @@ export function buildConversationActivityGroups(
   const byConversationId = new Map<string, ActivityAccumulator>();
 
   Object.entries(data.folderContents).forEach(([folderId, conversations]) => {
+    const folderName = foldersById.get(folderId)?.name ?? options.rootLabel;
     const folderPath = pathByFolderId.get(folderId) ?? options.rootLabel;
+    const folderContext: ActivityFolderContext = { name: folderName, path: folderPath };
 
     conversations.forEach((conversation) => {
       const key = normalizeConversationId(conversation.conversationId);
@@ -117,15 +136,15 @@ export function buildConversationActivityGroups(
         byConversationId.set(key, {
           conversation,
           sourceFolderId: folderId,
-          folderPaths: [folderPath],
+          folderContexts: [folderContext],
           starred: conversation.starred === true,
           lastTurnAt: timestamp,
         });
         return;
       }
 
-      if (!existing.folderPaths.includes(folderPath)) {
-        existing.folderPaths.push(folderPath);
+      if (!existing.folderContexts.some((context) => context.path === folderPath)) {
+        existing.folderContexts.push(folderContext);
       }
       existing.starred ||= conversation.starred === true;
 
@@ -153,18 +172,19 @@ export function buildConversationActivityGroups(
   ]);
 
   byConversationId.forEach((accumulator) => {
-    accumulator.folderPaths.sort((left, right) =>
-      left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }),
+    accumulator.folderContexts.sort((left, right) =>
+      left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: 'base' }),
     );
 
-    if (options.matches && !options.matches(accumulator.conversation, accumulator.folderPaths)) {
+    const folderPaths = accumulator.folderContexts.map((context) => context.path);
+    if (options.matches && !options.matches(accumulator.conversation, folderPaths)) {
       return;
     }
 
     const item: ConversationActivityItem = {
       conversation: accumulator.conversation,
       sourceFolderId: accumulator.sourceFolderId,
-      folderPaths: accumulator.folderPaths,
+      folderContexts: accumulator.folderContexts,
       starred: accumulator.starred,
       lastTurnAt: accumulator.lastTurnAt,
     };

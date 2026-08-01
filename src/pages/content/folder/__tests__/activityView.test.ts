@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildConversationActivityGroups } from '../activityView';
+import { buildConversationActivityGroups, formatActivityFolderSummary } from '../activityView';
 import type { FolderData } from '../types';
 
 const NOW = new Date(2026, 7, 1, 12, 0, 0).getTime();
@@ -115,7 +115,10 @@ describe('buildConversationActivityGroups', () => {
     expect(groups[1].items).toHaveLength(1);
     expect(groups[1].items[0]).toMatchObject({
       lastTurnAt: NOW - 30_000,
-      folderPaths: ['Work', 'Work / Research'],
+      folderContexts: [
+        { name: 'Work', path: 'Work' },
+        { name: 'Research', path: 'Work / Research' },
+      ],
     });
     expect(groups.flatMap((group) => group.items)).toHaveLength(6);
     expect(
@@ -138,5 +141,15 @@ describe('buildConversationActivityGroups', () => {
       'Wednesday chat',
       'Tuesday chat',
     ]);
+  });
+
+  it('limits visible folder names while retaining the remaining count', () => {
+    expect(
+      formatActivityFolderSummary([
+        { name: 'Work', path: 'Work' },
+        { name: 'Research', path: 'Work / Research' },
+        { name: 'Archive', path: 'Archive' },
+      ]),
+    ).toBe('Work · Research +1');
   });
 });

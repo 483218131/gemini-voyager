@@ -44,6 +44,7 @@ import {
   type ConversationActivityItem,
   type FolderViewMode,
   buildConversationActivityGroups,
+  formatActivityFolderSummary,
 } from './activityView';
 import { type ConversationSortMode, sortConversationsByPriority } from './conversationSort';
 import { type FloatingFabPos, mountFloatingFab, unmountFloatingFab } from './floatingModeFab';
@@ -2122,11 +2123,16 @@ export class FolderManager {
     title.className = 'gv-conversation-title gds-label-l';
     title.textContent = conversation.title;
 
-    const folderPath = item.folderPaths.join(' · ');
+    const folderSummary = formatActivityFolderSummary(item.folderContexts);
+    const folderPaths = item.folderContexts.map((folder) => folder.path).join('\n');
     const context = document.createElement('span');
     context.className = 'gv-folder-activity-context';
-    context.textContent = folderPath;
-    context.title = folderPath;
+    context.textContent = folderSummary;
+    context.setAttribute('aria-label', folderPaths);
+    context.addEventListener('mouseenter', () => this.showTooltip(context, folderPaths, true));
+    context.addEventListener('mouseleave', () => this.hideTooltip());
+    link.addEventListener('focus', () => this.showTooltip(context, folderPaths, true));
+    link.addEventListener('blur', () => this.hideTooltip());
 
     text.append(title, context);
     link.append(icon, text);
@@ -9919,7 +9925,7 @@ export class FolderManager {
     document.body.appendChild(this.tooltipElement);
   }
 
-  private showTooltip(element: HTMLElement, text: string): void {
+  private showTooltip(element: HTMLElement, text: string, showWhenNotTruncated = false): void {
     if (!this.tooltipElement) return;
 
     // Clear any existing timeout
@@ -9929,7 +9935,7 @@ export class FolderManager {
 
     // Check if text is truncated
     const isTruncated = element.scrollWidth > element.clientWidth;
-    if (!isTruncated) return;
+    if (!showWhenNotTruncated && !isTruncated) return;
 
     // Show tooltip after a short delay (200ms)
     this.tooltipTimeout = window.setTimeout(() => {
