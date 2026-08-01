@@ -1,5 +1,6 @@
 import browser, { type Runtime } from 'webextension-polyfill';
 
+import { createBellIcon } from '@/core/icons/bellIcon';
 import {
   type AccountScope,
   accountIsolationService,
@@ -1878,9 +1879,7 @@ export class FolderManager {
     const activityButton = document.createElement('button');
     activityButton.className = 'gv-folder-action-btn gv-folder-activity-toggle';
     activityButton.type = 'button';
-    activityButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
-      <path d="M160-200v-80h80v-280q0-83 50-147.5T420-796v-24q0-25 17.5-42.5T480-880q25 0 42.5 17.5T540-820v24q70 20 120 84.5T720-560v280h80v80H160Zm320 120q-33 0-56.5-23.5T400-160h160q0 33-23.5 56.5T480-80ZM320-280h320v-280q0-66-47-113t-113-47q-66 0-113 47t-47 113v280Z"/>
-    </svg>`;
+    activityButton.replaceChildren(createBellIcon(18));
     activityButton.addEventListener('click', (event) => {
       event.stopPropagation();
       void this.toggleFolderViewMode();

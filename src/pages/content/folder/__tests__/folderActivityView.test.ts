@@ -143,6 +143,10 @@ describe('folder Activity view', () => {
     expect(bell?.getAttribute('aria-pressed')).toBe('true');
     expect(bell?.classList.contains('is-active')).toBe(true);
     expect(bell?.title).toBe('folder_activity_turn_off');
+    const bellIcon = bell?.querySelector<SVGSVGElement>('.lucide-bell');
+    expect(bellIcon?.getAttribute('viewBox')).toBe('0 0 24 24');
+    expect(bellIcon?.getAttribute('stroke-width')).toBe('2');
+    expect(bellIcon?.querySelectorAll('path')).toHaveLength(2);
     expect(container?.querySelector('.gv-sidebar-section-toggle-btn')).toBeNull();
     expect(container?.querySelectorAll('.gv-folder-activity-item')).toHaveLength(2);
     expect(
