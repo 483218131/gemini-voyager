@@ -9,7 +9,7 @@ Folders answer one question: where does this conversation belong? As your archiv
 
 Activity is a time-based view over your folders. Click the bell beside **Folders** to replace the folder tree with conversations ordered by real chat activity. It does not change your folders, conversation assignments, or Star state.
 
-**Design source:** This view takes its starting point from the sidebar in OpenAI's Codex / ChatGPT Desktop. Voyager carries over the idea of surfacing conversations that are still active, then adapts it into a time-based view over Gemini folders.
+**Design inspiration:** This view was inspired by the sidebar in OpenAI's Codex / ChatGPT Desktop. Voyager carries over the idea of surfacing conversations that are still active, then adapts it into a time-based view over Gemini folders.
 
 <img src="/assets/activity-view.png" alt="The Activity attention view in the Gemini sidebar" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

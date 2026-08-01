@@ -9,7 +9,7 @@ Las carpetas responden a una pregunta: ¿dónde pertenece esta conversación? A 
 
 Activity es una vista temporal sobre las carpetas. Haz clic en la campana a la derecha de **Folders** para sustituir el árbol por conversaciones ordenadas según la actividad real. No cambia la estructura de las carpetas, la ubicación de las conversaciones ni el estado de Star.
 
-**Origen del diseño:** esta vista parte de la barra lateral de Codex / ChatGPT Desktop de OpenAI. Voyager retoma la idea de mostrar primero las conversaciones que siguen activas y la adapta a una vista temporal sobre las carpetas de Gemini.
+**Inspiración del diseño:** esta vista se inspira en la barra lateral de Codex / ChatGPT Desktop de OpenAI. Voyager retoma la idea de mostrar primero las conversaciones que siguen activas y la adapta a una vista temporal sobre las carpetas de Gemini.
 
 <img src="/assets/activity-view.png" alt="Vista Activity en la barra lateral de Gemini" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

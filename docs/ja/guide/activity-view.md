@@ -9,7 +9,7 @@ description: フォルダ内の会話を実際の会話時刻で並べ、進行�
 
 Activityは、フォルダの上に重ねる時間ベースの表示です。**Folders**の右にあるベルをクリックすると、フォルダツリーが実際の会話アクティビティ順の一覧に切り替わります。フォルダ構成、会話の所属先、Starの状態は変更されません。
 
-**デザインの出典：** この表示は、OpenAIのCodex / ChatGPT Desktopのサイドバーを出発点にしています。Voyagerは「最近まで動いていた会話を先に見せる」という考え方を引き継ぎ、Geminiのフォルダに重ねる時間ベースの表示へと作り替えました。
+**デザインの着想：** この表示は、OpenAIのCodex / ChatGPT Desktopのサイドバーから着想を得ました。Voyagerは「最近まで動いていた会話を先に見せる」という考え方を引き継ぎ、Geminiのフォルダに重ねる時間ベースの表示へと作り替えました。
 
 <img src="/assets/activity-view.png" alt="GeminiサイドバーのActivityビュー" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

@@ -9,7 +9,7 @@ description: 폴더 대화를 실제 대화 시간순으로 정리해 최근까�
 
 Activity는 폴더 위에 겹쳐 보는 시간 기반 화면입니다. **Folders** 오른쪽의 종을 클릭하면 폴더 트리 대신 실제 대화 활동순으로 정렬된 목록이 나타납니다. 폴더 구조, 대화가 속한 위치, Star 상태는 바뀌지 않습니다.
 
-**디자인 출처:** 이 화면은 OpenAI의 Codex / ChatGPT Desktop 사이드바에서 출발했습니다. Voyager는 최근까지 활동 중인 대화를 먼저 보여 주는 방식을 이어받아 Gemini 폴더 위에 겹쳐 보는 시간 기반 화면으로 바꿨습니다.
+**디자인 영감:** 이 화면은 OpenAI의 Codex / ChatGPT Desktop 사이드바에서 영감을 얻었습니다. Voyager는 최근까지 활동 중인 대화를 먼저 보여 주는 방식을 이어받아 Gemini 폴더 위에 겹쳐 보는 시간 기반 화면으로 바꿨습니다.
 
 <img src="/assets/activity-view.png" alt="Gemini 사이드바의 Activity 보기" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

@@ -9,7 +9,7 @@ Les dossiers répondent à une question : où ranger cette conversation ? À mes
 
 Activity est une vue chronologique placée au-dessus des dossiers. Cliquez sur la cloche à droite de **Folders** pour remplacer temporairement l'arborescence par les conversations classées selon leur activité réelle. La structure des dossiers, l'appartenance des conversations et l'état Star ne changent pas.
 
-**Source du design :** cette vue prend pour point de départ la barre latérale de Codex / ChatGPT Desktop d'OpenAI. Voyager reprend l'idée de faire remonter les conversations encore actives, puis l'adapte en une vue chronologique au-dessus des dossiers Gemini.
+**Inspiration du design :** cette vue s'inspire de la barre latérale de Codex / ChatGPT Desktop d'OpenAI. Voyager reprend l'idée de faire remonter les conversations encore actives, puis l'adapte en une vue chronologique au-dessus des dossiers Gemini.
 
 <img src="/assets/activity-view.png" alt="Vue Activity dans la barre latérale de Gemini" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

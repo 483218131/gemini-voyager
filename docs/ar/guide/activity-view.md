@@ -9,7 +9,7 @@ description: رتّب محادثات المجلدات حسب نشاطها الف
 
 Activity هو عرض زمني فوق المجلدات. انقر على الجرس بجانب **Folders** لاستبدال شجرة المجلدات مؤقتًا بمحادثات مرتبة حسب نشاطها الفعلي. لا يتغير هيكل المجلدات أو موضع المحادثات أو حالة Star.
 
-**مصدر التصميم:** ينطلق هذا العرض من الشريط الجانبي في Codex / ChatGPT Desktop من OpenAI. أخذ Voyager فكرة إظهار المحادثات التي لا تزال نشطة أولًا، ثم حوّلها إلى عرض زمني فوق مجلدات Gemini.
+**إلهام التصميم:** استُلهم هذا العرض من الشريط الجانبي في Codex / ChatGPT Desktop من OpenAI. أخذ Voyager فكرة إظهار المحادثات التي لا تزال نشطة أولًا، ثم حوّلها إلى عرض زمني فوق مجلدات Gemini.
 
 <img src="/assets/activity-view.png" alt="عرض Activity في الشريط الجانبي لـ Gemini" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

@@ -9,7 +9,7 @@ description: 依照真實對話時間整理資料夾中的對話，讓最近仍�
 
 Activity 是資料夾之上的時間檢視。點擊 **Folders** 右側的鈴鐺，原本的目錄會暫時換成一組依照真實對話活動排列的對話。資料夾結構、對話歸屬和 Star 狀態都不會被改動。
 
-**設計來源：** 這個檢視的設計起點是 OpenAI 的 Codex / ChatGPT Desktop 側邊欄。Voyager 沿用「先顯示近期仍在活動的對話」的思路，再把它改造成 Gemini 資料夾之上的時間檢視。
+**設計靈感：** 這個檢視的設計靈感來自 OpenAI 的 Codex / ChatGPT Desktop 側邊欄。Voyager 沿用「先顯示近期仍在活動的對話」的思路，再把它改造成 Gemini 資料夾之上的時間檢視。
 
 <img src="/assets/activity-view.png" alt="Gemini 側邊欄中的 Activity 注意力檢視" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

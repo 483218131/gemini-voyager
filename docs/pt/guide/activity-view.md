@@ -9,7 +9,7 @@ As pastas respondem a uma pergunta: onde pertence esta conversa? À medida que o
 
 Activity é uma vista temporal sobre as pastas. Clique no sino à direita de **Folders** para substituir temporariamente a árvore por conversas ordenadas pela atividade real. A estrutura das pastas, a associação das conversas e o estado Star não são alterados.
 
-**Origem do design:** esta vista parte da barra lateral do Codex / ChatGPT Desktop da OpenAI. O Voyager retoma a ideia de mostrar primeiro as conversas que continuam ativas e adapta-a a uma vista temporal sobre as pastas do Gemini.
+**Inspiração do design:** esta vista foi inspirada na barra lateral do Codex / ChatGPT Desktop da OpenAI. O Voyager retoma a ideia de mostrar primeiro as conversas que continuam ativas e adapta-a a uma vista temporal sobre as pastas do Gemini.
 
 <img src="/assets/activity-view.png" alt="Vista Activity na barra lateral do Gemini" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 

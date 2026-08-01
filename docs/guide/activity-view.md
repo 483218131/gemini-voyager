@@ -9,7 +9,7 @@ description: 按真实对话时间整理文件夹中的会话，让最近仍在�
 
 Activity 是文件夹之上的时间视图。点击 **Folders** 右侧的铃铛，原来的目录会暂时换成一组按真实对话活动排列的会话。文件夹结构、对话归属和 Star 状态都不会被改动。
 
-**设计来源：** 这个视图的设计起点是 OpenAI 的 Codex / ChatGPT Desktop 侧边栏。Voyager 沿用了「先显示近期仍在活动的对话」这一思路，再把它改造成 Gemini 文件夹之上的时间视图。
+**设计灵感：** 这个视图的设计灵感来自 OpenAI 的 Codex / ChatGPT Desktop 侧边栏。Voyager 沿用了「先显示近期仍在活动的对话」这一思路，再把它改造成 Gemini 文件夹之上的时间视图。
 
 <img src="/assets/activity-view.png" alt="Gemini 侧边栏中的 Activity 注意力视图" style="display: block; width: 100%; max-width: 517px; margin: 24px auto; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);"/>
 
