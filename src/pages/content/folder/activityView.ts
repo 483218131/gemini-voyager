@@ -1,0 +1,207 @@
+import type { ConversationReference, Folder, FolderData } from './types';
+
+export type FolderViewMode = 'folders' | 'activity';
+export type ActivityRecentDayOffset = 2 | 3 | 4;
+export type ActivityGroupId = 'priority' | 'today' | 'yesterday' | `day-${ActivityRecentDayOffset}`;
+
+export interface ConversationActivityItem {
+  conversation: ConversationReference;
+  sourceFolderId: string;
+  folderPaths: string[];
+  starred: boolean;
+  lastTurnAt?: number;
+}
+
+export interface ConversationActivityGroup {
+  id: ActivityGroupId;
+  dayStart?: number;
+  items: ConversationActivityItem[];
+}
+
+interface ActivityAccumulator {
+  conversation: ConversationReference;
+  sourceFolderId: string;
+  folderPaths: string[];
+  starred: boolean;
+  lastTurnAt?: number;
+}
+
+function normalizeConversationId(value: string): string {
+  return value.trim().toLocaleLowerCase().replace(/^c_/, '');
+}
+
+function isFiniteTimestamp(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function getFolderPath(folderId: string, foldersById: Map<string, Folder>): string | null {
+  const segments: string[] = [];
+  const visited = new Set<string>();
+  let folder = foldersById.get(folderId);
+
+  while (folder) {
+    if (visited.has(folder.id)) return null;
+    visited.add(folder.id);
+    segments.unshift(folder.name);
+    folder = folder.parentId ? foldersById.get(folder.parentId) : undefined;
+  }
+
+  return segments.length > 0 ? segments.join(' / ') : null;
+}
+
+function compareActivityItems(
+  left: ConversationActivityItem,
+  right: ConversationActivityItem,
+): number {
+  const timeDifference = (right.lastTurnAt ?? -Infinity) - (left.lastTurnAt ?? -Infinity);
+  if (timeDifference !== 0) return timeDifference;
+  return left.conversation.title.localeCompare(right.conversation.title, undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+function startOfLocalDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function getLocalDayStartDaysAgo(todayStart: number, daysAgo: number): number {
+  const date = new Date(todayStart);
+  date.setDate(date.getDate() - daysAgo);
+  return date.getTime();
+}
+
+/**
+ * Build a read-only, attention-first projection over folder data.
+ *
+ * A conversation can exist in more than one folder. Activity renders it once,
+ * keeps every folder path for context, and treats starring as conversation-wide
+ * for this projection. Explicitly starred items live only in Priority so the
+ * same chat never appears twice in one view. Unstarred items are intentionally
+ * limited to today and the previous four local calendar days; older or unknown
+ * activity stays in the folder tree instead of turning this view into an archive.
+ */
+export function buildConversationActivityGroups(
+  data: FolderData,
+  options: {
+    now?: number;
+    rootLabel: string;
+    matches?: (conversation: ConversationReference, folderPaths: string[]) => boolean;
+  },
+): ConversationActivityGroup[] {
+  const now = options.now ?? Date.now();
+  const foldersById = new Map(data.folders.map((folder) => [folder.id, folder]));
+  const pathByFolderId = new Map<string, string>();
+  foldersById.forEach((_folder, folderId) => {
+    const path = getFolderPath(folderId, foldersById);
+    if (path) pathByFolderId.set(folderId, path);
+  });
+
+  const byConversationId = new Map<string, ActivityAccumulator>();
+
+  Object.entries(data.folderContents).forEach(([folderId, conversations]) => {
+    const folderPath = pathByFolderId.get(folderId) ?? options.rootLabel;
+
+    conversations.forEach((conversation) => {
+      const key = normalizeConversationId(conversation.conversationId);
+      if (!key) return;
+
+      const timestamp = isFiniteTimestamp(conversation.lastTurnAt)
+        ? conversation.lastTurnAt
+        : undefined;
+      const existing = byConversationId.get(key);
+
+      if (!existing) {
+        byConversationId.set(key, {
+          conversation,
+          sourceFolderId: folderId,
+          folderPaths: [folderPath],
+          starred: conversation.starred === true,
+          lastTurnAt: timestamp,
+        });
+        return;
+      }
+
+      if (!existing.folderPaths.includes(folderPath)) {
+        existing.folderPaths.push(folderPath);
+      }
+      existing.starred ||= conversation.starred === true;
+
+      if ((timestamp ?? -Infinity) > (existing.lastTurnAt ?? -Infinity)) {
+        existing.conversation = conversation;
+        existing.sourceFolderId = folderId;
+        existing.lastTurnAt = timestamp;
+      }
+    });
+  });
+
+  const todayStart = startOfLocalDay(now);
+  const yesterdayStart = getLocalDayStartDaysAgo(todayStart, 1);
+  const recentDayOffsets: ActivityRecentDayOffset[] = [2, 3, 4];
+  const recentDayStarts = new Map<ActivityRecentDayOffset, number>(
+    recentDayOffsets.map((offset) => [offset, getLocalDayStartDaysAgo(todayStart, offset)]),
+  );
+  const itemsByGroup = new Map<ActivityGroupId, ConversationActivityItem[]>([
+    ['priority', []],
+    ['today', []],
+    ['yesterday', []],
+    ['day-2', []],
+    ['day-3', []],
+    ['day-4', []],
+  ]);
+
+  byConversationId.forEach((accumulator) => {
+    accumulator.folderPaths.sort((left, right) =>
+      left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }),
+    );
+
+    if (options.matches && !options.matches(accumulator.conversation, accumulator.folderPaths)) {
+      return;
+    }
+
+    const item: ConversationActivityItem = {
+      conversation: accumulator.conversation,
+      sourceFolderId: accumulator.sourceFolderId,
+      folderPaths: accumulator.folderPaths,
+      starred: accumulator.starred,
+      lastTurnAt: accumulator.lastTurnAt,
+    };
+
+    let groupId: ActivityGroupId | null = null;
+    if (item.starred) {
+      groupId = 'priority';
+    } else if (isFiniteTimestamp(item.lastTurnAt) && item.lastTurnAt >= todayStart) {
+      groupId = 'today';
+    } else if (isFiniteTimestamp(item.lastTurnAt) && item.lastTurnAt >= yesterdayStart) {
+      groupId = 'yesterday';
+    } else if (isFiniteTimestamp(item.lastTurnAt)) {
+      const recentOffset = recentDayOffsets.find(
+        (offset) => item.lastTurnAt! >= (recentDayStarts.get(offset) ?? Infinity),
+      );
+      if (recentOffset) groupId = `day-${recentOffset}`;
+    }
+
+    if (!groupId) return;
+    itemsByGroup.get(groupId)?.push(item);
+  });
+
+  return (['priority', 'today', 'yesterday', 'day-2', 'day-3', 'day-4'] as const).flatMap(
+    (id): ConversationActivityGroup[] => {
+      const items = itemsByGroup.get(id) ?? [];
+      if (items.length === 0) return [];
+      items.sort(compareActivityItems);
+      const dayOffset = id.startsWith('day-')
+        ? (Number(id.slice(4)) as ActivityRecentDayOffset)
+        : null;
+      return [
+        {
+          id,
+          items,
+          ...(dayOffset ? { dayStart: recentDayStarts.get(dayOffset) } : {}),
+        },
+      ];
+    },
+  );
+}

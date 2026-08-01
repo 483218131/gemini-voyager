@@ -355,6 +355,25 @@
     "message": "フォルダ",
     "description": "Folder section title"
   },
+  "folder_activity_turn_on": {
+    "message": "アクティビティ表示をオン",
+    "description": "アクティビティ表示を有効にする"
+  },
+  "folder_activity_turn_off": {
+    "message": "アクティビティ表示をオフ",
+    "description": "アクティビティ表示を無効にする"
+  },
+  "folder_activity_priority": { "message": "優先", "description": "スター付き会話" },
+  "folder_activity_today": { "message": "今日", "description": "今日の会話" },
+  "folder_activity_yesterday": { "message": "昨日", "description": "昨日の会話" },
+  "folder_activity_empty": {
+    "message": "フォルダ内に会話はまだありません",
+    "description": "アクティビティ表示の空状態"
+  },
+  "folder_activity_top_level": {
+    "message": "トップレベル",
+    "description": "名前付きフォルダ外の会話"
+  },
   "folder_create": {
     "message": "フォルダを作成",
     "description": "Create folder button tooltip"
@@ -556,7 +575,7 @@
     "description": "Notion-compatible format with $$ delimiters"
   },
   "folder_filter_current_user": {
-    "message": "アカウント隔離",
+    "message": "現在のアカウントのみ表示",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {

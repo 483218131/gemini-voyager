@@ -355,6 +355,19 @@
     "message": "資料夾",
     "description": "資料夾區域標題"
   },
+  "folder_activity_turn_on": {
+    "message": "開啟動態檢視",
+    "description": "開啟注意力優先的動態檢視"
+  },
+  "folder_activity_turn_off": {
+    "message": "關閉動態檢視",
+    "description": "關閉注意力優先的動態檢視"
+  },
+  "folder_activity_priority": { "message": "優先", "description": "加星對話分組" },
+  "folder_activity_today": { "message": "今天", "description": "今天有對話的分組" },
+  "folder_activity_yesterday": { "message": "昨天", "description": "昨天有對話的分組" },
+  "folder_activity_empty": { "message": "資料夾中還沒有對話", "description": "動態檢視空狀態" },
+  "folder_activity_top_level": { "message": "頂層", "description": "未放入具名資料夾的對話" },
   "folder_create": {
     "message": "建立資料夾",
     "description": "建立資料夾按鈕提示"
@@ -516,7 +529,7 @@
     "description": "Notion 相容格式，使用 $$ 分隔符"
   },
   "folder_filter_current_user": {
-    "message": "帳號隔離模式",
+    "message": "僅顯示目前帳號",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {

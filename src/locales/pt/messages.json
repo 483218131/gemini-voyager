@@ -355,6 +355,25 @@
     "message": "Pastas",
     "description": "Folder section title"
   },
+  "folder_activity_turn_on": {
+    "message": "Ativar vista de atividade",
+    "description": "Ativar a vista de atividade"
+  },
+  "folder_activity_turn_off": {
+    "message": "Desativar vista de atividade",
+    "description": "Desativar a vista de atividade"
+  },
+  "folder_activity_priority": { "message": "Prioridade", "description": "Conversas com estrela" },
+  "folder_activity_today": { "message": "Hoje", "description": "Conversas ativas hoje" },
+  "folder_activity_yesterday": { "message": "Ontem", "description": "Conversas ativas ontem" },
+  "folder_activity_empty": {
+    "message": "Ainda não há conversas nas pastas",
+    "description": "Estado vazio da atividade"
+  },
+  "folder_activity_top_level": {
+    "message": "Nível superior",
+    "description": "Conversa fora de uma pasta nomeada"
+  },
   "folder_create": {
     "message": "Criar pasta",
     "description": "Create folder button tooltip"
@@ -556,7 +575,7 @@
     "description": "Notion-compatible format with $$ delimiters"
   },
   "folder_filter_current_user": {
-    "message": "Isolamento de conta",
+    "message": "Mostrar apenas a conta atual",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {

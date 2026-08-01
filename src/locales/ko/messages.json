@@ -355,6 +355,16 @@
     "message": "폴더",
     "description": "Folder section title"
   },
+  "folder_activity_turn_on": { "message": "활동 보기 켜기", "description": "활동 보기를 켭니다" },
+  "folder_activity_turn_off": { "message": "활동 보기 끄기", "description": "활동 보기를 끕니다" },
+  "folder_activity_priority": { "message": "우선순위", "description": "별표 표시된 대화" },
+  "folder_activity_today": { "message": "오늘", "description": "오늘 활동한 대화" },
+  "folder_activity_yesterday": { "message": "어제", "description": "어제 활동한 대화" },
+  "folder_activity_empty": {
+    "message": "폴더에 아직 대화가 없습니다",
+    "description": "활동 보기 빈 상태"
+  },
+  "folder_activity_top_level": { "message": "최상위", "description": "이름 있는 폴더 밖 대화" },
   "folder_create": {
     "message": "폴더 생성",
     "description": "Create folder button tooltip"
@@ -556,7 +566,7 @@
     "description": "Notion-compatible format with $$ delimiters"
   },
   "folder_filter_current_user": {
-    "message": "계정 분리",
+    "message": "현재 계정만 표시",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {

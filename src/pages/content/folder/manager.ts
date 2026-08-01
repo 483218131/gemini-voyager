@@ -11,6 +11,7 @@ import { DataBackupService } from '@/core/services/DataBackupService';
 import { StorageKeys } from '@/core/types/common';
 import type { PromptItem, SyncAccountScope } from '@/core/types/sync';
 import { isSafari } from '@/core/utils/browser';
+import { buildConversationIdFromUrl } from '@/core/utils/conversationIdentity';
 import { isExtensionContextInvalidatedError } from '@/core/utils/extensionContext';
 import { FolderImportExportService } from '@/features/folder/services/FolderImportExportService';
 import type { ImportStrategy } from '@/features/folder/types/import-export';
@@ -34,7 +35,15 @@ import {
   resolveTimelineHierarchyDataForStorageScope,
 } from '../timeline/hierarchyStorage';
 import type { TimelineHierarchyData } from '../timeline/hierarchyTypes';
+import { TimestampService } from '../timestamp/TimestampService';
+import { historyTimestampStore } from '../timestamp/historyTimestamps';
 import { watchRouteChanges } from '../utils/routeWatcher';
+import {
+  type ConversationActivityGroup,
+  type ConversationActivityItem,
+  type FolderViewMode,
+  buildConversationActivityGroups,
+} from './activityView';
 import { type ConversationSortMode, sortConversationsByPriority } from './conversationSort';
 import { type FloatingFabPos, mountFloatingFab, unmountFloatingFab } from './floatingModeFab';
 import { unmountFloatingModeNudge } from './floatingModeNudge';
@@ -107,6 +116,20 @@ const SAVE_DEBOUNCE_MS = 300;
 const STORAGE_ECHO_SUPPRESS_WINDOW_MS = 2000;
 // Debounce for the folder search box so each keystroke doesn't rebuild the tree.
 const FOLDER_SEARCH_DEBOUNCE_MS = 200;
+const ACTIVITY_SEND_BUTTON_SELECTOR = [
+  'button[aria-label*="Send"]',
+  'button[aria-label*="send"]',
+  'button[data-tooltip*="Send"]',
+  'button[data-tooltip*="send"]',
+  '[data-send-button]',
+  '.send-button',
+].join(', ');
+const ACTIVITY_COMPOSER_INPUT_SELECTOR = [
+  'rich-textarea [contenteditable="true"]',
+  'div[contenteditable="true"][role="textbox"]',
+  '.input-area textarea',
+  'textarea[placeholder*="Ask"]',
+].join(', ');
 export const FOLDER_ONLY_SEARCH_HINT_ID = 'folder-only-search-prefix-hint';
 
 // Export session backup keys for use by FolderImportExportService (deprecated, kept for compatibility)
@@ -261,6 +284,11 @@ export class FolderManager {
   private folderSearchQuery: string = ''; // Filter the folder tree by folder/conversation title
   private folderOnlySearchHintSeen: boolean = false;
   private conversationSortMode: ConversationSortMode = 'manual';
+  private folderViewMode: FolderViewMode = 'folders';
+  private activityTimestampService: TimestampService | null = null;
+  private activityTrackingPromise: Promise<void> | null = null;
+  private activityTimestampUnsubscribe: (() => void) | null = null;
+  private activitySendIntentHandler: ((event: Event) => void) | null = null;
   private accountIsolationEnabled: boolean = false; // Whether hard account isolation is enabled
   private accountScope: AccountScope | null = null; // Resolved account scope for current page
   private activeStorageKey: string = STORAGE_KEY; // Storage key currently used for folder data
@@ -436,6 +464,10 @@ export class FolderManager {
       // Load folder enabled setting
       await this.loadFolderEnabledSetting();
 
+      if (this.folderEnabled) {
+        await this.initializeConversationActivityTracking();
+      }
+
       // Load the opt-in "always use floating window" mode. Off by default —
       // users flip it from the popup when they want to skip sidebar injection
       // entirely and work with folders in a floating panel.
@@ -534,6 +566,7 @@ export class FolderManager {
 
     this.teardownDomRecoveryWatchers();
     this.folderRecoveryInFlight = false;
+    this.teardownConversationActivityTracking();
 
     // Flush a pending debounced save so a recent expand/collapse isn't lost,
     // then drop the unload flush hook.
@@ -669,6 +702,7 @@ export class FolderManager {
     this.teardownDomRecoveryWatchers();
     this.folderRecoveryInFlight = false;
     this.floatingFallbackActive = false;
+    this.teardownConversationActivityTracking();
 
     if (this.sideNavObserver) {
       this.sideNavObserver.disconnect();
@@ -1639,6 +1673,7 @@ export class FolderManager {
     const foldersList = this.createFoldersList();
     this.containerElement.appendChild(foldersList);
     this.applyFoldersCollapsedState();
+    this.applyFolderViewModeState();
 
     // Insert before Recent section
     this.recentSection.parentElement?.insertBefore(this.containerElement, this.recentSection);
@@ -1837,11 +1872,30 @@ export class FolderManager {
     const actionsContainer = document.createElement('div');
     actionsContainer.className = 'gv-folder-header-actions';
 
+    // Activity is a read-only projection over the same folder data. The bell
+    // occupies the old section-hider eye slot while the left chevron remains
+    // the single collapse control.
+    const activityButton = document.createElement('button');
+    activityButton.className = 'gv-folder-action-btn gv-folder-activity-toggle';
+    activityButton.type = 'button';
+    activityButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+      <path d="M160-200v-80h80v-280q0-83 50-147.5T420-796v-24q0-25 17.5-42.5T480-880q25 0 42.5 17.5T540-820v24q70 20 120 84.5T720-560v280h80v80H160Zm320 120q-33 0-56.5-23.5T400-160h160q0 33-23.5 56.5T480-80ZM320-280h320v-280q0-66-47-113t-113-47q-66 0-113 47t-47 113v280Z"/>
+    </svg>`;
+    activityButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      void this.toggleFolderViewMode();
+    });
+    actionsContainer.appendChild(activityButton);
+
     // Filter current user button
     const filterUserButton = document.createElement('button');
-    filterUserButton.className = 'gv-folder-action-btn';
+    filterUserButton.className = 'gv-folder-action-btn gv-folder-user-filter-toggle';
+    filterUserButton.type = 'button';
     filterUserButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">person</mat-icon>`;
     filterUserButton.title = this.t('folder_filter_current_user');
+    filterUserButton.setAttribute('aria-label', this.t('folder_filter_current_user'));
+    filterUserButton.setAttribute('aria-pressed', String(this.filterCurrentUserOnly));
+    filterUserButton.hidden = this.accountIsolationEnabled;
     // Apply active state if filter is enabled
     if (this.filterCurrentUserOnly) {
       filterUserButton.classList.add('gv-filter-active');
@@ -1965,6 +2019,11 @@ export class FolderManager {
     list.className = 'gv-folder-list';
     const isSearchActive = this.isFolderSearchActive();
 
+    if (this.folderViewMode === 'activity') {
+      list.classList.add('gv-folder-activity-list');
+      return this.populateActivityList(list, isSearchActive);
+    }
+
     // Native-title sync used to scan the whole sidebar once PER stored
     // conversation (O(M×N) per render). Build one lookup table per render
     // pass instead; `createConversationElement` consults it while this field
@@ -1980,6 +2039,169 @@ export class FolderManager {
     } finally {
       this.nativeTitleLookup = null;
     }
+  }
+
+  private populateActivityList(list: HTMLElement, isSearchActive: boolean): HTMLElement {
+    const matches = (conversation: ConversationReference, folderPaths: string[]): boolean => {
+      if (this.filterConversationsByCurrentUser([conversation]).length === 0) return false;
+      if (!isSearchActive) return true;
+
+      if (this.isFolderOnlySearchActive()) {
+        return folderPaths.some((path) => this.matchesFolderSearchText(path));
+      }
+      return (
+        this.matchesFolderSearchText(conversation.title) ||
+        folderPaths.some((path) => this.matchesFolderSearchText(path))
+      );
+    };
+
+    const groups = buildConversationActivityGroups(this.data, {
+      rootLabel: this.t('folder_activity_top_level'),
+      matches,
+    });
+
+    if (groups.length === 0) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'gv-folder-empty gv-folder-activity-empty';
+      emptyState.textContent = this.t(
+        isSearchActive ? 'folder_search_empty' : 'folder_activity_empty',
+      );
+      list.appendChild(emptyState);
+      return list;
+    }
+
+    groups.forEach((group) => {
+      const section = document.createElement('section');
+      section.className = `gv-folder-activity-group gv-folder-activity-group-${group.id}`;
+
+      const heading = document.createElement('h2');
+      heading.className = 'gv-folder-activity-heading';
+      heading.id = `gv-folder-activity-${group.id}`;
+      heading.textContent = this.formatActivityGroupHeading(group);
+      section.setAttribute('aria-labelledby', heading.id);
+      section.appendChild(heading);
+
+      group.items.forEach((item) => {
+        section.appendChild(this.createActivityConversationElement(item));
+      });
+      list.appendChild(section);
+    });
+
+    return list;
+  }
+
+  private createActivityConversationElement(item: ConversationActivityItem): HTMLElement {
+    const { conversation } = item;
+    const row = document.createElement('div');
+    row.className = item.starred
+      ? 'gv-folder-conversation gv-folder-activity-item gv-starred'
+      : 'gv-folder-conversation gv-folder-activity-item';
+    row.dataset.conversationId = conversation.conversationId;
+    row.dataset.folderId = item.sourceFolderId;
+
+    const link = document.createElement('a');
+    link.className = 'gv-folder-conversation-link gv-folder-activity-link';
+    link.href = this.getFolderConversationHref(conversation);
+    link.draggable = false;
+
+    const icon = document.createElement('mat-icon');
+    icon.className =
+      'mat-icon notranslate gv-conversation-icon google-symbols mat-ligature-font mat-icon-no-color';
+    icon.setAttribute('role', 'img');
+    icon.setAttribute('aria-hidden', 'true');
+    const iconName =
+      conversation.isGem && conversation.gemId
+        ? getGemIcon(conversation.gemId)
+        : DEFAULT_CONVERSATION_ICON;
+    icon.setAttribute('fonticon', iconName);
+    icon.textContent = iconName;
+
+    const text = document.createElement('span');
+    text.className = 'gv-folder-activity-text';
+
+    const title = document.createElement('span');
+    title.className = 'gv-conversation-title gds-label-l';
+    title.textContent = conversation.title;
+
+    const folderPath = item.folderPaths.join(' · ');
+    const context = document.createElement('span');
+    context.className = 'gv-folder-activity-context';
+    context.textContent = folderPath;
+    context.title = folderPath;
+
+    text.append(title, context);
+    link.append(icon, text);
+
+    const timeLabel = this.formatActivityTimestamp(item.lastTurnAt);
+    if (timeLabel) {
+      const time = document.createElement('time');
+      time.className = 'gv-folder-activity-time';
+      time.dateTime = new Date(item.lastTurnAt!).toISOString();
+      time.textContent = timeLabel;
+      time.title = new Date(item.lastTurnAt!).toLocaleString();
+      row.appendChild(time);
+    }
+
+    const starButton = document.createElement('button');
+    starButton.className = item.starred
+      ? 'gv-conversation-star-btn starred'
+      : 'gv-conversation-star-btn';
+    starButton.type = 'button';
+    starButton.innerHTML = `<mat-icon role="img" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">${item.starred ? 'star' : 'star_outline'}</mat-icon>`;
+    starButton.title = item.starred ? this.t('conversation_unstar') : this.t('conversation_star');
+    starButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.setConversationStarAcrossFolders(conversation.conversationId, !item.starred);
+    });
+
+    link.addEventListener('click', (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.navigateToConversationById(item.sourceFolderId, conversation.conversationId);
+    });
+    title.addEventListener('mouseenter', () => this.showTooltip(title, conversation.title));
+    title.addEventListener('mouseleave', () => this.hideTooltip());
+    title.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void this.openNativeRenameForFolderConversation(conversation);
+    });
+    row.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.showFolderConversationMenu(event, conversation);
+    });
+
+    row.prepend(link);
+    row.appendChild(starButton);
+    return row;
+  }
+
+  private formatActivityGroupHeading(group: ConversationActivityGroup): string {
+    if (group.id === 'priority') return this.t('folder_activity_priority');
+    if (group.id === 'today') return this.t('folder_activity_today');
+    if (group.id === 'yesterday') return this.t('folder_activity_yesterday');
+    if (!group.dayStart) return '';
+
+    return new Date(group.dayStart).toLocaleDateString([], { weekday: 'long' });
+  }
+
+  private formatActivityTimestamp(timestamp: number | undefined): string {
+    if (!timestamp || !Number.isFinite(timestamp)) return '';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const sameDay =
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate();
+
+    return sameDay
+      ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 
   private populateFoldersList(list: HTMLElement, isSearchActive: boolean): HTMLElement {
@@ -4286,6 +4508,7 @@ export class FolderManager {
         title: this.resolveDraggedConversationTitleForStorage(item.id, item.title),
         url: item.url ?? '',
         addedAt: Date.now(),
+        lastTurnAt: this.getKnownConversationLastTurnAt(item.id, item.url),
         isGem: item.isGem,
         gemId: item.gemId,
         sortIndex: ++maxSortIndex,
@@ -4431,6 +4654,7 @@ export class FolderManager {
       title: this.resolveDraggedConversationTitleForStorage(conversationId, dragData.title),
       url: dragData.url!,
       addedAt: Date.now(),
+      lastTurnAt: this.getKnownConversationLastTurnAt(conversationId, dragData.url),
       isGem: dragData.isGem,
       gemId: dragData.gemId,
       sortIndex: maxSortIndex + 1,
@@ -4492,6 +4716,8 @@ export class FolderManager {
             ? conv.title
             : this.resolveDraggedConversationTitleForStorage(conv.conversationId, conv.title),
           addedAt: Date.now(),
+          lastTurnAt:
+            conv.lastTurnAt ?? this.getKnownConversationLastTurnAt(conv.conversationId, conv.url),
           sortIndex: maxSortIndex,
         };
 
@@ -4610,6 +4836,22 @@ export class FolderManager {
     this.refresh();
 
     this.debug('Toggled star for conversation:', conversationId, 'starred:', conv.starred);
+  }
+
+  private setConversationStarAcrossFolders(conversationId: string, starred: boolean): void {
+    let changed = false;
+    Object.values(this.data.folderContents).forEach((conversations) => {
+      conversations.forEach((conversation) => {
+        if (!this.isSameConversation(conversationId, conversation)) return;
+        if (conversation.starred === starred) return;
+        conversation.starred = starred;
+        changed = true;
+      });
+    });
+
+    if (!changed) return;
+    this.saveData();
+    this.refresh();
   }
 
   private confirmRemoveConversation(
@@ -6198,6 +6440,7 @@ export class FolderManager {
     url: string,
     isGem?: boolean,
     gemId?: string,
+    lastTurnAt?: number,
   ): void {
     // Guard: ensure the target folder still exists (it may have been deleted
     // from the sidebar or another tab between selection and message send)
@@ -6236,6 +6479,7 @@ export class FolderManager {
         url,
         addedAt: now,
         lastOpenedAt: now,
+        lastTurnAt: lastTurnAt ?? this.getKnownConversationLastTurnAt(conversationId, url),
         isGem,
         gemId,
         sortIndex: 0,
@@ -7947,13 +8191,198 @@ export class FolderManager {
     try {
       const result = await browser.storage.local.get({
         [StorageKeys.FOLDERS_COLLAPSED]: false,
+        [StorageKeys.FOLDERS_HIDDEN]: false,
+        [StorageKeys.FOLDERS_VIEW_MODE]: 'folders',
       });
-      this.foldersCollapsed = result[StorageKeys.FOLDERS_COLLAPSED] === true;
+      let legacyHidden = result[StorageKeys.FOLDERS_HIDDEN] === true;
+      try {
+        legacyHidden ||= localStorage.getItem(StorageKeys.FOLDERS_HIDDEN) === 'true';
+      } catch {
+        // Local storage is only a legacy fallback and may be unavailable.
+      }
+
+      this.foldersCollapsed = legacyHidden || result[StorageKeys.FOLDERS_COLLAPSED] === true;
+      this.folderViewMode =
+        result[StorageKeys.FOLDERS_VIEW_MODE] === 'activity' ? 'activity' : 'folders';
+
+      if (legacyHidden) {
+        await browser.storage.local.set({
+          [StorageKeys.FOLDERS_HIDDEN]: false,
+          [StorageKeys.FOLDERS_COLLAPSED]: true,
+        });
+        try {
+          localStorage.removeItem(StorageKeys.FOLDERS_HIDDEN);
+        } catch {
+          // Ignore legacy fallback cleanup failures.
+        }
+      }
       this.debug('Loaded folder collapsed preference:', this.foldersCollapsed);
     } catch (error) {
       console.error('[FolderManager] Failed to load folder collapsed preference:', error);
       this.foldersCollapsed = false;
+      this.folderViewMode = 'folders';
     }
+  }
+
+  private initializeConversationActivityTracking(): Promise<void> {
+    if (this.activityTimestampUnsubscribe || this.activitySendIntentHandler) {
+      return Promise.resolve();
+    }
+    if (this.activityTrackingPromise) return this.activityTrackingPromise;
+
+    this.activityTrackingPromise = (async () => {
+      try {
+        if (!this.activityTimestampService) {
+          this.activityTimestampService = new TimestampService();
+          await this.activityTimestampService.initialize();
+        }
+        await historyTimestampStore.start();
+        if (this.isDestroyed || !this.folderEnabled) return;
+
+        this.backfillKnownConversationActivity();
+        this.activityTimestampUnsubscribe = historyTimestampStore.subscribe((cids) => {
+          if (this.isDestroyed || !this.folderEnabled) return;
+          this.applyHistoryActivityTimestamps(cids);
+        });
+
+        this.activitySendIntentHandler = (event) => {
+          if (!this.isConversationSendIntent(event)) return;
+          const conversationId = this.getCurrentConversationId();
+          if (!conversationId || !this.isConversationInFolders(conversationId)) return;
+
+          const sentAt = Date.now();
+          window.setTimeout(() => {
+            if (this.isDestroyed || !this.folderEnabled || event.defaultPrevented) return;
+            this.markConversationLastTurnAt(conversationId, sentAt);
+          }, 0);
+        };
+        document.addEventListener('click', this.activitySendIntentHandler, true);
+        document.addEventListener('submit', this.activitySendIntentHandler, true);
+      } catch (error) {
+        if (!isExtensionContextInvalidatedError(error)) {
+          this.debugWarn('Failed to initialize conversation activity tracking:', error);
+        }
+      }
+    })().finally(() => {
+      this.activityTrackingPromise = null;
+    });
+
+    return this.activityTrackingPromise;
+  }
+
+  private teardownConversationActivityTracking(): void {
+    this.activityTimestampUnsubscribe?.();
+    this.activityTimestampUnsubscribe = null;
+
+    if (this.activitySendIntentHandler) {
+      document.removeEventListener('click', this.activitySendIntentHandler, true);
+      document.removeEventListener('submit', this.activitySendIntentHandler, true);
+      this.activitySendIntentHandler = null;
+    }
+  }
+
+  private isConversationSendIntent(event: Event): boolean {
+    if (event.type === 'submit') {
+      const form = event.target;
+      return (
+        form instanceof HTMLFormElement &&
+        form.querySelector(ACTIVITY_COMPOSER_INPUT_SELECTOR) !== null
+      );
+    }
+
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest(ACTIVITY_SEND_BUTTON_SELECTOR);
+    if (!(button instanceof HTMLElement)) return false;
+    if (
+      button instanceof HTMLButtonElement &&
+      (button.disabled || button.getAttribute('aria-disabled') === 'true')
+    ) {
+      return false;
+    }
+
+    const composer = button.closest(
+      'form, .text-input-field, input-area-v2, input-container, ms-prompt-input-wrapper',
+    );
+    return composer?.querySelector(ACTIVITY_COMPOSER_INPUT_SELECTOR) !== null;
+  }
+
+  private getKnownConversationLastTurnAt(conversationId: string, url?: string): number | undefined {
+    const nativeConversationId = this.normalizeConversationId(conversationId);
+    if (!nativeConversationId) return undefined;
+
+    const serverTimestamp =
+      historyTimestampStore.getLatestTurnTimestamp(nativeConversationId) ?? undefined;
+    const stableConversationId = buildConversationIdFromUrl(
+      url || `https://gemini.google.com/app/${nativeConversationId}`,
+    );
+    const storedTimestamp =
+      this.activityTimestampService?.getLatestTimestampForConversation(stableConversationId) ??
+      undefined;
+    const latest = Math.max(serverTimestamp ?? 0, storedTimestamp ?? 0);
+    return latest > 0 ? latest : undefined;
+  }
+
+  private backfillKnownConversationActivity(): void {
+    let changed = false;
+    Object.values(this.data.folderContents).forEach((conversations) => {
+      conversations.forEach((conversation) => {
+        const timestamp = this.getKnownConversationLastTurnAt(
+          conversation.conversationId,
+          conversation.url,
+        );
+        if (!timestamp || timestamp <= (conversation.lastTurnAt ?? 0)) return;
+        conversation.lastTurnAt = timestamp;
+        changed = true;
+      });
+    });
+
+    if (!changed) return;
+    this.scheduleSaveData();
+    if (this.folderViewMode === 'activity') this.refresh();
+  }
+
+  private applyHistoryActivityTimestamps(cids: string[]): void {
+    const latestByConversationId = new Map<string, number>();
+    cids.forEach((cid) => {
+      const nativeConversationId = this.normalizeConversationId(cid);
+      if (!nativeConversationId) return;
+      const latest = historyTimestampStore.getLatestTurnTimestamp(nativeConversationId);
+      if (latest) latestByConversationId.set(nativeConversationId, latest);
+    });
+    if (latestByConversationId.size === 0) return;
+
+    let changed = false;
+    Object.values(this.data.folderContents).forEach((conversations) => {
+      conversations.forEach((conversation) => {
+        const nativeConversationId = this.normalizeConversationId(conversation.conversationId);
+        const latest = nativeConversationId
+          ? latestByConversationId.get(nativeConversationId)
+          : undefined;
+        if (!latest || latest <= (conversation.lastTurnAt ?? 0)) return;
+        conversation.lastTurnAt = latest;
+        changed = true;
+      });
+    });
+
+    if (!changed) return;
+    this.scheduleSaveData();
+    if (this.folderViewMode === 'activity') this.refresh();
+  }
+
+  private markConversationLastTurnAt(conversationId: string, timestamp: number): void {
+    let changed = false;
+    Object.values(this.data.folderContents).forEach((conversations) => {
+      conversations.forEach((conversation) => {
+        if (!this.isSameConversation(conversationId, conversation)) return;
+        if (timestamp <= (conversation.lastTurnAt ?? 0)) return;
+        conversation.lastTurnAt = timestamp;
+        changed = true;
+      });
+    });
+
+    if (!changed) return;
+    this.scheduleSaveData();
+    if (this.folderViewMode === 'activity') this.refresh();
   }
 
   private applyFoldersCollapsedState(): void {
@@ -7984,6 +8413,45 @@ export class FolderManager {
       await browser.storage.local.set({ [StorageKeys.FOLDERS_COLLAPSED]: this.foldersCollapsed });
     } catch (error) {
       console.error('[FolderManager] Failed to persist folder collapsed preference:', error);
+    }
+  }
+
+  private applyFolderViewModeState(): void {
+    const container = this.containerElement;
+    if (!container) return;
+
+    const activityMode = this.folderViewMode === 'activity';
+    container.classList.toggle('gv-folder-activity-mode', activityMode);
+
+    const button = container.querySelector<HTMLButtonElement>('.gv-folder-activity-toggle');
+    if (!button) return;
+
+    const label = this.t(activityMode ? 'folder_activity_turn_off' : 'folder_activity_turn_on');
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', String(activityMode));
+    button.classList.toggle('is-active', activityMode);
+  }
+
+  private async toggleFolderViewMode(): Promise<void> {
+    this.folderViewMode = this.folderViewMode === 'activity' ? 'folders' : 'activity';
+
+    const update: Record<string, unknown> = {
+      [StorageKeys.FOLDERS_VIEW_MODE]: this.folderViewMode,
+    };
+    if (this.folderViewMode === 'activity' && this.foldersCollapsed) {
+      this.foldersCollapsed = false;
+      update[StorageKeys.FOLDERS_COLLAPSED] = false;
+      this.applyFoldersCollapsedState();
+    }
+
+    this.applyFolderViewModeState();
+    this.refresh();
+
+    try {
+      await browser.storage.local.set(update);
+    } catch (error) {
+      console.error('[FolderManager] Failed to persist folder view preference:', error);
     }
   }
 
@@ -8312,6 +8780,7 @@ export class FolderManager {
 
     if (this.folderEnabled) {
       this.refresh();
+      this.applyUserFilterButtonState();
     }
   }
 
@@ -8462,6 +8931,15 @@ export class FolderManager {
           this.applyFoldersCollapsedState();
         }
       }
+      if (areaName === 'local' && changes[StorageKeys.FOLDERS_VIEW_MODE]) {
+        const next: FolderViewMode =
+          changes[StorageKeys.FOLDERS_VIEW_MODE].newValue === 'activity' ? 'activity' : 'folders';
+        if (next !== this.folderViewMode) {
+          this.folderViewMode = next;
+          this.applyFolderViewModeState();
+          this.refresh();
+        }
+      }
     });
 
     // NOTE: the popup's 'gv.folders.reload' message is handled in
@@ -8480,6 +8958,7 @@ export class FolderManager {
   private async reloadFoldersFromStorage(): Promise<void> {
     try {
       await this.loadData();
+      this.backfillKnownConversationActivity();
       this.renderAllFolders();
       this.debug('Folders reloaded from storage');
     } catch (error) {
@@ -8545,9 +9024,17 @@ export class FolderManager {
       const cloudConvos = cloud.folderContents[folderId] || [];
 
       const convoMap = new Map<string, ConversationReference>();
-      // Add cloud first, then local overwrites (local preferred)
+      // Add cloud first, then local metadata overwrites. Activity time remains
+      // monotonic across devices even when the local reference wins.
       cloudConvos.forEach((c) => convoMap.set(c.conversationId, c));
-      localConvos.forEach((c) => convoMap.set(c.conversationId, c));
+      localConvos.forEach((conversation) => {
+        const cloudConversation = convoMap.get(conversation.conversationId);
+        convoMap.set(conversation.conversationId, {
+          ...conversation,
+          lastTurnAt:
+            Math.max(cloudConversation?.lastTurnAt ?? 0, conversation.lastTurnAt ?? 0) || undefined,
+        });
+      });
 
       mergedContents[folderId] = Array.from(convoMap.values());
     });
@@ -8561,6 +9048,7 @@ export class FolderManager {
   private applyFolderEnabledSetting(): void {
     if (this.folderEnabled) {
       this.debug('Folder feature enabled');
+      void this.initializeConversationActivityTracking();
 
       if (this.floatingModeEnabled) {
         void this.startFloatingMode().catch((error) => {
@@ -9113,6 +9601,7 @@ export class FolderManager {
     if (this.activeStorageKey === previousStorageKey) return;
 
     await this.loadData();
+    this.backfillKnownConversationActivity();
     this.renderAllFolders();
     this.debug('Switched account-scoped folder storage:', this.activeStorageKey);
   }
@@ -9230,6 +9719,7 @@ export class FolderManager {
       title.textContent = this.t('folder_title');
     }
     this.applyFoldersCollapsedState();
+    this.applyFolderViewModeState();
 
     // Update button tooltips in header actions
     const actionsContainer = this.containerElement.querySelector('.gv-folder-header-actions');
@@ -9239,11 +9729,14 @@ export class FolderManager {
         // Identify buttons by their class or icon content
         if (btn.classList.contains('gv-folder-add-btn')) {
           btn.title = this.t('folder_create');
+        } else if (btn.classList.contains('gv-folder-activity-toggle')) {
+          // Updated by applyFolderViewModeState above.
         } else if (btn.classList.contains('gv-folder-action-btn')) {
           // Check icon to identify button type
           const icon = btn.querySelector('mat-icon');
           if (icon?.textContent === 'person') {
             btn.title = this.t('folder_filter_current_user');
+            btn.setAttribute('aria-label', this.t('folder_filter_current_user'));
           } else if (icon?.textContent === 'folder_managed') {
             btn.title = this.t('folder_import_export');
           } else if (icon?.textContent === 'settings') {
@@ -9285,6 +9778,10 @@ export class FolderManager {
     // Notebooks corner swap toggle is mounted on the Notebooks section, not
     // inside our container — refresh its tooltip in the now-current locale.
     this.refreshNotebooksAnchorButtonState();
+
+    if (this.folderViewMode === 'activity') {
+      this.refresh();
+    }
 
     this.debug('Header language text updated');
   }
@@ -9996,22 +10493,21 @@ export class FolderManager {
       .catch((e) => console.error('Failed to save filter user setting:', e));
 
     // Refresh the entire folder container to update button state and list
-    if (this.containerElement) {
-      // Update the filter button state
-      const filterBtn = this.containerElement.querySelector(
-        '.gv-folder-header-actions button:first-child',
-      );
-      if (filterBtn) {
-        if (this.filterCurrentUserOnly) {
-          filterBtn.classList.add('gv-filter-active');
-        } else {
-          filterBtn.classList.remove('gv-filter-active');
-        }
-      }
-    }
+    this.applyUserFilterButtonState();
 
     // Refresh the folders list to apply the filter
     this.refresh();
+  }
+
+  private applyUserFilterButtonState(): void {
+    const filterButton = this.containerElement?.querySelector<HTMLButtonElement>(
+      '.gv-folder-user-filter-toggle',
+    );
+    if (!filterButton) return;
+
+    filterButton.hidden = this.accountIsolationEnabled;
+    filterButton.classList.toggle('gv-filter-active', this.filterCurrentUserOnly);
+    filterButton.setAttribute('aria-pressed', String(this.filterCurrentUserOnly));
   }
 
   private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info'): void {

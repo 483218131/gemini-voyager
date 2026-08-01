@@ -34,6 +34,7 @@ type TestableManager = {
   foldersCollapsed: boolean;
   recentSection: HTMLElement | null;
   createFolderUI: () => void;
+  loadFoldersCollapsedSetting: () => Promise<void>;
   destroy: () => void;
 };
 
@@ -62,6 +63,7 @@ describe('folder section collapse', () => {
     vi.mocked(browser.storage.sync.set).mockResolvedValue(undefined);
     vi.mocked(browser.storage.local.get).mockResolvedValue({});
     vi.mocked(browser.storage.local.set).mockResolvedValue(undefined);
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -129,5 +131,23 @@ describe('folder section collapse', () => {
       typed.containerElement?.querySelector('.gv-folder-section-toggle .google-symbols')
         ?.textContent,
     ).toBe('chevron_right');
+  });
+
+  it('migrates the retired hidden-eye state into the built-in collapsed state', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({
+      [StorageKeys.FOLDERS_HIDDEN]: true,
+      [StorageKeys.FOLDERS_COLLAPSED]: false,
+      [StorageKeys.FOLDERS_VIEW_MODE]: 'folders',
+    });
+    manager = new FolderManager();
+    const typed = manager as unknown as TestableManager;
+
+    await typed.loadFoldersCollapsedSetting();
+
+    expect(typed.foldersCollapsed).toBe(true);
+    expect(browser.storage.local.set).toHaveBeenCalledWith({
+      [StorageKeys.FOLDERS_HIDDEN]: false,
+      [StorageKeys.FOLDERS_COLLAPSED]: true,
+    });
   });
 });

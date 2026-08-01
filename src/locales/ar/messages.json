@@ -355,6 +355,19 @@
     "message": "المجلدات",
     "description": "Folder section title"
   },
+  "folder_activity_turn_on": { "message": "تشغيل عرض النشاط", "description": "تشغيل عرض النشاط" },
+  "folder_activity_turn_off": { "message": "إيقاف عرض النشاط", "description": "إيقاف عرض النشاط" },
+  "folder_activity_priority": { "message": "الأولوية", "description": "المحادثات المميزة بنجمة" },
+  "folder_activity_today": { "message": "اليوم", "description": "المحادثات النشطة اليوم" },
+  "folder_activity_yesterday": { "message": "أمس", "description": "المحادثات النشطة أمس" },
+  "folder_activity_empty": {
+    "message": "لا توجد محادثات في المجلدات بعد",
+    "description": "حالة عرض النشاط الفارغة"
+  },
+  "folder_activity_top_level": {
+    "message": "المستوى الأعلى",
+    "description": "محادثة خارج مجلد مسمى"
+  },
   "folder_create": {
     "message": "إنشاء مجلد",
     "description": "Create folder button tooltip"
@@ -556,7 +569,7 @@
     "description": "Notion-compatible format with $$ delimiters"
   },
   "folder_filter_current_user": {
-    "message": "عزل الحساب",
+    "message": "عرض الحساب الحالي فقط",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {

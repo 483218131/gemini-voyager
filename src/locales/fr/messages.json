@@ -355,6 +355,28 @@
     "message": "Dossiers",
     "description": "Folder section title"
   },
+  "folder_activity_turn_on": {
+    "message": "Activer la vue Activité",
+    "description": "Activer la vue Activité"
+  },
+  "folder_activity_turn_off": {
+    "message": "Désactiver la vue Activité",
+    "description": "Désactiver la vue Activité"
+  },
+  "folder_activity_priority": { "message": "Priorité", "description": "Conversations favorites" },
+  "folder_activity_today": {
+    "message": "Aujourd’hui",
+    "description": "Conversations actives aujourd’hui"
+  },
+  "folder_activity_yesterday": { "message": "Hier", "description": "Conversations actives hier" },
+  "folder_activity_empty": {
+    "message": "Aucune conversation dans les dossiers",
+    "description": "État vide de la vue Activité"
+  },
+  "folder_activity_top_level": {
+    "message": "Niveau supérieur",
+    "description": "Conversation hors d’un dossier nommé"
+  },
   "folder_create": {
     "message": "Créer un dossier",
     "description": "Create folder button tooltip"
@@ -556,7 +578,7 @@
     "description": "Notion-compatible format with $$ delimiters"
   },
   "folder_filter_current_user": {
-    "message": "Isolation de compte",
+    "message": "Afficher uniquement le compte actuel",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {

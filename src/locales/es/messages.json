@@ -355,6 +355,28 @@
     "message": "Carpetas",
     "description": "Folder section title"
   },
+  "folder_activity_turn_on": {
+    "message": "Activar vista de actividad",
+    "description": "Activar la vista de actividad"
+  },
+  "folder_activity_turn_off": {
+    "message": "Desactivar vista de actividad",
+    "description": "Desactivar la vista de actividad"
+  },
+  "folder_activity_priority": {
+    "message": "Prioridad",
+    "description": "Conversaciones destacadas"
+  },
+  "folder_activity_today": { "message": "Hoy", "description": "Conversaciones activas hoy" },
+  "folder_activity_yesterday": { "message": "Ayer", "description": "Conversaciones activas ayer" },
+  "folder_activity_empty": {
+    "message": "Aún no hay conversaciones en carpetas",
+    "description": "Estado vacío de actividad"
+  },
+  "folder_activity_top_level": {
+    "message": "Nivel superior",
+    "description": "Conversación fuera de una carpeta con nombre"
+  },
   "folder_create": {
     "message": "Crear carpeta",
     "description": "Create folder button tooltip"
@@ -556,7 +578,7 @@
     "description": "Notion-compatible format with $$ delimiters"
   },
   "folder_filter_current_user": {
-    "message": "Aislamiento de cuenta",
+    "message": "Mostrar solo la cuenta actual",
     "description": "Show only conversations from the current Google account"
   },
   "folder_export": {
