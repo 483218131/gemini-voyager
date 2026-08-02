@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { removeWatermark } from '../blendModes';
 import {
   assessDifficultWatermarkRemovalCandidate,
+  assessGradientDominantWatermarkRemovalCandidate,
   getWatermarkSignalStrength,
   hasAcceptableWatermarkRemovalEvidence,
+  hasGradientDominantResidualWatermarkEdges,
   hasReliableWatermarkSignal,
   measureSevereUndershootRatio,
   measureWatermarkSignal,
@@ -170,6 +172,93 @@ function expectWatermarkAreaNearBase(imageData: ImageData, config: WatermarkConf
 }
 
 describe('watermarkEngine config detection', () => {
+  it.each([
+    {
+      name: 'trusted candidate whose spatial score flips after removal',
+      originalSignal: { spatialScore: 0.402646, gradientScore: 0.646512 },
+      finalSignal: { spatialScore: -0.333374, gradientScore: 0.052116 },
+    },
+    {
+      name: 'weak spatial match with a clear gradient template',
+      originalSignal: { spatialScore: 0.141456, gradientScore: 0.658035 },
+      finalSignal: { spatialScore: -0.266561, gradientScore: 0.088186 },
+    },
+    {
+      name: 'near-zero spatial match with a clear gradient template',
+      originalSignal: { spatialScore: 0.024622, gradientScore: 0.53655 },
+      finalSignal: { spatialScore: -0.366779, gradientScore: 0.205204 },
+    },
+  ])('accepts a safe gradient-dominant sample when $name', ({ originalSignal, finalSignal }) => {
+    const assessment = assessGradientDominantWatermarkRemovalCandidate(
+      originalSignal,
+      finalSignal,
+      0,
+    );
+
+    expect(assessment.eligible).toBe(true);
+    expect(assessment.gradientSuppression).toBeGreaterThan(0.25);
+    expect(assessment.gradientSuppressionRatio).toBeGreaterThan(0.5);
+  });
+
+  it.each([
+    {
+      name: 'the original spatial score is not positive',
+      originalSignal: { spatialScore: 0, gradientScore: 0.7 },
+      finalSignal: { spatialScore: -0.2, gradientScore: 0.1 },
+      severeUndershootRatio: 0,
+    },
+    {
+      name: 'the gradient suppression is too small',
+      originalSignal: { spatialScore: 0.1, gradientScore: 0.7 },
+      finalSignal: { spatialScore: -0.2, gradientScore: 0.5 },
+      severeUndershootRatio: 0,
+    },
+    {
+      name: 'the gradient suppression equals both strict minimums',
+      originalSignal: { spatialScore: 0.1, gradientScore: 0.5 },
+      finalSignal: { spatialScore: -0.2, gradientScore: 0.25 },
+      severeUndershootRatio: 0,
+    },
+    {
+      name: 'the output would still enter the same fallback',
+      originalSignal: { spatialScore: 0.1, gradientScore: 0.8 },
+      finalSignal: { spatialScore: 0.05, gradientScore: 0.46 },
+      severeUndershootRatio: 0,
+    },
+    {
+      name: 'the reverse-alpha trial has severe undershoot',
+      originalSignal: { spatialScore: 0.1, gradientScore: 0.8 },
+      finalSignal: { spatialScore: -0.2, gradientScore: 0.1 },
+      severeUndershootRatio: 0.1,
+    },
+  ])(
+    'rejects a gradient-dominant sample when $name',
+    ({ originalSignal, finalSignal, severeUndershootRatio }) => {
+      expect(
+        assessGradientDominantWatermarkRemovalCandidate(
+          originalSignal,
+          finalSignal,
+          severeUndershootRatio,
+        ).eligible,
+      ).toBe(false);
+    },
+  );
+
+  it('softens only visible gradient-dominant residual edges', () => {
+    expect(
+      hasGradientDominantResidualWatermarkEdges({
+        spatialScore: -0.333374,
+        gradientScore: 0.052116,
+      }),
+    ).toBe(false);
+    expect(
+      hasGradientDominantResidualWatermarkEdges({
+        spatialScore: -0.266561,
+        gradientScore: 0.088186,
+      }),
+    ).toBe(true);
+  });
+
   it('accepts a difficult match only when both signals improve and removal stays safe', () => {
     const assessment = assessDifficultWatermarkRemovalCandidate(
       { spatialScore: 0.25, gradientScore: 0.2 },

@@ -18,8 +18,10 @@ import BG_96_20260520_IMPORT from './assets/bg_96_20260520.png';
 import { type WatermarkPosition, removeWatermark } from './blendModes';
 import {
   assessDifficultWatermarkRemovalCandidate,
+  assessGradientDominantWatermarkRemovalCandidate,
   assessWatermarkRemovalCandidate,
   getWatermarkSignalStrength,
+  hasGradientDominantResidualWatermarkEdges,
   hasReliableWatermarkSignal,
   hasResidualWatermarkEdges,
   measureSevereUndershootRatio,
@@ -332,6 +334,66 @@ export function chooseDifficultWatermarkAnchorOption(
   return best?.option;
 }
 
+export function chooseGradientDominantWatermarkAnchorOption(
+  imageData: ImageData,
+  options: WatermarkAnchorOption[],
+): WatermarkAnchorOption | undefined {
+  let best:
+    | {
+        option: WatermarkAnchorOption;
+        gradientSuppression: number;
+      }
+    | undefined;
+
+  for (const option of options) {
+    if (option.config.alphaVariant !== '20260520') continue;
+
+    const position = calculateWatermarkPosition(imageData.width, imageData.height, option.config);
+    if (!isWatermarkPositionInBounds(imageData, position)) continue;
+
+    const originalSignal = measureWatermarkSignal(imageData, option.alphaMap, position);
+    const severeUndershootRatio = measureSevereUndershootRatio(
+      imageData,
+      option.alphaMap,
+      position,
+    );
+    const snapshot = snapshotWatermarkRegion(imageData, position);
+    let finalSignal: ReturnType<typeof measureWatermarkSignal>;
+
+    try {
+      removeWatermark(imageData, option.alphaMap, position);
+      finalSignal = measureWatermarkSignal(imageData, option.alphaMap, position);
+    } finally {
+      restoreWatermarkRegion(imageData, position, snapshot);
+    }
+
+    const assessment = assessGradientDominantWatermarkRemovalCandidate(
+      originalSignal,
+      finalSignal,
+      severeUndershootRatio,
+    );
+    if (!assessment.eligible) continue;
+    if (!best || assessment.gradientSuppression > best.gradientSuppression) {
+      best = {
+        option,
+        gradientSuppression: assessment.gradientSuppression,
+      };
+    }
+  }
+
+  return best?.option;
+}
+
+function applySingleWatermarkRemoval(imageData: ImageData, option: WatermarkAnchorOption): void {
+  const position = calculateWatermarkPosition(imageData.width, imageData.height, option.config);
+  removeWatermark(imageData, option.alphaMap, position);
+
+  const finalSignal = measureWatermarkSignal(imageData, option.alphaMap, position);
+  if (hasGradientDominantResidualWatermarkEdges(finalSignal)) {
+    softenWatermarkResidual(imageData, option.alphaMap, position);
+  }
+}
+
 export function removeWatermarkFromAnchorOptions(
   imageData: ImageData,
   anchorOptions: WatermarkAnchorOption[],
@@ -345,10 +407,25 @@ export function removeWatermarkFromAnchorOptions(
   const trustedSignal = measureWatermarkSignal(imageData, trustedOption.alphaMap, trustedPosition);
 
   if (hasReliableWatermarkSignal(trustedSignal)) {
-    // Keep the established trusted path unchanged. Gemini can stack multiple
-    // transparent marks after iterative edits, so this path may remove more
-    // than one layer and retains its existing safety rollback.
-    removeWatermarkWithResidualCheck(imageData, trustedOption.alphaMap, trustedPosition);
+    // Keep the established trusted path unchanged. This preserves compatibility
+    // with reported repeated-layer cases after iterative edits and retains the
+    // existing per-pass safety rollback.
+    const passes = removeWatermarkWithResidualCheck(
+      imageData,
+      trustedOption.alphaMap,
+      trustedPosition,
+    );
+    if (passes > 0) return;
+
+    // A trusted spatial match can still roll back when the background turns
+    // the reconstructed watermark shape negative. Reassess only that same
+    // exact V2 anchor so another preset cannot take over after the rollback.
+    const gradientDominantOption = chooseGradientDominantWatermarkAnchorOption(imageData, [
+      trustedOption,
+    ]);
+    if (gradientDominantOption) {
+      applySingleWatermarkRemoval(imageData, gradientDominantOption);
+    }
     return;
   }
 
@@ -356,14 +433,26 @@ export function removeWatermarkFromAnchorOptions(
   // Each difficult candidate is trialed against, and restored to, the same
   // original pixels before the strongest safe suppression is applied once.
   const difficultOption = chooseDifficultWatermarkAnchorOption(imageData, anchorOptions);
-  if (!difficultOption) return;
+  if (difficultOption) {
+    const difficultPosition = calculateWatermarkPosition(
+      imageData.width,
+      imageData.height,
+      difficultOption.config,
+    );
+    removeWatermark(imageData, difficultOption.alphaMap, difficultPosition);
+    return;
+  }
 
-  const difficultPosition = calculateWatermarkPosition(
-    imageData.width,
-    imageData.height,
-    difficultOption.config,
+  // The May 2026 V2 watermark can remain strongly visible in edge space even
+  // when the image content washes out luminance correlation. Keep this path
+  // exact-anchor and one-shot so its own output cannot be reverse-blended again.
+  const gradientDominantOption = chooseGradientDominantWatermarkAnchorOption(
+    imageData,
+    anchorOptions,
   );
-  removeWatermark(imageData, difficultOption.alphaMap, difficultPosition);
+  if (gradientDominantOption) {
+    applySingleWatermarkRemoval(imageData, gradientDominantOption);
+  }
 }
 
 function createGaussianKernel(radius: number, sigma: number): Float32Array {
