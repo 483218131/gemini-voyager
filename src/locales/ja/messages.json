@@ -99,14 +99,6 @@
     "message": "検索をクリア",
     "description": "Popup settings search clear button label"
   },
-  "popupSettingsSearchHistory": {
-    "message": "最近の検索",
-    "description": "Popup settings search history list label"
-  },
-  "popupSettingsSearchHistoryRemove": {
-    "message": "検索履歴から削除",
-    "description": "Button label for deleting one popup settings search history entry"
-  },
   "popupSettingsSearchNoResults": {
     "message": "一致する設定がありません",
     "description": "Popup settings search empty state"
