@@ -518,6 +518,8 @@ html.dark .timeline-dot:not(.active):not(.starred)::after,
 }
 
 .gemini-timeline-bar.timeline-style-compact .timeline-dot::after {
+  right: 50%;
+  left: auto;
   width: 12px;
   height: 3px;
   border-radius: 1px;
@@ -526,7 +528,14 @@ html.dark .timeline-dot:not(.active):not(.starred)::after,
   box-shadow: none;
   filter: none;
   opacity: 0.72;
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
+}
+
+/* Share the ruler's inward edge anchor. On a left-side rail this moves the
+ * compact signal right; dragging the rail across the viewport mirrors it. */
+.gemini-timeline-bar.timeline-style-compact.gv-timeline-ruler-inward-right .timeline-dot::after {
+  right: auto;
+  left: 50%;
 }
 
 .gemini-timeline-bar.timeline-style-compact .timeline-dot.active::after {
