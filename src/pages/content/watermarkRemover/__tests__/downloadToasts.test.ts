@@ -111,7 +111,9 @@ describe('watermarkRemover download toasts', () => {
 
     const toasts = [...document.querySelectorAll('.gv-status-toast')];
     expect(toasts).toHaveLength(1);
-    expect(toasts[0].textContent).toBe('Google 返回的原图已损坏，下载文件可能模糊或缺失内容');
+    expect(toasts[0].textContent).toBe(
+      'Google 返回的原图已损坏（并非 Voyager 导致）；下载结果可能模糊或内容缺失',
+    );
     expect(toasts[0].classList.contains('gv-status-toast--warning')).toBe(true);
   });
 });

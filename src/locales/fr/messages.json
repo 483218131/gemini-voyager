@@ -1668,7 +1668,7 @@
     "description": "Status prefix when download fails"
   },
   "googleImageCorrupted": {
-    "message": "L’image originale renvoyée par Google est endommagée ; le fichier téléchargé peut être flou ou incomplet.",
+    "message": "L’image originale renvoyée par Google est endommagée (ce n’est pas dû à Voyager) ; le fichier téléchargé peut être flou ou incomplet.",
     "description": "Avertissement affiché lorsque l’image téléchargée par Google ne correspond pas à l’aperçu"
   },
   "gemsHide": {

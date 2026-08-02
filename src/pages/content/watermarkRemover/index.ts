@@ -37,7 +37,7 @@ const previewFingerprintsByImage = new WeakMap<
   HTMLImageElement,
   { sourceSrc: string; fingerprint: ImageHealthFingerprint }
 >();
-const previewFingerprintsByIntent = new Map<string, ImageHealthFingerprint>();
+const previewFingerprintsByIntent = new Map<string, Promise<ImageHealthFingerprint | null>>();
 let lifecycleGeneration = 0;
 let downloadRemovalEnabled = false;
 let previewRemovalEnabled = false;
@@ -151,7 +151,9 @@ const findPreviewImageForDownloadButton = (button: HTMLButtonElement): HTMLImage
   );
 };
 
-const capturePreviewFingerprint = (button: HTMLButtonElement): ImageHealthFingerprint | null => {
+const capturePreviewFingerprint = async (
+  button: HTMLButtonElement,
+): Promise<ImageHealthFingerprint | null> => {
   const image = findPreviewImageForDownloadButton(button);
   if (!image) return null;
   const cached = previewFingerprintsByImage.get(image);
@@ -163,8 +165,32 @@ const capturePreviewFingerprint = (button: HTMLButtonElement): ImageHealthFinger
   if (cached && (isCurrentSource || isProcessedFromCachedSource)) return cached.fingerprint;
 
   const fingerprint = captureImageFingerprint(image);
-  if (fingerprint) previewFingerprintsByImage.set(image, { sourceSrc: image.src, fingerprint });
-  return fingerprint;
+  if (fingerprint) {
+    previewFingerprintsByImage.set(image, { sourceSrc: image.src, fingerprint });
+    return fingerprint;
+  }
+
+  // Gemini preview images normally come from googleusercontent.com without a
+  // crossorigin attribute. Drawing those DOM images taints the canvas, so
+  // pixel readback above fails even though the image is visibly loaded. Reuse
+  // the extension-runtime fetch path to obtain an origin-clean copy while the
+  // native download intent remains synchronous.
+  const sourceSrc = image.src;
+  if (!/^https?:/i.test(sourceSrc)) return null;
+  try {
+    const cleanImage = await fetchImageViaBackground(sourceSrc);
+    const fetchedFingerprint = captureImageFingerprint(cleanImage);
+    if (fetchedFingerprint && image.src === sourceSrc) {
+      previewFingerprintsByImage.set(image, {
+        sourceSrc,
+        fingerprint: fetchedFingerprint,
+      });
+    }
+    return fetchedFingerprint;
+  } catch (error) {
+    console.warn('[Gemini Voyager] Failed to capture preview fingerprint:', error);
+    return null;
+  }
 };
 
 /**
@@ -462,11 +488,13 @@ async function inspectImageRequest(
   bridge: HTMLElement,
 ): Promise<void> {
   if (!intentToken) return;
-  const previewFingerprint = previewFingerprintsByIntent.get(intentToken);
+  const previewFingerprintPromise = previewFingerprintsByIntent.get(intentToken);
   previewFingerprintsByIntent.delete(intentToken);
-  if (!previewFingerprint) return;
+  if (!previewFingerprintPromise) return;
 
   try {
+    const previewFingerprint = await previewFingerprintPromise;
+    if (!previewFingerprint) return;
     const image = await loadBridgeImage(base64);
     const downloadFingerprint = captureImageFingerprint(image);
     if (!downloadFingerprint) return;
@@ -517,10 +545,11 @@ async function processImageRequest(
 
   try {
     const img = await loadBridgeImage(base64);
-    const previewFingerprint = intentToken
+    const previewFingerprintPromise = intentToken
       ? previewFingerprintsByIntent.get(intentToken)
       : undefined;
     if (intentToken) previewFingerprintsByIntent.delete(intentToken);
+    const previewFingerprint = previewFingerprintPromise ? await previewFingerprintPromise : null;
     const downloadFingerprint = previewFingerprint ? captureImageFingerprint(img) : null;
     const healthResult =
       previewFingerprint && downloadFingerprint
@@ -780,8 +809,7 @@ function beginDownloadSequence(button: HTMLButtonElement): void {
 
   const sequenceId = ++sequenceCounter;
   const token = `gv_download_${now}_${sequenceId}`;
-  const previewFingerprint = capturePreviewFingerprint(button);
-  if (previewFingerprint) previewFingerprintsByIntent.set(token, previewFingerprint);
+  previewFingerprintsByIntent.set(token, capturePreviewFingerprint(button));
   markDownloadIntent(token);
   const manager = getStatusToastManager();
   manager.setAnchorElement(button);
@@ -851,7 +879,7 @@ function setupStatusListener(): void {
   const errorPrefix = t('downloadError', '失败');
   const corruptedMessage = t(
     'googleImageCorrupted',
-    'Google 返回的原图已损坏，下载文件可能模糊或缺失内容',
+    'Google 返回的原图已损坏（并非 Voyager 导致）；下载结果可能模糊或内容缺失',
   );
 
   const finalizeSequence = (level: 'success' | 'warning' | 'error', message: string): void => {

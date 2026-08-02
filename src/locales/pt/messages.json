@@ -1663,7 +1663,7 @@
     "description": "Status prefix when download fails"
   },
   "googleImageCorrupted": {
-    "message": "A imagem original retornada pelo Google está corrompida; o download pode ficar desfocado ou incompleto.",
+    "message": "A imagem original retornada pelo Google está corrompida (não causada pelo Voyager); o download pode ficar desfocado ou incompleto.",
     "description": "Aviso exibido quando a imagem baixada do Google não corresponde à prévia"
   },
   "gemsHide": {

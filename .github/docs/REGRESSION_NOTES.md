@@ -241,7 +241,11 @@ Root cause:
 Download click intent, the MAIN-world response bridge, and status toasts were
 all started only for watermark processing. Turning removal off therefore also
 disabled read-only comparison between the clicked preview and Google's final
-image bytes.
+image bytes. The first implementation also sampled Gemini's visible
+`googleusercontent.com` `<img>` directly. Because Gemini does not set a
+`crossorigin` attribute, Canvas pixel readback was tainted and silently
+returned no preview fingerprint, causing the damaged download to be reported
+as successful.
 
 Fix:
 
@@ -250,7 +254,9 @@ two removal toggles. When removal is off, return Gemini's original Promise and
 Response objects unchanged, inspect only a clone, and warn only when a 32×32
 preview/download fingerprint has a severe mismatch. Never warn from the
 download alone: a legitimate image may intentionally contain a large flat
-region.
+region. If direct preview sampling is tainted, fetch that exact preview URL
+through the extension runtime and await its origin-clean fingerprint without
+delaying the synchronous native download intent.
 
 Regression test:
 
@@ -259,10 +265,13 @@ the disabled path preserves native Promise/Response identity while requesting
 inspection. `imageHealthDetector.test.ts` covers damaged, healthy, and
 legitimate-flat-region samples; `downloadToasts.test.ts` verifies the disabled
 path stays silent unless a corruption status arrives.
+`corruptedDownloadDetection.test.ts` reproduces a tainted Gemini preview and
+requires the extension-fetch fallback to flag the mismatched download.
 
 Commit:
 
 `fix(watermark): warn about corrupted Google downloads`
+`fix(watermark): handle tainted preview health checks`
 
 ## Mermaid must honor Gemini explicit light theme
 

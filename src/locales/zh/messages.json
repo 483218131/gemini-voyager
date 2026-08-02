@@ -1652,7 +1652,7 @@
     "description": "下载失败时的状态前缀"
   },
   "googleImageCorrupted": {
-    "message": "Google 返回的原图已损坏，下载文件可能模糊或缺失内容",
+    "message": "Google 返回的原图已损坏（并非 Voyager 导致）；下载结果可能模糊或内容缺失",
     "description": "Google 下载原图与预览不一致时显示的警告"
   },
   "gemsHide": {

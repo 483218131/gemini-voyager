@@ -1657,7 +1657,7 @@
     "description": "Status prefix when download fails"
   },
   "googleImageCorrupted": {
-    "message": "الصورة الأصلية التي أعادتها Google تالفة؛ قد يكون الملف الذي تم تنزيله ضبابيًا أو ناقصًا.",
+    "message": "الصورة الأصلية التي أعادتها Google تالفة (ولم يتسبب Voyager في ذلك)؛ قد يكون الملف الذي تم تنزيله ضبابيًا أو ناقصًا.",
     "description": "تحذير يظهر عندما لا تطابق صورة Google التي تم تنزيلها المعاينة"
   },
   "gemsHide": {

@@ -1666,7 +1666,7 @@
     "description": "Status prefix when download fails"
   },
   "googleImageCorrupted": {
-    "message": "Google returned a corrupted original image; the download may be blurred or incomplete.",
+    "message": "Google returned a corrupted original image (not caused by Voyager); the download may be blurred or incomplete.",
     "description": "Warning shown when Google's downloaded image does not match its preview"
   },
   "gemsHide": {
