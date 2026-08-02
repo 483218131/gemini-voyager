@@ -86,6 +86,40 @@ Commit:
 
 `fix(watermark): add difficult-match fallback`
 
+## Full-size V2 removal needs gradient-backed transition evidence
+
+Symptom:
+
+A subtle 96px V2 watermark on a bright diagonal background was detected at the
+correct anchor, but the visually correct reverse-alpha result was rolled back.
+
+Root cause:
+
+The reconstructed background retained mild positive spatial correlation with
+the star template, leaving spatial suppression at `0.177`, just below the
+default `0.2` reliability-transition gate even though gradient correlation
+dropped from `0.167` to `0.052` without clipping or severe undershoot.
+
+Fix:
+
+Keep the default safety gate unchanged. Only for the exact 96px May 2026 V2
+preset, accept the first transition out of reliable detection when spatial and
+gradient suppression independently exceed narrow thresholds, the absolute
+residual correlations are below the direct-match thresholds, and the trial
+introduces no new black or clipped pixels. Correlation sign is deliberately
+ignored because a clean reconstruction can cross zero. Subsequent passes still
+use the default gate.
+
+Regression test:
+
+`src/pages/content/watermarkRemover/__tests__/watermarkEngine.test.ts`
+(`accepts the reported full-size V2 reliability transition without weakening
+the default gate` and `rejects the supported transition when ...`).
+
+Commit:
+
+`fix(watermark): accept safe full-size V2 transitions`
+
 ## Dark watermark restoration must distinguish clipping from severe undershoot
 
 Symptom:
