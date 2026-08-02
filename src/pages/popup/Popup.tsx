@@ -13,7 +13,7 @@ import {
   type DiagnosticPluginInput,
   diagnosticPluginSourceFromId,
 } from '@/core/services/DiagnosticsExportService';
-import { StorageKeys, type TimelineStyle } from '@/core/types/common';
+import { StorageKeys, type TimelineStyle, isTimelineStyle } from '@/core/types/common';
 import type { ConversationReference, Folder } from '@/core/types/folder';
 import {
   getModifierKey,
@@ -228,6 +228,7 @@ const POPUP_SETTINGS_SEARCH_ITEMS = [
   popupSearchTarget('timeline', 'timelineStyle', [
     'timelineStyle',
     'timelineStyleDots',
+    'timelineStyleRuler',
     'timelineStyleCompact',
   ]),
   popupSearchTarget('timeline', 'scrollMode', ['scrollMode', 'flow', 'jump']),
@@ -1953,7 +1954,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
           const m = res?.geminiTimelineScrollMode as ScrollMode;
           if (m === 'jump' || m === 'flow') setMode(m);
           const storedTimelineStyle = res?.[StorageKeys.TIMELINE_STYLE];
-          if (storedTimelineStyle === 'dots' || storedTimelineStyle === 'compact') {
+          if (isTimelineStyle(storedTimelineStyle)) {
             setTimelineStyle(storedTimelineStyle);
           }
           const format = res?.gvFormulaCopyFormat as
@@ -2833,13 +2834,20 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
             <CardContent className="space-y-4 p-0">
               <div hidden={!shouldShowSetting('timeline', 'timelineStyle')}>
                 <Label className="mb-2 block text-sm font-medium">{t('timelineStyle')}</Label>
-                <div className="bg-secondary/60 relative grid grid-cols-2 gap-1 rounded-xl p-1">
+                <div className="bg-secondary/60 relative grid grid-cols-3 gap-1 rounded-xl p-1">
                   <div
-                    className="bg-primary pointer-events-none absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out"
-                    style={{ left: timelineStyle === 'dots' ? '4px' : 'calc(50% + 2px)' }}
+                    className="bg-primary pointer-events-none absolute top-1 bottom-1 w-[calc(33.333%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out"
+                    style={{
+                      left:
+                        timelineStyle === 'dots'
+                          ? '4px'
+                          : timelineStyle === 'ruler'
+                            ? 'calc(33.333% + 2px)'
+                            : '66.666%',
+                    }}
                   />
                   <button
-                    className={`relative z-10 rounded-lg px-3 py-2 text-sm font-bold transition-all duration-200 ${
+                    className={`relative z-10 rounded-lg px-2 py-2 text-sm font-bold transition-all duration-200 ${
                       timelineStyle === 'dots'
                         ? 'text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground'
@@ -2852,7 +2860,20 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
                     {t('timelineStyleDots')}
                   </button>
                   <button
-                    className={`relative z-10 rounded-lg px-3 py-2 text-sm font-bold transition-all duration-200 ${
+                    className={`relative z-10 rounded-lg px-2 py-2 text-sm font-bold transition-all duration-200 ${
+                      timelineStyle === 'ruler'
+                        ? 'text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    onClick={() => {
+                      setTimelineStyle('ruler');
+                      apply({ timelineStyle: 'ruler' });
+                    }}
+                  >
+                    {t('timelineStyleRuler')}
+                  </button>
+                  <button
+                    className={`relative z-10 rounded-lg px-2 py-2 text-sm font-bold transition-all duration-200 ${
                       timelineStyle === 'compact'
                         ? 'text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground'

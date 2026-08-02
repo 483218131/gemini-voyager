@@ -28,7 +28,12 @@ export type Brand<K, T> = K & { __brand: T };
 export type ConversationId = Brand<string, 'ConversationId'>;
 export type FolderId = Brand<string, 'FolderId'>;
 export type TurnId = Brand<string, 'TurnId'>;
-export type TimelineStyle = 'dots' | 'compact';
+export const TIMELINE_STYLES = ['dots', 'ruler', 'compact'] as const;
+export type TimelineStyle = (typeof TIMELINE_STYLES)[number];
+
+export function isTimelineStyle(value: unknown): value is TimelineStyle {
+  return TIMELINE_STYLES.includes(value as TimelineStyle);
+}
 
 /**
  * Storage keys - centralized for type safety
