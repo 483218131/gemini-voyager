@@ -367,6 +367,11 @@ export const NON_SETTINGS_BACKUP_POLICIES = {
     disposition: 'device-local',
     reason: 'Popup scroll position is specific to this device and viewport.',
   },
+  [StorageKeys.GV_POPUP_SETTINGS_SEARCH_HISTORY]: {
+    storage: 'local',
+    disposition: 'device-local',
+    reason: 'Settings search history remains on the device where it was entered.',
+  },
   [StorageKeys.FOLDER_PROJECT_PENDING_FOLDER_ID]: {
     storage: 'local',
     disposition: 'transient',

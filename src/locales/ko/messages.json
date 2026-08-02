@@ -99,6 +99,14 @@
     "message": "검색 지우기",
     "description": "Popup settings search clear button label"
   },
+  "popupSettingsSearchHistory": {
+    "message": "최근 검색",
+    "description": "Popup settings search history list label"
+  },
+  "popupSettingsSearchHistoryRemove": {
+    "message": "검색 기록에서 삭제",
+    "description": "Button label for deleting one popup settings search history entry"
+  },
   "popupSettingsSearchNoResults": {
     "message": "일치하는 설정이 없습니다",
     "description": "Popup settings search empty state"

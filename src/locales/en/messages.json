@@ -99,6 +99,14 @@
     "message": "Clear search",
     "description": "Popup settings search clear button label"
   },
+  "popupSettingsSearchHistory": {
+    "message": "Recent searches",
+    "description": "Popup settings search history list label"
+  },
+  "popupSettingsSearchHistoryRemove": {
+    "message": "Remove from search history",
+    "description": "Button label for deleting one popup settings search history entry"
+  },
   "popupSettingsSearchNoResults": {
     "message": "No settings match your search",
     "description": "Popup settings search empty state"

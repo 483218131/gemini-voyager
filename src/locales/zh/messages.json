@@ -99,6 +99,14 @@
     "message": "清除搜索",
     "description": "Popup 设置搜索清除按钮标签"
   },
+  "popupSettingsSearchHistory": {
+    "message": "最近搜索",
+    "description": "Popup settings search history list label"
+  },
+  "popupSettingsSearchHistoryRemove": {
+    "message": "从搜索记录中删除",
+    "description": "Button label for deleting one popup settings search history entry"
+  },
   "popupSettingsSearchNoResults": {
     "message": "没有匹配的设置",
     "description": "Popup 设置搜索无结果状态"

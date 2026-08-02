@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Download, Search, Upload, X } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import browser from 'webextension-polyfill';
 
 import { CLOUD_SYNC_PATH, CLOUD_UPLOAD_PATH } from '@/core/icons/cloudSyncPaths';
@@ -76,6 +76,7 @@ import { ContextSyncSettings } from './components/ContextSyncSettings';
 import { DiagnosticsExportCard } from './components/DiagnosticsExportCard';
 import { KeyboardShortcutSettings } from './components/KeyboardShortcutSettings';
 import { PluginManager } from './components/PluginManager';
+import { SettingsSearchBox } from './components/SettingsSearchBox';
 import { StarredHistory } from './components/StarredHistory';
 import { StorageManager } from './components/StorageManager';
 import { StorageQuotaCard } from './components/StorageQuotaCard';
@@ -2642,30 +2643,8 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
 
       <div className="flex flex-col gap-4 p-5">
         {!isPluginSite && (
-          <div style={{ order: -3 }} className="relative">
-            <Search
-              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              value={settingsSearchQuery}
-              onChange={(e) => setSettingsSearchQuery(e.target.value)}
-              placeholder={t('popupSettingsSearchPlaceholder')}
-              aria-label={t('popupSettingsSearchPlaceholder')}
-              className="bg-card border-border focus:ring-primary/40 w-full rounded-lg border py-2 pr-9 pl-9 text-sm shadow-sm transition-all outline-none focus:ring-2"
-            />
-            {settingsSearchQuery && (
-              <button
-                type="button"
-                onClick={() => setSettingsSearchQuery('')}
-                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
-                aria-label={t('popupSettingsSearchClear')}
-                title={t('popupSettingsSearchClear')}
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            )}
+          <div style={{ order: -3 }}>
+            <SettingsSearchBox value={settingsSearchQuery} onChange={setSettingsSearchQuery} />
           </div>
         )}
         {!isPluginSite && hasSettingsSearch && displayedSections.length === 0 && (

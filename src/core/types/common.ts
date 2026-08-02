@@ -280,6 +280,9 @@ export const StorageKeys = {
   GV_POPUP_SECTION_ORDER: 'gvPopupSectionOrder',
   // Device-local vertical position for the popup's full main settings view.
   GV_POPUP_SCROLL_TOP: 'gvPopupScrollTop',
+  // Device-local, user-managed settings search history. Entries persist until
+  // the user removes them from the popup search suggestions.
+  GV_POPUP_SETTINGS_SEARCH_HISTORY: 'gvPopupSettingsSearchHistory',
 
   // Context sync
   CONTEXT_SYNC_ENABLED: 'contextSyncEnabled',
