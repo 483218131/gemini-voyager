@@ -21,9 +21,6 @@ const MIN_SUPPRESSION_GAIN = 0.25;
 const MIN_RELIABILITY_TRANSITION_GAIN = 0.2;
 const MIN_RELIABILITY_TRANSITION_RATIO = 0.4;
 const MIN_DIFFICULT_SUPPRESSION = 0.08;
-const MIN_GRADIENT_DOMINANT_SUPPRESSION = 0.25;
-const MIN_GRADIENT_DOMINANT_SUPPRESSION_RATIO = 0.5;
-const MIN_GRADIENT_DOMINANT_CLEANUP_SCORE = 0.08;
 const NEAR_BLACK_THRESHOLD = 5;
 const MAX_NEAR_BLACK_INCREASE = 0.05;
 const CLIP_ORIGINAL_THRESHOLD = 5;
@@ -55,13 +52,6 @@ export interface DifficultWatermarkRemovalAssessment {
   originalStrength: number;
   finalResidualStrength: number;
   suppression: number;
-  severeUndershootRatio: number;
-}
-
-export interface GradientDominantWatermarkRemovalAssessment {
-  eligible: boolean;
-  gradientSuppression: number;
-  gradientSuppressionRatio: number;
   severeUndershootRatio: number;
 }
 
@@ -183,35 +173,6 @@ export function getWatermarkSignalStrength(signal: WatermarkSignal): number {
   return Math.max(0, signal.spatialScore) * 0.5 + Math.max(0, signal.gradientScore) * 0.3;
 }
 
-function hasGradientDominantWatermarkSignal(signal: WatermarkSignal): boolean {
-  return signal.spatialScore > 0 && signal.gradientScore >= STRONG_GRADIENT_MIN_GRADIENT_SCORE;
-}
-
-export function assessGradientDominantWatermarkRemovalCandidate(
-  originalSignal: WatermarkSignal,
-  finalSignal: WatermarkSignal,
-  severeUndershootRatio: number,
-): GradientDominantWatermarkRemovalAssessment {
-  const gradientSuppression = originalSignal.gradientScore - finalSignal.gradientScore;
-  const gradientSuppressionRatio =
-    originalSignal.gradientScore > EPSILON ? gradientSuppression / originalSignal.gradientScore : 0;
-  const outputNoLongerMatches =
-    !hasReliableWatermarkSignal(finalSignal) && !hasGradientDominantWatermarkSignal(finalSignal);
-  const eligible =
-    hasGradientDominantWatermarkSignal(originalSignal) &&
-    gradientSuppression > MIN_GRADIENT_DOMINANT_SUPPRESSION &&
-    gradientSuppressionRatio > MIN_GRADIENT_DOMINANT_SUPPRESSION_RATIO &&
-    outputNoLongerMatches &&
-    severeUndershootRatio < MAX_SEVERE_UNDERSHOOT_RATIO;
-
-  return {
-    eligible,
-    gradientSuppression,
-    gradientSuppressionRatio,
-    severeUndershootRatio,
-  };
-}
-
 export function assessDifficultWatermarkRemovalCandidate(
   originalSignal: WatermarkSignal,
   finalSignal: WatermarkSignal,
@@ -240,13 +201,6 @@ export function assessDifficultWatermarkRemovalCandidate(
 
 export function hasResidualWatermarkEdges(signal: WatermarkSignal): boolean {
   return !hasReliableWatermarkSignal(signal) && signal.gradientScore > MAX_RESIDUAL_GRADIENT_SCORE;
-}
-
-export function hasGradientDominantResidualWatermarkEdges(signal: WatermarkSignal): boolean {
-  return (
-    !hasReliableWatermarkSignal(signal) &&
-    signal.gradientScore > MIN_GRADIENT_DOMINANT_CLEANUP_SCORE
-  );
 }
 
 export function hasAcceptableWatermarkRemovalEvidence(

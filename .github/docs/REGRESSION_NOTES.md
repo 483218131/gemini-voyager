@@ -86,40 +86,6 @@ Commit:
 
 `fix(watermark): add difficult-match fallback`
 
-## Gradient-dominant V2 watermarks need an idempotent exact-anchor fallback
-
-Symptom:
-
-Some 1200×896 Gemini images kept the 48px V2 watermark even though reverse
-alpha removal visibly cleared it without clipping or severe undershoot.
-
-Root cause:
-
-Image content could weaken the watermark's spatial correlation or make it
-negative after correct reconstruction. Both the trusted rollback and the
-difficult-match path treated that spatial change as rejection evidence even
-when the exact V2 anchor's gradient correlation fell sharply.
-
-Fix:
-
-After the existing trusted and difficult paths decline a candidate, trial only
-the exact May 2026 V2 anchors. Accept one reverse-alpha pass only when the input
-has positive spatial correlation and strong gradient correlation, the trial
-reduces gradient correlation by more than `0.25` and more than half, the output
-cannot enter the same fallback again, and severe undershoot stays below `0.1`.
-After a trusted rollback, reassess only that same anchor. Apply localized edge
-softening only when the accepted output retains measurable template edges.
-
-Regression test:
-
-`src/pages/content/watermarkRemover/__tests__/watermarkEngine.test.ts`
-(`accepts a safe gradient-dominant sample`, `rejects a gradient-dominant
-sample`, and `softens only visible gradient-dominant residual edges`).
-
-Commit:
-
-`fix(watermark): handle gradient-dominant samples`
-
 ## Dark watermark restoration must distinguish clipping from severe undershoot
 
 Symptom:
