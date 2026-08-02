@@ -227,6 +227,43 @@ Commit:
 
 `fix(watermark): show indicators while engine loads`
 
+## Native download health checks must not depend on watermark removal
+
+Symptom:
+
+Gemini could show a sharp generated-image preview but return a blurred or
+partially blank full-size PNG from its native download endpoint. With watermark
+removal disabled, Voyager passed the response through correctly but could not
+warn the user that Google's file itself was damaged.
+
+Root cause:
+
+Download click intent, the MAIN-world response bridge, and status toasts were
+all started only for watermark processing. Turning removal off therefore also
+disabled read-only comparison between the clicked preview and Google's final
+image bytes.
+
+Fix:
+
+Keep lightweight click intent and bridge listeners active independently of the
+two removal toggles. When removal is off, return Gemini's original Promise and
+Response objects unchanged, inspect only a clone, and warn only when a 32×32
+preview/download fingerprint has a severe mismatch. Never warn from the
+download alone: a legitimate image may intentionally contain a large flat
+region.
+
+Regression test:
+
+`src/pages/content/watermarkRemover/__tests__/fetchInterceptor.test.ts` verifies
+the disabled path preserves native Promise/Response identity while requesting
+inspection. `imageHealthDetector.test.ts` covers damaged, healthy, and
+legitimate-flat-region samples; `downloadToasts.test.ts` verifies the disabled
+path stays silent unless a corruption status arrives.
+
+Commit:
+
+`fix(watermark): warn about corrupted Google downloads`
+
 ## Mermaid must honor Gemini explicit light theme
 
 Symptom:

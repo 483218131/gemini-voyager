@@ -1653,6 +1653,10 @@
     "message": "실패",
     "description": "Status prefix when download fails"
   },
+  "googleImageCorrupted": {
+    "message": "Google에서 반환한 원본 이미지가 손상되었습니다. 다운로드한 이미지가 흐리거나 일부 내용이 누락될 수 있습니다",
+    "description": "Google 다운로드 이미지가 미리보기와 일치하지 않을 때 표시되는 경고"
+  },
   "gemsHide": {
     "message": "Gem 숨기기",
     "description": "Tooltip for hiding Gems list section"

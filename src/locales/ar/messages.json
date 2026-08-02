@@ -1656,6 +1656,10 @@
     "message": "فشل",
     "description": "Status prefix when download fails"
   },
+  "googleImageCorrupted": {
+    "message": "الصورة الأصلية التي أعادتها Google تالفة؛ قد يكون الملف الذي تم تنزيله ضبابيًا أو ناقصًا.",
+    "description": "تحذير يظهر عندما لا تطابق صورة Google التي تم تنزيلها المعاينة"
+  },
   "gemsHide": {
     "message": "إخفاء Gems",
     "description": "تلميح لإخفاء قسم قائمة Gems"

@@ -1659,6 +1659,10 @@
     "message": "失敗",
     "description": "Status prefix when download fails"
   },
+  "googleImageCorrupted": {
+    "message": "Google から返された元画像が破損しています。ダウンロード画像がぼやけているか、一部欠けている可能性があります",
+    "description": "Google のダウンロード画像がプレビューと一致しない場合の警告"
+  },
   "gemsHide": {
     "message": "Gems を非表示",
     "description": "Gems リストセクションを非表示にするツールチップ"

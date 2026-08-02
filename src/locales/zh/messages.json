@@ -1651,6 +1651,10 @@
     "message": "失败",
     "description": "下载失败时的状态前缀"
   },
+  "googleImageCorrupted": {
+    "message": "Google 返回的原图已损坏，下载文件可能模糊或缺失内容",
+    "description": "Google 下载原图与预览不一致时显示的警告"
+  },
   "gemsHide": {
     "message": "隐藏 Gems",
     "description": "隐藏 Gems 列表区域的提示"

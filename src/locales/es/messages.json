@@ -1662,6 +1662,10 @@
     "message": "Error",
     "description": "Status prefix when download fails"
   },
+  "googleImageCorrupted": {
+    "message": "La imagen original devuelta por Google está dañada; la descarga puede verse borrosa o incompleta.",
+    "description": "Advertencia cuando la imagen descargada de Google no coincide con la vista previa"
+  },
   "gemsHide": {
     "message": "Ocultar Gems",
     "description": "Tooltip para ocultar la sección de la lista de Gems"
