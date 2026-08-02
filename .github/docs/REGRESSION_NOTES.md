@@ -141,6 +141,36 @@ Commit:
 
 `fix(watermark): apply toggles to open Gemini tabs`
 
+## Watermark download indicators must not wait for engine assets
+
+Symptom:
+
+The 🍌 indicator appeared noticeably after Gemini's download button, even
+though clicks during that window already queued correctly for watermark
+processing.
+
+Root cause:
+
+The download bridge was installed before `WatermarkEngine.create()`, but both
+the initial indicator decoration and its DOM observer were installed only after
+the engine finished loading all watermark image assets.
+
+Fix:
+
+Decorate existing buttons and start the lightweight indicator observer before
+awaiting engine initialization. When preview removal is enabled, disconnect
+that temporary observer before the preview observer takes over so only one
+page-wide image observer remains active.
+
+Regression test:
+
+`src/pages/content/watermarkRemover/__tests__/engineRaceCondition.test.ts`
+(`shows download indicators while WatermarkEngine.create is still pending`).
+
+Commit:
+
+`fix(watermark): show indicators while engine loads`
+
 ## Mermaid must honor Gemini explicit light theme
 
 Symptom:

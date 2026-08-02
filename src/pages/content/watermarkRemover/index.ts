@@ -299,8 +299,9 @@ const setupMutationObserver = (): void => {
 };
 
 /**
- * Lighter MutationObserver used when only the download path is enabled: skips
- * the canvas pipeline, only re-decorates download buttons.
+ * Lighter MutationObserver that skips the canvas pipeline and only decorates
+ * download buttons. It also covers the engine-loading window before the full
+ * preview observer can take over.
  */
 const setupIndicatorObserver = (): void => {
   if (indicatorObserver) return;
@@ -464,6 +465,12 @@ async function configureWatermarkRemover(reconfigure: boolean): Promise<void> {
       // larger after a hard navigation like an account switch) are not lost.
       // processImageRequest waits on enginePromise if the engine isn't ready.
       setupFetchInterceptorBridge();
+
+      // The indicator is only a readiness cue; downloads already queue through
+      // the bridge while the engine assets load. Show it immediately and watch
+      // for buttons Gemini mounts during that loading window.
+      decorateDownloadButtons();
+      setupIndicatorObserver();
     }
 
     if (!enginePromise) {
@@ -474,16 +481,15 @@ async function configureWatermarkRemover(reconfigure: boolean): Promise<void> {
     engine = initializedEngine;
 
     if (previewEnabled) {
+      // The preview observer also decorates late-loading download buttons, so
+      // retire the temporary indicator-only observer before switching modes.
+      indicatorObserver?.disconnect();
+      indicatorObserver = null;
+
       // Heavy path: replace each image's src with a watermark-stripped blob.
       // The 🍌 indicator is attached as part of processImage().
       processAllImages();
       setupMutationObserver();
-    } else if (downloadEnabled) {
-      // Light path: only attach the 🍌 indicator to download buttons so users
-      // know the download will be unwatermarked, without running the canvas
-      // pipeline on every preview image.
-      decorateDownloadButtons();
-      setupIndicatorObserver();
     }
 
     console.log('[Gemini Voyager] Watermark remover ready');
