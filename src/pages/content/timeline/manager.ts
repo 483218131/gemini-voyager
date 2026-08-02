@@ -1212,14 +1212,33 @@ export class TimelineManager {
       this.previewPanel = new TimelinePreviewPanel(this.ui.timelineBar);
       this.previewPanel.init(
         (turnId, index) => {
-          const marker = this.markers[index];
+          let targetIndex = this.markers.findIndex((marker) => marker.id === turnId);
+          if (targetIndex < 0) targetIndex = index;
+
+          const markerBeforeRefresh = this.markers[targetIndex];
+          if (!markerBeforeRefresh?.element) return;
+
+          // Gemini can replace or re-parent the scroll viewport while keeping
+          // the mounted turn nodes connected. Refresh before resolving the
+          // preview target so list navigation uses the current viewport too.
+          if (this.maybeRefreshMarkersForInteraction(markerBeforeRefresh.element)) {
+            const refreshedIndex = this.markers.findIndex((marker) => marker.id === turnId);
+            if (refreshedIndex >= 0) targetIndex = refreshedIndex;
+          }
+
+          const marker = this.markers[targetIndex];
           if (!marker?.element) return;
           const fromIdx = this.getActiveIndex();
-          const dur = this.computeFlowDuration(fromIdx, index);
-          if (this.scrollMode === 'flow' && fromIdx >= 0 && index >= 0 && fromIdx !== index) {
+          const dur = this.computeFlowDuration(fromIdx, targetIndex);
+          if (
+            this.scrollMode === 'flow' &&
+            fromIdx >= 0 &&
+            targetIndex >= 0 &&
+            fromIdx !== targetIndex
+          ) {
             this.activeTurnId = null;
             this.updateActiveDotUI();
-            this.startRunner(fromIdx, index, dur);
+            this.startRunner(fromIdx, targetIndex, dur);
           }
           this.smoothScrollTo(marker.element, dur);
           this.commitActiveMarkerAfterNavigation(marker.id, dur);
@@ -4233,9 +4252,11 @@ export class TimelineManager {
   }
 
   private shouldRefreshForInteraction(targetElement: HTMLElement | null): boolean {
-    // The common click path already owns a live marker inside the current
-    // containers. Avoid a full-document selector scan plus an ancestor
-    // getComputedStyle() walk before every navigation.
+    // Avoid the document-wide marker count scan on the common path, but still
+    // validate the nearest scroll container. Gemini can insert a new viewport
+    // inside the old one while both the marker and old viewport remain
+    // connected; treating connectivity as freshness writes scrollTop to the
+    // wrong element and makes clicks and shortcuts appear inert.
     if (
       targetElement?.isConnected &&
       this.conversationContainer?.isConnected &&
@@ -4243,7 +4264,7 @@ export class TimelineManager {
       this.conversationContainer.contains(targetElement) &&
       this.scrollContainer.contains(targetElement)
     ) {
-      return false;
+      return this.getScrollContainerForElement(targetElement) !== this.scrollContainer;
     }
 
     if (this.shouldAttemptRefreshForNavigation()) return true;

@@ -26,6 +26,28 @@ Regression test:
 Commit:
 ```
 
+## Timeline navigation must validate the live scroll viewport
+
+Symptom:
+
+Timeline dots, preview-list items, and `j`/`k` shortcuts could all appear inert after Gemini rebuilt its chat viewport.
+
+Root cause:
+
+The navigation fast path treated connected marker and container nodes as current. Gemini can insert a new scroll viewport inside the old connected container, so Voyager wrote `scrollTop` to the stale ancestor.
+
+Fix:
+
+Before navigation, validate the target's nearest scroll container against the cached viewport. Rebind and recalculate markers when it changed, including preview-panel navigation.
+
+Regression test:
+
+`src/pages/content/timeline/__tests__/TimelineManagerFlowClickActiveReset.test.ts` (`refreshes connected markers when Gemini inserts a new scroll viewport` and `refreshes the scroll viewport before preview-panel navigation`) and `src/pages/content/timeline/__tests__/TimelineManagerNavigationRefresh.test.ts` (`rebinds a connected stale scroll viewport before shortcut navigation`).
+
+Commit:
+
+`fix(timeline): refresh stale scroll viewports`
+
 ## Low-confidence watermark matches require isolated trial removal
 
 Symptom:
