@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const repositoryRoot = process.cwd();
 const hostedBadgeBase = 'https://voyager.nagi.fun/badges';
+const badgeColor = '#5f8f55';
 const badgeNames = ['stars', 'forks', 'release', 'downloads'];
 const docsToolingPaths = [
   '.github/workflows/deploy-docs.yml',
@@ -56,6 +57,18 @@ describe('README badge publishing', () => {
 
     expect(generator).toContain("const repo = 'voyager';");
     expect(generator).not.toContain("const repo = 'gemini-voyager';");
+  });
+
+  it('uses the Voyager brand green for every generated badge', () => {
+    const generator = readRepositoryFile('scripts/update-readme-badges.mjs');
+
+    expect(generator).toContain(`const badgeColor = '${badgeColor}';`);
+    expect(generator).not.toContain('#2ea44f');
+
+    for (const badgeName of badgeNames) {
+      const badge = readRepositoryFile(`docs/public/badges/github-${badgeName}.svg`);
+      expect(badge).toContain(`fill="${badgeColor}"`);
+    }
   });
 
   it('routes docs tooling away from full extension and native CI', () => {
