@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const owner = 'Nagi-ovo';
-const repo = 'gemini-voyager';
+const repo = 'voyager';
 const outDirs = [new URL('../docs/public/badges/', import.meta.url)];
 const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 
 const headers = {
   Accept: 'application/vnd.github+json',
-  'User-Agent': 'gemini-voyager-readme-badges',
+  'User-Agent': 'voyager-readme-badges',
   'X-GitHub-Api-Version': '2022-11-28',
   ...(token ? { Authorization: `Bearer ${token}` } : {}),
 };
