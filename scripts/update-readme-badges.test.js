@@ -5,6 +5,16 @@ import { describe, expect, it } from 'vitest';
 const repositoryRoot = process.cwd();
 const hostedBadgeBase = 'https://voyager.nagi.fun/badges';
 const badgeNames = ['stars', 'forks', 'release', 'downloads'];
+const docsToolingPaths = [
+  '.github/workflows/deploy-docs.yml',
+  '.github/workflows/sponsors.yml',
+  'scripts/generate-sponsors.cjs',
+  'scripts/generate-sponsors.test.js',
+  'scripts/update-readme-badges.mjs',
+  'scripts/update-readme-badges.test.js',
+  'sponsorkit/**',
+];
+const readmePathsInCi = ['README.md', '.github/README_*.md'];
 const readmePaths = [
   'README.md',
   '.github/README_AR.md',
@@ -46,5 +56,31 @@ describe('README badge publishing', () => {
 
     expect(generator).toContain("const repo = 'voyager';");
     expect(generator).not.toContain("const repo = 'gemini-voyager';");
+  });
+
+  it('routes docs tooling away from full extension and native CI', () => {
+    const workflow = readRepositoryFile('.github/workflows/ci.yml');
+    const docsFilter = workflow.slice(
+      workflow.indexOf('            docs:'),
+      workflow.indexOf('            app:'),
+    );
+    const coreFilter = workflow.slice(
+      workflow.indexOf('            core:'),
+      workflow.indexOf('\n\n  # ── Prettier'),
+    );
+
+    for (const path of docsToolingPaths) {
+      expect(docsFilter).toContain(`- '${path}'`);
+      expect(coreFilter).toContain(`- '!${path}'`);
+    }
+
+    for (const path of readmePathsInCi) {
+      expect(docsFilter).toContain(`- '${path}'`);
+    }
+
+    expect(workflow).toContain(
+      'bun run test scripts/generate-sponsors.test.js scripts/update-readme-badges.test.js',
+    );
+    expect(workflow).toContain('node scripts/update-readme-badges.mjs --self-test');
   });
 });
