@@ -186,27 +186,43 @@ export class PluginScope {
     }, 'style');
   }
 
-  /** setTimeout / setInterval with automatic clearing. */
+  /**
+   * setTimeout / setInterval with automatic clearing. A one-shot timer
+   * releases its ledger slot when it fires, so debounce-style repeated
+   * scheduling never grows the ledger.
+   */
   timer(fn: () => void, ms: number, options?: { repeat?: boolean }): Dispose {
-    return this.effect(() => {
-      if (options?.repeat) {
+    if (options?.repeat) {
+      return this.effect(() => {
         const id = setInterval(fn, ms);
         return () => clearInterval(id);
-      }
-      const id = setTimeout(fn, ms);
+      }, `timer(${ms}ms)`);
+    }
+    let release: Dispose | null = null;
+    release = this.effect(() => {
+      const id = setTimeout(() => {
+        fn();
+        void release?.();
+      }, ms);
       return () => clearTimeout(id);
     }, `timer(${ms}ms)`);
+    return release;
   }
 
-  /** requestAnimationFrame (one-shot or loop) with automatic cancel. */
+  /**
+   * requestAnimationFrame (one-shot or loop) with automatic cancel. A
+   * one-shot frame releases its ledger slot after it runs.
+   */
   frame(fn: FrameRequestCallback, options?: { repeat?: boolean }): Dispose {
-    return this.effect(() => {
+    let release: Dispose | null = null;
+    release = this.effect(() => {
       let id = 0;
       let stopped = false;
       const tick: FrameRequestCallback = (time) => {
         if (stopped) return;
         fn(time);
         if (options?.repeat && !stopped) id = requestAnimationFrame(tick);
+        else if (!options?.repeat) void release?.();
       };
       id = requestAnimationFrame(tick);
       return () => {
@@ -214,6 +230,7 @@ export class PluginScope {
         cancelAnimationFrame(id);
       };
     }, 'frame');
+    return release;
   }
 
   /** Labels of currently live/pending effects, newest last. Leak inspection. */
@@ -270,20 +287,20 @@ export class PluginScope {
     entry.arrival = promise.then(
       (dispose) => {
         if (typeof dispose !== 'function') {
-          if (entry.state === EntryState.PENDING) entry.state = EntryState.DONE;
+          if (entry.state === EntryState.PENDING) this.finish(entry);
           return;
         }
         if (entry.cancelled || this.disposed) {
           // Released (or scope died) before startup finished: pay immediately.
           entry.state = EntryState.CLAIMED;
           entry.settled = this.runDisposer(entry.label, dispose);
-          return entry.settled.then(() => void (entry.state = EntryState.DONE));
+          return entry.settled.then(() => this.finish(entry));
         }
         entry.dispose = dispose;
         entry.state = EntryState.LIVE;
       },
       (error) => {
-        if (entry.state === EntryState.PENDING) entry.state = EntryState.DONE;
+        if (entry.state === EntryState.PENDING) this.finish(entry);
         logger.error('PluginScope effect failed', { label, error: String(error) });
       },
     );
@@ -307,12 +324,17 @@ export class PluginScope {
       case EntryState.LIVE: {
         const dispose = entry.dispose!;
         entry.state = EntryState.CLAIMED;
-        entry.settled = this.runDisposer(entry.label, dispose).then(
-          () => void (entry.state = EntryState.DONE),
-        );
+        entry.settled = this.runDisposer(entry.label, dispose).then(() => this.finish(entry));
         return entry.settled;
       }
     }
+  }
+
+  /** Mark an entry settled and physically drop it so the ledger stays bounded. */
+  private finish(entry: LedgerEntry): void {
+    entry.state = EntryState.DONE;
+    const index = this.ledger.indexOf(entry);
+    if (index >= 0) this.ledger.splice(index, 1);
   }
 
   private trackLooseEnd(work: Promise<void>): void {

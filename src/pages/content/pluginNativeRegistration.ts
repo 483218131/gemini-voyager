@@ -7,8 +7,7 @@
 import { startFormulaCopy, stopFormulaCopy } from '@/features/formulaCopy';
 import { NATIVE_BUILTIN_PLUGIN_IDS } from '@/features/plugins/builtin';
 import {
-  startClaudeTimeline,
-  stopClaudeTimeline,
+  activateClaudeTimeline,
   updateClaudeTimelineSettings,
 } from '@/features/plugins/builtin/claudeTimeline';
 import { activateInputVimPlugin } from '@/features/plugins/builtin/inputVim';
@@ -27,9 +26,8 @@ export const NATIVE_HANDLER_BINDINGS: Readonly<Record<string, NativeHandler>> = 
     activate: activateInputVimPlugin,
   },
   'voyager.claude-timeline': {
-    start: startClaudeTimeline,
+    activate: activateClaudeTimeline,
     updateSettings: updateClaudeTimelineSettings,
-    stop: stopClaudeTimeline,
   },
 };
 

@@ -329,6 +329,30 @@ describe('PluginScope', () => {
     });
   });
 
+  describe('ledger hygiene', () => {
+    it('a fired one-shot timer releases its ledger slot', async () => {
+      vi.useFakeTimers();
+      try {
+        scope = new PluginScope();
+        scope.timer(() => {}, 100);
+        expect(scope.getEffects()).toHaveLength(1);
+        vi.advanceTimersByTime(150);
+        await Promise.resolve();
+        expect(scope.getEffects()).toHaveLength(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('a fired one-shot frame releases its ledger slot', async () => {
+      scope = new PluginScope();
+      scope.frame(() => {});
+      expect(scope.getEffects()).toHaveLength(1);
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+      expect(scope.getEffects()).toHaveLength(0);
+    });
+  });
+
   describe('getEffects', () => {
     it('lists live effect labels for leak inspection', async () => {
       scope = new PluginScope();
