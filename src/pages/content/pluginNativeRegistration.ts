@@ -11,7 +11,7 @@ import {
   stopClaudeTimeline,
   updateClaudeTimelineSettings,
 } from '@/features/plugins/builtin/claudeTimeline';
-import { startInputVimPlugin, stopInputVimPlugin } from '@/features/plugins/builtin/inputVim';
+import { activateInputVimPlugin } from '@/features/plugins/builtin/inputVim';
 import {
   type NativeHandler,
   registerNativeHandler,
@@ -24,8 +24,7 @@ export const NATIVE_HANDLER_BINDINGS: Readonly<Record<string, NativeHandler>> = 
     stop: stopFormulaCopy,
   },
   'voyager.input-vim': {
-    start: startInputVimPlugin,
-    stop: stopInputVimPlugin,
+    activate: activateInputVimPlugin,
   },
   'voyager.claude-timeline': {
     start: startClaudeTimeline,

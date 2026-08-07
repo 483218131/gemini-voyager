@@ -4,6 +4,7 @@ import { PLUGIN_BASE_STYLE_ID, PLUGIN_HIDDEN_CLASS } from '../constants';
 import { type PluginManifest, type SiteAdapter, cssRef, semanticRef } from '../types';
 import { DeclarativeEngine } from './declarativeEngine';
 import { registerNativeHandler } from './nativeHandlers';
+import { PluginScope } from './pluginScope';
 
 function makeManifest(
   contributes: PluginManifest['contributes'],
@@ -79,6 +80,54 @@ describe('DeclarativeEngine', () => {
 
     engine.unmount('test.native');
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs a scope-based (activate) handler and disposes its scope on unmount', async () => {
+    const disposer = vi.fn();
+    const activate = vi.fn((scope: PluginScope) => {
+      scope.effect(() => disposer, 'test-effect');
+    });
+    registerNativeHandler('test.scoped', { activate });
+    const engine = new DeclarativeEngine({ doc: document });
+    const manifest = makeManifest({}, 'test.scoped');
+
+    engine.mount(manifest, { key: 'v' });
+    expect(activate).toHaveBeenCalledOnce();
+    expect(activate).toHaveBeenCalledWith(expect.any(PluginScope), { key: 'v' });
+
+    engine.unmount('test.scoped');
+    await vi.waitFor(() => expect(disposer).toHaveBeenCalledOnce());
+  });
+
+  it('an activation resolving after unmount still pays its cleanup', async () => {
+    let resolveStart!: (d: () => void) => void;
+    const cleanup = vi.fn();
+    registerNativeHandler('test.scoped-late', {
+      activate: (scope) => {
+        scope.effect(() => new Promise<() => void>((r) => (resolveStart = r)), 'late-start');
+      },
+    });
+    const engine = new DeclarativeEngine({ doc: document });
+
+    engine.mount(makeManifest({}, 'test.scoped-late'));
+    engine.unmount('test.scoped-late');
+    resolveStart(cleanup);
+
+    await vi.waitFor(() => expect(cleanup).toHaveBeenCalledOnce());
+  });
+
+  it('a throwing activation rolls back what it already registered', async () => {
+    const registered = vi.fn();
+    registerNativeHandler('test.scoped-throw', {
+      activate: (scope) => {
+        scope.effect(() => registered, 'partial');
+        throw new Error('activation boom');
+      },
+    });
+    const engine = new DeclarativeEngine({ doc: document });
+
+    engine.mount(makeManifest({}, 'test.scoped-throw'));
+    await vi.waitFor(() => expect(registered).toHaveBeenCalledOnce());
   });
 
   it('addClass is reversible', () => {

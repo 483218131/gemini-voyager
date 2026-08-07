@@ -39,6 +39,7 @@ import type {
   SiteAdapter,
 } from '../types';
 import { type NativeHandler, getNativeHandler } from './nativeHandlers';
+import { PluginScope } from './pluginScope';
 
 interface ActivePlugin {
   readonly manifest: PluginManifest;
@@ -47,6 +48,8 @@ interface ActivePlugin {
   settings: PluginSettings;
   /** First-party start/stop bound to a builtin plugin id (see nativeHandlers). */
   nativeHandler?: NativeHandler;
+  /** Side-effect ledger for a scope-based (`activate`) native handler. */
+  scope?: PluginScope;
 }
 
 /**
@@ -104,9 +107,31 @@ export class DeclarativeEngine {
     this.active.set(manifest.id, entry);
     this.injectStyles(entry);
     this.applyDomOps(entry);
-    // First-party builtin plugins (e.g. formula copy) run JS via a registered
-    // native handler, in lockstep with the declarative lifecycle.
-    entry.nativeHandler?.start?.(settings);
+    // First-party builtin plugins run JS via a registered native handler, in
+    // lockstep with the declarative lifecycle. Scope-based handlers get a
+    // fresh PluginScope per mount; a failed (sync or async) activation pays
+    // back whatever it already registered instead of leaving a half-mount.
+    if (entry.nativeHandler?.activate) {
+      const scope = new PluginScope();
+      entry.scope = scope;
+      try {
+        const result = entry.nativeHandler.activate(scope, settings);
+        if (result instanceof Promise) {
+          result.catch((error) => {
+            logger.error('Plugin activation failed', {
+              id: manifest.id,
+              error: String(error),
+            });
+            void scope.dispose();
+          });
+        }
+      } catch (error) {
+        logger.error('Plugin activation failed', { id: manifest.id, error: String(error) });
+        void scope.dispose();
+      }
+    } else {
+      entry.nativeHandler?.start?.(settings);
+    }
     this.syncObserver();
     logger.info('Plugin mounted', { id: manifest.id });
   }
@@ -126,7 +151,11 @@ export class DeclarativeEngine {
     const entry = this.active.get(id);
     if (!entry) return;
 
-    entry.nativeHandler?.stop?.();
+    // Scope disposal is async (it awaits in-flight startup and async
+    // disposers) but claim-once: firing it here and moving on is safe — no
+    // effect can double-run or leak, and a remount gets a fresh scope.
+    if (entry.scope) void entry.scope.dispose();
+    else entry.nativeHandler?.stop?.();
     entry.styleEl?.remove();
     this.releasePlugin(id);
 

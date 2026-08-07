@@ -16,13 +16,22 @@
 import { logger } from '@/core/services/LoggerService';
 
 import type { PluginSettings } from '../types';
+import type { PluginScope } from './pluginScope';
 
 export interface NativeHandler {
-  /** Run when the plugin mounts (URL matches + enabled). Should be idempotent. */
+  /**
+   * Scope-based lifecycle (preferred): runs when the plugin mounts, registers
+   * every side effect through the scope, and needs NO stop — the engine
+   * disposes the scope on unmount, which aborts `scope.signal`, awaits any
+   * in-flight startup, and pays every registered effect in reverse order.
+   * May be async. Mutually exclusive with `start`/`stop`.
+   */
+  readonly activate?: (scope: PluginScope, settings: PluginSettings) => void | Promise<void>;
+  /** Legacy: run when the plugin mounts (URL matches + enabled). Idempotent. */
   readonly start?: (settings: PluginSettings) => void;
   /** Apply changed settings without tearing down the native feature. */
   readonly updateSettings?: (settings: PluginSettings) => void;
-  /** Run when the plugin unmounts (disabled, or navigated away). */
+  /** Legacy: run when the plugin unmounts (disabled, or navigated away). */
   readonly stop?: () => void;
 }
 
