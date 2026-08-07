@@ -97,6 +97,15 @@ export class DeclarativeEngine {
     return this.active.size;
   }
 
+  /** Live side-effect ledger per scope-based plugin — debug/leak inspection. */
+  getScopeLedgers(): Record<string, readonly string[]> {
+    const ledgers: Record<string, readonly string[]> = {};
+    for (const [id, entry] of this.active) {
+      if (entry.scope) ledgers[id] = entry.scope.getEffects();
+    }
+    return ledgers;
+  }
+
   isActive(id: string): boolean {
     return this.active.has(id);
   }

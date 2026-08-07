@@ -83,6 +83,11 @@ export class PluginHost {
     return this.adapter;
   }
 
+  /** Live side-effect ledgers of scope-based plugins, keyed by plugin id. */
+  getScopeLedgers(): Record<string, readonly string[]> {
+    return this.engine?.getScopeLedgers() ?? {};
+  }
+
   async start(): Promise<void> {
     if (this.started) return;
     this.started = true;

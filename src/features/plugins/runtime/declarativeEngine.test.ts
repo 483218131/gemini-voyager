@@ -168,6 +168,21 @@ describe('DeclarativeEngine', () => {
     expect(activate).toHaveBeenCalledOnce();
   });
 
+  it('getScopeLedgers reports live effect labels per scope-based plugin', () => {
+    registerNativeHandler('test.scoped-ledger', {
+      activate: (scope: PluginScope) => {
+        scope.effect(() => () => {}, 'my-effect');
+      },
+    });
+    const engine = new DeclarativeEngine({ doc: document });
+    engine.mount(makeManifest({}, 'test.scoped-ledger'));
+
+    expect(engine.getScopeLedgers()).toEqual({ 'test.scoped-ledger': ['my-effect'] });
+
+    engine.unmount('test.scoped-ledger');
+    expect(engine.getScopeLedgers()).toEqual({});
+  });
+
   it('a throwing activation rolls back what it already registered', async () => {
     const registered = vi.fn();
     registerNativeHandler('test.scoped-throw', {
