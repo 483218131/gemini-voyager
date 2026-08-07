@@ -48,6 +48,7 @@ Project-wide rules (always in effect):
 2. `bun run lint` — before finishing; note this runs `eslint . --fix`, so inspect resulting changes
 3. `bun run test` — all tests pass
 4. `bun run build:chrome` — builds without error
+   - **If you added, renamed, or removed anything under `public/`, run `bun run build:all` instead.** `public/` is copied into `dist_safari`, and every top-level entry there must be registered in `Voyager/Voyager.xcodeproj/project.pbxproj`. Nothing wires that up automatically, so a new asset fails `build:safari` while Chrome and Firefox stay green.
 5. `bun run docs:build` — after any `docs/**/*.md` or `docs/.vitepress/**` change
 6. `bun run docs:dev` — after docs changes when preview is needed, start in background so user can preview in browser before committing
 7. New features/fixes must include tests

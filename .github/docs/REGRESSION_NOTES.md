@@ -1228,3 +1228,36 @@ Regression test:
 Commit:
 
 `fix(plugins): restore ChatGPT formula copy in Edge`
+
+## A new file in public/ breaks the Safari build
+
+Symptom:
+
+`bun run build:safari` failed with `Missing Xcode file references` and
+`Missing Xcode resource entries` after a PNG was added to `public/`. Chrome and
+Firefox built fine, and every unit test passed, so the break only surfaced in
+CI — where it also took down the release job that depends on Safari.
+
+Root cause:
+
+`public/` is copied verbatim into `dist_safari`, and
+`scripts/verify-safari-resources.mjs` requires every top-level entry there to be
+registered in `Voyager/Voyager.xcodeproj/project.pbxproj`. Nothing wires that up
+automatically, so any new bundled asset silently fails the check.
+
+Fix:
+
+Register the file in all four places the pbxproj needs, mirroring an existing
+PNG such as `icon-32.png`: a `PBXBuildFile` entry, a `PBXFileReference` with
+`path = "../../dist_safari/<name>"`, the group's `children` list, and the
+Resources build phase.
+
+Verification:
+
+`bun run build:safari` — it ends with `Safari Xcode resource wiring is
+complete.` Run it whenever you add or rename anything under `public/`; the other
+browser builds will not catch this.
+
+Commit:
+
+`refactor(changelog): bundle images for every browser, not just firefox`

@@ -150,6 +150,33 @@ git tag "v{VERSION}"
 
 If this release intentionally includes announcements or other release-only files, add them explicitly and re-check the staged list. Never absorb unrelated worktree changes.
 
+Verify the staged list immediately before every commit, not once at the start. A
+`git mv` or an earlier `git add` leaves entries in the index, and `git commit`
+takes all of them — that is how unrelated work gets absorbed into the release
+commit.
+
+### Re-run the full gates before tagging
+
+Step 2 passed for the tree as it stood then. Anything committed after it — a
+late fix, a new asset, a review follow-up — invalidates that result, so re-run
+`bun run build:all` before `git tag`, not `bun run build:chrome`.
+
+The three browser builds fail on different things, so a green Chrome build
+proves nothing about the others:
+
+- **Safari** copies `public/` into `dist_safari` and requires every top-level
+  entry to be registered in `Voyager/Voyager.xcodeproj/project.pbxproj`. A file
+  added to `public/` fails `bun run build:safari` and nothing else.
+- **Firefox** has its own manifest transform and add-on id constraints.
+
+CI enforces this, but a Safari failure there blocks the GitHub Release job and
+leaves a pushed tag pointing at a commit that cannot ship — recovering means
+moving a published tag. Catch it locally instead.
+
+If the tag was already pushed when the break is found, do not retag silently:
+the tag is public. Confirm with the maintainer before deleting and re-pushing
+it, and only while no release artifacts have been produced yet.
+
 ## Step 5 — Confirm and push
 
 The tag push is an external, user-visible action. Confirm immediately before it:
