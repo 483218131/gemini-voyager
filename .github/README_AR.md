@@ -236,6 +236,8 @@
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - يتضمن منطق تثبيت النموذج الافتراضي أفكارًا تفاعلية مقتبسة من Gemini Helper، مع الاحتفاظ بالإسناد على مستوى المصدر.
 
+- **[cordis](https://github.com/cordiverse/cordis)** - يستلهم سجل الآثار الجانبية في بيئة تشغيل الإضافات (`PluginScope`) تصميم دورة حياة الآثار والتحرير من نموذج fiber في cordis.
+
 ## 🌍 المنظومة
 
 مشاريع مستوحاة من Voyager:

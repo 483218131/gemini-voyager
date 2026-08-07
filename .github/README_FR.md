@@ -236,6 +236,8 @@ Un grand merci à tous les contributeurs pour leurs contributions à Voyager ❤
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - La logique de verrouillage du modèle par défaut inclut des idées d’interaction adaptées de Gemini Helper, avec une attribution conservée dans le code source.
 
+- **[cordis](https://github.com/cordiverse/cordis)** - Le registre d'effets du runtime de plugins (`PluginScope`) s'inspire du cycle de vie effet/libération du modèle fiber de cordis.
+
 ## 🌍 Écosystème
 
 Projets inspirés par Voyager :

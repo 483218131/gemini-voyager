@@ -288,6 +288,8 @@ bun run build:all      # Chrome + Firefox + Safari
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - 默认模型锁定功能中的部分交互逻辑参考自 Gemini Helper，并已在源码中保留 attribution。
 
+- **[cordis](https://github.com/cordiverse/cordis)** - 插件运行时的副作用账本（`PluginScope`）借鉴了 cordis fiber 模型的 effect/卸载生命周期设计。
+
 ## 🌍 生态
 
 受 Voyager 启发的项目：

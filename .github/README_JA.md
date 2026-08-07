@@ -257,6 +257,8 @@ Voyager に貢献してくださったすべてのコントリビューターに
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - デフォルトモデル固定機能の一部のインタラクション設計は Gemini Helper を参考にしており、ソースコード上にも attribution を残しています。
 
+- **[cordis](https://github.com/cordiverse/cordis)** - プラグインランタイムの副作用台帳（`PluginScope`）は、cordis の fiber モデルにおける effect／破棄ライフサイクル設計を参考にしています。
+
 ## 🌍 エコシステム
 
 Voyager にインスパイアされたプロジェクト：

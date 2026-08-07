@@ -287,6 +287,8 @@ Special thanks to all contributors for their contributions to Voyager ❤️
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - The default-model locking logic includes interaction ideas adapted from Gemini Helper, with source-level attribution retained.
 
+- **[cordis](https://github.com/cordiverse/cordis)** - The plugin runtime's side-effect ledger (`PluginScope`) borrows its effect/disposal lifecycle design from cordis's fiber model.
+
 ## 🌍 Ecosystem
 
 Projects inspired by Voyager:

@@ -236,6 +236,8 @@ Un agradecimiento especial a todos los colaboradores por sus contribuciones a Vo
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - La lógica de bloqueo del modelo predeterminado incluye ideas de interacción adaptadas de Gemini Helper, con atribución conservada en el código fuente.
 
+- **[cordis](https://github.com/cordiverse/cordis)** - El libro de efectos del runtime de plugins (`PluginScope`) toma su diseño de ciclo de vida de efectos y liberación del modelo fiber de cordis.
+
 ## 🌍 Ecosistema
 
 Proyectos inspirados por Voyager:

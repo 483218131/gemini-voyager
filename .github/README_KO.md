@@ -285,6 +285,8 @@ Voyager에 기여해 주신 모든 기여자분들께 특별히 감사드립니�
 
 - **[Gemini Helper](https://github.com/urzeye/tampermonkey-scripts)** - 기본 모델 고정 로직에는 Gemini Helper 에서 참고한 상호작용 아이디어가 포함되어 있으며, 소스 코드 수준의 attribution 을 유지하고 있습니다.
 
+- **[cordis](https://github.com/cordiverse/cordis)** - 플러그인 런타임의 사이드 이펙트 원장(`PluginScope`)은 cordis fiber 모델의 effect/해제 수명주기 설계를 참고했습니다.
+
 ## 🌍 에코시스템
 
 Voyager에서 영감을 받은 프로젝트:
