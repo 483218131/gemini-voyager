@@ -1,5 +1,5 @@
 {
-  "name": "gemini-voyager",
+  "name": "voyager",
   "version": "1.7.1",
   "description": "A better workspace for Gemini, Claude, and ChatGPT: prompts, reading tools, organization, export, and more.",
   "packageManager": "bun@1.3.12",
