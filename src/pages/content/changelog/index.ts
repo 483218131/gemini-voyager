@@ -1,5 +1,5 @@
 import { StorageKeys } from '@/core/types/common';
-import { getWebStoreRatingChannel, isFirefox } from '@/core/utils/browser';
+import { getWebStoreRatingChannel } from '@/core/utils/browser';
 import { EXTENSION_VERSION } from '@/core/utils/version';
 import { getCurrentLanguage } from '@/utils/i18n';
 import type { AppLanguage } from '@/utils/language';
@@ -44,14 +44,6 @@ const SPONSOR_HEART_PATH_24 =
 
 function getPromotionRuntimePath(filename: string): string | null {
   switch (filename) {
-    case 'Promo-Banner.png':
-      return 'changelog-promo-banner.png';
-    case 'Promo-Banner-cn.png':
-      return 'changelog-promo-banner-cn.png';
-    case 'Promo-Banner-jp.png':
-      return 'changelog-promo-banner-jp.png';
-    case 'Promo-Banner-KO.png':
-      return 'changelog-promo-banner-ko.png';
     case 'Activity-View.png':
       return 'changelog-activity-view.png';
     default:
@@ -597,7 +589,7 @@ async function showChangelogModal(
   const extracted = extractLocalizedContent(rawMarkdown, lang);
   if (!extracted) return null;
   const localizedContent = rewriteChangelogDocUrls(
-    rewriteChangelogImageUrls(extracted, getRuntimeUrl, isFirefox()),
+    rewriteChangelogImageUrls(extracted, getRuntimeUrl),
     lang,
   );
 

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -130,24 +130,6 @@ describe('changelog quote styles', () => {
 describe('resolveChangelogImageUrl', () => {
   it('rewrites github raw promotion image URLs to runtime URLs', () => {
     const source =
-      'https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Promo-Banner.png';
-
-    const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
-
-    expect(result).toBe('moz-extension://test-id/changelog-promo-banner.png');
-  });
-
-  it('rewrites raw.githubusercontent.com promotion image URLs to runtime URLs', () => {
-    const source =
-      'https://raw.githubusercontent.com/Nagi-ovo/voyager/main/docs/public/assets/promotion/Promo-Banner-jp.png';
-
-    const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
-
-    expect(result).toBe('moz-extension://test-id/changelog-promo-banner-jp.png');
-  });
-
-  it('rewrites the activity view screenshot to its runtime URL', () => {
-    const source =
       'https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Activity-View.png';
 
     const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
@@ -155,26 +137,33 @@ describe('resolveChangelogImageUrl', () => {
     expect(result).toBe('moz-extension://test-id/changelog-activity-view.png');
   });
 
-  // Firefox applies the host page's CSP to content-script-injected DOM, so a
-  // remote image in a changelog note is blocked there and must resolve to a
-  // bundled runtime URL instead. An image added outside the promotion path (or
-  // without a getPromotionRuntimePath entry) fails silently — it renders in
-  // Chrome and is broken in Firefox — so pin every shipped note here.
-  it('resolves every image in every shipped changelog note to a runtime URL', () => {
-    const notesDir = resolve(__dirname, '../notes');
-    const notes = readdirSync(notesDir).filter((file) => file.endsWith('.md'));
-    expect(notes.length).toBeGreaterThan(0);
+  it('rewrites raw.githubusercontent.com promotion image URLs to runtime URLs', () => {
+    const source =
+      'https://raw.githubusercontent.com/Nagi-ovo/voyager/main/docs/public/assets/promotion/Activity-View.png';
 
-    const unresolved: string[] = [];
-    for (const note of notes) {
-      const markdown = readFileSync(resolve(notesDir, note), 'utf8');
-      for (const match of markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g)) {
-        const url = match[1];
-        if (resolveChangelogImageUrl(url, (path) => `moz-extension://test-id/${path}`) === url) {
-          unresolved.push(`${note}: ${url}`);
-        }
-      }
-    }
+    const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
+
+    expect(result).toBe('moz-extension://test-id/changelog-activity-view.png');
+  });
+
+  // A changelog image must be bundled, not fetched: Firefox applies the host
+  // page's CSP to DOM a content script injects, and GitHub is unreachable for a
+  // sizeable part of the user base. An image added outside the promotion path,
+  // or without a getPromotionRuntimePath entry, fails silently — it renders in
+  // Chrome on a good connection and is broken everywhere else. Only the release
+  // being shipped is pinned; images in older notes stay remote by choice, since
+  // their assets are no longer carried in the package.
+  it('resolves every image in the current release note to a runtime URL', () => {
+    const version = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'))
+      .version as string;
+    const notePath = resolve(__dirname, `../notes/${version}.md`);
+    const markdown = readFileSync(notePath, 'utf8');
+
+    const unresolved = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g)]
+      .map((match) => match[1])
+      .filter(
+        (url) => resolveChangelogImageUrl(url, (path) => `moz-extension://test-id/${path}`) === url,
+      );
 
     expect(unresolved).toEqual([]);
   });
@@ -192,19 +181,19 @@ describe('resolveChangelogImageUrl', () => {
 describe('rewriteChangelogImageUrls', () => {
   it('rewrites supported markdown image URLs and preserves others', () => {
     const source = [
-      '![banner](https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Promo-Banner-cn.png)',
+      '![banner](https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Activity-View.png)',
       '![external](https://example.com/banner.png)',
     ].join('\n');
 
     const result = rewriteChangelogImageUrls(source, (path) => `moz-extension://test-id/${path}`);
 
-    expect(result).toContain('![banner](moz-extension://test-id/changelog-promo-banner-cn.png)');
+    expect(result).toContain('![banner](moz-extension://test-id/changelog-activity-view.png)');
     expect(result).toContain('![external](https://example.com/banner.png)');
   });
 
   it('falls back to original URL when runtime URL resolution fails', () => {
     const source =
-      '![banner](https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Promo-Banner.png)';
+      '![banner](https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Activity-View.png)';
 
     const result = rewriteChangelogImageUrls(source, () => null);
 
@@ -213,7 +202,7 @@ describe('rewriteChangelogImageUrls', () => {
 
   it('skips rewriting when rewrite flag is disabled', () => {
     const source =
-      '![banner](https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Promo-Banner.png)';
+      '![banner](https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Activity-View.png)';
 
     const result = rewriteChangelogImageUrls(
       source,

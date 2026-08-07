@@ -10,12 +10,6 @@ const firefoxVersionOverride = process.env.VOYAGER_FIREFOX_VERSION?.trim();
 if (firefoxVersionOverride && !/^\d+(?:\.\d+){0,3}$/.test(firefoxVersionOverride)) {
   throw new Error(`Invalid Firefox extension version: ${firefoxVersionOverride}`);
 }
-const FIREFOX_CHANGELOG_BANNER_RESOURCES = [
-  'changelog-promo-banner.png',
-  'changelog-promo-banner-cn.png',
-  'changelog-promo-banner-jp.png',
-  'changelog-activity-view.png',
-];
 const FIREFOX_SAKURA_RENDERER_RESOURCE = 'src/pages/sakuraRenderer/index.html';
 // This only makes the renderer frame loadable where a separately-authorized
 // content script creates it; it does not grant Voyager access to any new site.
@@ -39,9 +33,7 @@ function appendFirefoxChangelogResources<
 
   const [first, ...rest] = existingEntries;
   const existingResources = first.resources ?? [];
-  const mergedResources = Array.from(
-    new Set([...existingResources, ...FIREFOX_CHANGELOG_BANNER_RESOURCES]),
-  );
+  const mergedResources = Array.from(new Set(existingResources));
 
   return {
     ...manifest,
