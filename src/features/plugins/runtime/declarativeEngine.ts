@@ -50,6 +50,8 @@ interface ActivePlugin {
   nativeHandler?: NativeHandler;
   /** Side-effect ledger for a scope-based (`activate`) native handler. */
   scope?: PluginScope;
+  /** Serializes settings-driven scope restarts (dispose → re-activate). */
+  scopeRestart?: Promise<void>;
 }
 
 /**
@@ -112,23 +114,7 @@ export class DeclarativeEngine {
     // fresh PluginScope per mount; a failed (sync or async) activation pays
     // back whatever it already registered instead of leaving a half-mount.
     if (entry.nativeHandler?.activate) {
-      const scope = new PluginScope();
-      entry.scope = scope;
-      try {
-        const result = entry.nativeHandler.activate(scope, settings);
-        if (result instanceof Promise) {
-          result.catch((error) => {
-            logger.error('Plugin activation failed', {
-              id: manifest.id,
-              error: String(error),
-            });
-            void scope.dispose();
-          });
-        }
-      } catch (error) {
-        logger.error('Plugin activation failed', { id: manifest.id, error: String(error) });
-        void scope.dispose();
-      }
+      this.activateScope(entry, settings);
     } else {
       entry.nativeHandler?.start?.(settings);
     }
@@ -144,7 +130,54 @@ export class DeclarativeEngine {
     if (entry.styleEl) entry.styleEl.textContent = this.renderCss(entry);
     this.releasePlugin(id);
     this.applyDomOps(entry);
-    entry.nativeHandler?.updateSettings?.(settings);
+    const handler = entry.nativeHandler;
+    if (handler?.updateSettings) {
+      handler.updateSettings(settings);
+    } else if (handler?.activate) {
+      // Restart-by-default: with no fine-grained updater, correctness comes
+      // from a full dispose + re-activate under the new settings. Safe by
+      // construction — the scope guarantees complete teardown. Plugins with
+      // expensive state opt out by implementing updateSettings.
+      this.restartScope(entry, settings);
+    }
+  }
+
+  /** Create a fresh scope for a scope-based handler and run its activation.
+   *  A failed (sync or async) activation pays back whatever it registered. */
+  private activateScope(entry: ActivePlugin, settings: PluginSettings): void {
+    const handler = entry.nativeHandler;
+    if (!handler?.activate) return;
+    const scope = new PluginScope();
+    entry.scope = scope;
+    try {
+      const result = handler.activate(scope, settings);
+      if (result instanceof Promise) {
+        result.catch((error) => {
+          logger.error('Plugin activation failed', {
+            id: entry.manifest.id,
+            error: String(error),
+          });
+          void scope.dispose();
+        });
+      }
+    } catch (error) {
+      logger.error('Plugin activation failed', { id: entry.manifest.id, error: String(error) });
+      void scope.dispose();
+    }
+  }
+
+  /** Dispose the current scope, then re-activate under the new settings.
+   *  Serialized per plugin; superseded or unmounted restarts re-activate
+   *  nothing (the settings identity check spots a newer update). */
+  private restartScope(entry: ActivePlugin, settings: PluginSettings): void {
+    const previous = entry.scope;
+    entry.scope = undefined;
+    entry.scopeRestart = (entry.scopeRestart ?? Promise.resolve()).then(async () => {
+      await previous?.dispose();
+      if (this.active.get(entry.manifest.id) !== entry) return;
+      if (entry.settings !== settings) return;
+      this.activateScope(entry, settings);
+    });
   }
 
   unmount(id: string): void {

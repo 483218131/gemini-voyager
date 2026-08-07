@@ -116,6 +116,58 @@ describe('DeclarativeEngine', () => {
     await vi.waitFor(() => expect(cleanup).toHaveBeenCalledOnce());
   });
 
+  it('a settings change restarts a scope handler that has no updateSettings', async () => {
+    const disposer = vi.fn();
+    const activate = vi.fn((scope: PluginScope) => {
+      scope.effect(() => disposer, 'restartable');
+    });
+    registerNativeHandler('test.scoped-restart', { activate });
+    const engine = new DeclarativeEngine({ doc: document });
+    const manifest = makeManifest(
+      { settings: { flag: { type: 'boolean', label: 'Flag', default: false } } },
+      'test.scoped-restart',
+    );
+
+    engine.mount(manifest, { flag: false });
+    engine.updateSettings('test.scoped-restart', { flag: true });
+
+    await vi.waitFor(() => expect(activate).toHaveBeenCalledTimes(2));
+    expect(disposer).toHaveBeenCalledOnce();
+    expect(activate).toHaveBeenLastCalledWith(expect.any(PluginScope), { flag: true });
+  });
+
+  it('a scope handler WITH updateSettings gets the update, not a restart', () => {
+    const updateSettings = vi.fn();
+    const activate = vi.fn();
+    registerNativeHandler('test.scoped-update', { activate, updateSettings });
+    const engine = new DeclarativeEngine({ doc: document });
+
+    engine.mount(makeManifest({}, 'test.scoped-update'), { a: 1 });
+    engine.updateSettings('test.scoped-update', { a: 2 });
+
+    expect(activate).toHaveBeenCalledOnce();
+    expect(updateSettings).toHaveBeenCalledWith({ a: 2 });
+  });
+
+  it('an unmount landing inside the restart window suppresses re-activation', async () => {
+    let releaseDisposal!: () => void;
+    const gate = new Promise<void>((r) => (releaseDisposal = r));
+    const activate = vi.fn((scope: PluginScope) => {
+      scope.effect(() => () => gate, 'slow-teardown');
+    });
+    registerNativeHandler('test.scoped-race', { activate });
+    const engine = new DeclarativeEngine({ doc: document });
+
+    engine.mount(makeManifest({}, 'test.scoped-race'));
+    engine.updateSettings('test.scoped-race', { changed: true });
+    engine.unmount('test.scoped-race');
+    releaseDisposal();
+
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(activate).toHaveBeenCalledOnce();
+  });
+
   it('a throwing activation rolls back what it already registered', async () => {
     const registered = vi.fn();
     registerNativeHandler('test.scoped-throw', {
