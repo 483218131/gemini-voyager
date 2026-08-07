@@ -51,6 +51,7 @@ import { startMermaid } from './mermaid/index';
 import { startBrandTheme } from './platformTheme';
 import { registerBuiltinNativeHandlers } from './pluginNativeRegistration';
 import { startPreventAutoScroll } from './preventAutoScroll/index';
+import { createCustomSiteCoverageReconciler } from './prompt/customSiteCoverage';
 import { startPromptManager } from './prompt/index';
 import { slashPromptCoachmarkStep } from './prompt/slashPromptCoachmark';
 import { startSlashPromptFeature } from './prompt/slashPromptFeature';
@@ -216,42 +217,22 @@ async function initializeFeatures(): Promise<void> {
       // Only start prompt manager for custom websites
       console.log('[Gemini Voyager] Custom website detected, starting Prompt Manager only');
 
-      let promptManager: { destroy: () => void } | null = await startPromptManager();
-
       // Turning the site off only unregisters the content script for future
       // navigations — this page keeps running — so mirror both directions here
-      // instead of making the user reload. Serialized so a rapid off/on cannot
-      // leave two instances mounted.
-      let coverageQueue: Promise<void> = Promise.resolve();
-      const onCustomWebsitesChanged = (
-        changes: Record<string, chrome.storage.StorageChange>,
-        areaName: string,
-      ) => {
-        if (areaName !== 'sync') return;
-        const change = changes[StorageKeys.PROMPT_CUSTOM_WEBSITES];
-        if (!change) return;
+      // instead of making the user reload.
+      const coverage = createCustomSiteCoverageReconciler({
+        host: location.host.toLowerCase(),
+        start: startPromptManager,
+        initial: await startPromptManager(),
+      });
 
-        const covered = customWebsitesIncludeHost(change.newValue, location.host.toLowerCase());
-        coverageQueue = coverageQueue
-          .then(async () => {
-            if (covered === (promptManager !== null)) return;
-            if (covered) {
-              promptManager = await startPromptManager();
-              return;
-            }
-            promptManager?.destroy();
-            promptManager = null;
-          })
-          .catch(() => {});
-      };
-
-      chrome.storage?.onChanged?.addListener(onCustomWebsitesChanged);
+      chrome.storage?.onChanged?.addListener(coverage.handleChange);
       cleanupManager.registerCleanupFunction(
-        () => chrome.storage?.onChanged?.removeListener(onCustomWebsitesChanged),
+        () => chrome.storage?.onChanged?.removeListener(coverage.handleChange),
         CleanupPositions.RemoveStorageOnChangedListener,
       );
       cleanupManager.registerCleanupFunction(
-        () => promptManager?.destroy(),
+        () => coverage.destroy(),
         CleanupPositions.DestroyPromptManagerInstance,
       );
       return;
