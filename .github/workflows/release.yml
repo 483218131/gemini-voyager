@@ -579,7 +579,8 @@ jobs:
 
           > Do not use GitHub's auto-generated **Source code (zip/tar.gz)** archives for manual extension installs. Those files are repository source snapshots, not browser-ready extension packages.
 
-          ### 🍎✨ Safari 正式支持！(Safari Is Officially Supported!)
+          <details>
+          <summary><b>🍎 Safari 安装与升级说明 (Safari installation &amp; upgrade)</b></summary>
 
           > 🎉 从 v1.6.0 起，Voyager 的核心功能已正式覆盖 Safari。
           > Starting with v1.6.0, Voyager's core experience is officially supported on Safari.
@@ -596,6 +597,8 @@ jobs:
             macOS can notify you when a Gemini response finishes and open the matching conversation.
           - 🔄 **自动更新 (Automatic updates)**: 完成这次迁移后，后续版本可通过 Sparkle 自动更新。
             After this one-time migration, future versions can update automatically through Sparkle.
+
+          </details>
           EOF
 
             # Combine: auto-generated notes first, then installation
