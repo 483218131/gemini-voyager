@@ -216,9 +216,42 @@ async function initializeFeatures(): Promise<void> {
       // Only start prompt manager for custom websites
       console.log('[Gemini Voyager] Custom website detected, starting Prompt Manager only');
 
-      const pm = await startPromptManager();
+      let promptManager: { destroy: () => void } | null = await startPromptManager();
+
+      // Turning the site off only unregisters the content script for future
+      // navigations — this page keeps running — so mirror both directions here
+      // instead of making the user reload. Serialized so a rapid off/on cannot
+      // leave two instances mounted.
+      let coverageQueue: Promise<void> = Promise.resolve();
+      const onCustomWebsitesChanged = (
+        changes: Record<string, chrome.storage.StorageChange>,
+        areaName: string,
+      ) => {
+        if (areaName !== 'sync') return;
+        const change = changes[StorageKeys.PROMPT_CUSTOM_WEBSITES];
+        if (!change) return;
+
+        const covered = customWebsitesIncludeHost(change.newValue, location.host.toLowerCase());
+        coverageQueue = coverageQueue
+          .then(async () => {
+            if (covered === (promptManager !== null)) return;
+            if (covered) {
+              promptManager = await startPromptManager();
+              return;
+            }
+            promptManager?.destroy();
+            promptManager = null;
+          })
+          .catch(() => {});
+      };
+
+      chrome.storage?.onChanged?.addListener(onCustomWebsitesChanged);
       cleanupManager.registerCleanupFunction(
-        () => pm.destroy(),
+        () => chrome.storage?.onChanged?.removeListener(onCustomWebsitesChanged),
+        CleanupPositions.RemoveStorageOnChangedListener,
+      );
+      cleanupManager.registerCleanupFunction(
+        () => promptManager?.destroy(),
         CleanupPositions.DestroyPromptManagerInstance,
       );
       return;
