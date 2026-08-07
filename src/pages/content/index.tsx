@@ -9,15 +9,8 @@ import {
 } from '@/core/utils/extensionContext';
 import { isGeminiEnterpriseEnvironment } from '@/core/utils/gemini';
 import { WATERMARK_STORAGE_KEYS } from '@/core/utils/watermarkSettings';
-import { startFormulaCopy, stopFormulaCopy } from '@/features/formulaCopy';
+import { startFormulaCopy } from '@/features/formulaCopy';
 import { startPluginHost } from '@/features/plugins';
-import {
-  startClaudeTimeline,
-  stopClaudeTimeline,
-  updateClaudeTimelineSettings,
-} from '@/features/plugins/builtin/claudeTimeline';
-import { startInputVimPlugin, stopInputVimPlugin } from '@/features/plugins/builtin/inputVim';
-import { registerNativeHandler } from '@/features/plugins/runtime/nativeHandlers';
 import { resolvePluginPlatformId } from '@/features/plugins/sites/registry';
 import { initI18n } from '@/utils/i18n';
 
@@ -56,6 +49,7 @@ import { initKaTeXConfig } from './katexConfig';
 import { startMarkdownPatcher } from './markdownPatcher/index';
 import { startMermaid } from './mermaid/index';
 import { startBrandTheme } from './platformTheme';
+import { registerBuiltinNativeHandlers } from './pluginNativeRegistration';
 import { startPreventAutoScroll } from './preventAutoScroll/index';
 import { startPromptManager } from './prompt/index';
 import { slashPromptCoachmarkStep } from './prompt/slashPromptCoachmark';
@@ -557,19 +551,7 @@ function handleVisibilityChange(): void {
     // Bind builtin "native function plugins" before the host starts, so
     // PluginHost can run them when enabled on Claude/ChatGPT (default off).
     // Gemini/AI Studio keep their existing core feature lifecycle.
-    registerNativeHandler('voyager.formula-copy', {
-      start: startFormulaCopy,
-      stop: stopFormulaCopy,
-    });
-    registerNativeHandler('voyager.input-vim', {
-      start: startInputVimPlugin,
-      stop: stopInputVimPlugin,
-    });
-    registerNativeHandler('voyager.claude-timeline', {
-      start: startClaudeTimeline,
-      updateSettings: updateClaudeTimelineSettings,
-      stop: stopClaudeTimeline,
-    });
+    registerBuiltinNativeHandlers();
     cleanupManager.registerCleanupFunction(startPluginHost(), CleanupPositions.CleanupPluginHost);
 
     // Cosmetic: on Claude / ChatGPT, re-skin Voyager's accent to the host
