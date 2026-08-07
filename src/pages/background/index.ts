@@ -816,7 +816,17 @@ async function filterGrantedOrigins(patterns: string[]): Promise<string[]> {
   return granted;
 }
 
-async function syncCustomContentScripts(domains?: string[]): Promise<void> {
+// Serialized for the same reason as the plugin sync below: storage and
+// permission listeners can both fire at once and double-inject.
+let customContentScriptSyncQueue: Promise<void> = Promise.resolve();
+
+function syncCustomContentScripts(domains?: string[]): Promise<void> {
+  const next = customContentScriptSyncQueue.then(() => doSyncCustomContentScripts(domains));
+  customContentScriptSyncQueue = next.catch(() => {});
+  return next;
+}
+
+async function doSyncCustomContentScripts(domains?: string[]): Promise<void> {
   if (!chrome.scripting?.registerContentScripts) return;
 
   const manifestContentScript = chrome.runtime.getManifest().content_scripts?.[0];
@@ -874,6 +884,10 @@ async function syncCustomContentScripts(domains?: string[]): Promise<void> {
   } catch (error) {
     console.error('[Background] Failed to register custom content scripts:', error);
   }
+
+  // Registration only covers future navigations, so enabling a site would
+  // otherwise take a reload to show up. Cover the tabs already open on it.
+  await injectVoyagerScriptIntoOpenTabs(grantedMatches, undefined, jsResources, cssResources);
 }
 
 /**
@@ -943,7 +957,7 @@ async function getMatchingFrameIds(tabId: number, matches: readonly string[]): P
   }
 }
 
-async function injectPluginScriptIntoOpenTabs(
+async function injectVoyagerScriptIntoOpenTabs(
   tabMatches: string[],
   frameMatches: string[] | undefined,
   jsResources: string[],
@@ -1058,9 +1072,9 @@ async function doSyncPluginContentScripts(): Promise<void> {
     }
     // Inject into already-open matching tabs so the user sees the effect without
     // a manual reload.
-    await injectPluginScriptIntoOpenTabs(topFrameOrigins, undefined, jsResources, cssResources);
+    await injectVoyagerScriptIntoOpenTabs(topFrameOrigins, undefined, jsResources, cssResources);
     if (embeddedFrameOrigins.length) {
-      await injectPluginScriptIntoOpenTabs(
+      await injectVoyagerScriptIntoOpenTabs(
         grantedMatches,
         embeddedFrameOrigins,
         jsResources,
