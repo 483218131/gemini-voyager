@@ -152,8 +152,9 @@ async function isCustomWebsite(): Promise<boolean> {
     const result = await chrome.storage?.sync?.get({ gvPromptCustomWebsites: [] });
     const customWebsites = sanitizeCustomWebsites(result?.gvPromptCustomWebsites);
 
-    // Normalize current hostname
-    const currentHost = location.hostname.toLowerCase().replace(/^www\./, '');
+    // Port-pinned entries only match the exact origin, so compare against the
+    // host (which carries the port), not the bare hostname.
+    const currentHost = location.host.toLowerCase().replace(/^www\./, '');
 
     console.log('[Gemini Voyager] Checking custom websites:', {
       currentHost,
@@ -676,10 +677,11 @@ function handleVisibilityChange(): void {
 
       // For unknown sites, check storage asynchronously
       chrome.storage?.sync?.get({ gvPromptCustomWebsites: [] }, (result) => {
-        const isCustomSite = customWebsitesIncludeHost(result?.gvPromptCustomWebsites, hostname);
+        const currentHost = location.host.toLowerCase();
+        const isCustomSite = customWebsitesIncludeHost(result?.gvPromptCustomWebsites, currentHost);
 
         if (isCustomSite) {
-          console.log('[Gemini Voyager] Custom website detected:', hostname);
+          console.log('[Gemini Voyager] Custom website detected:', currentHost);
           initializeFeatures();
         } else {
           // Not a supported site, exit early

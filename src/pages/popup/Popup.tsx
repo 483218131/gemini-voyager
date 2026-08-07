@@ -25,7 +25,11 @@ import {
   supportsExtensionNotifications,
   supportsOptionalHostPermissions,
 } from '@/core/utils/browser';
-import { normalizeCustomWebsite, sanitizeCustomWebsites } from '@/core/utils/customWebsites';
+import {
+  customWebsiteOriginPatterns,
+  normalizeCustomWebsite,
+  sanitizeCustomWebsites,
+} from '@/core/utils/customWebsites';
 import {
   ensureNotificationsPermission,
   hasNotificationsPermission,
@@ -1153,11 +1157,12 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
     return activeSiteId ? (labels[activeSiteId] ?? activeSiteId) : '';
   }, [activeSiteId]);
 
-  // The registrable host of the active tab, used by the top-of-popup
-  // "enable Prompt Manager here" toggle on third-party plugin sites.
+  // The host of the active tab (with port, so a port-pinned entry round-trips),
+  // used by the top-of-popup "enable Prompt Manager here" toggle on third-party
+  // plugin sites.
   const activeSiteDomain = useMemo(() => {
     try {
-      return new URL(activeUrl).hostname.replace(/^www\./, '').toLowerCase();
+      return new URL(activeUrl).host.replace(/^www\./, '').toLowerCase();
     } catch {
       return '';
     }
@@ -2174,9 +2179,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
 
   const originPatternsForDomain = useCallback((domain: string): string[] | null => {
     try {
-      const normalized = normalizeCustomWebsite(domain);
-      if (!normalized) return null;
-      return [`https://*.${normalized}/*`, `http://*.${normalized}/*`];
+      return customWebsiteOriginPatterns(domain);
     } catch {
       return null;
     }

@@ -31,6 +31,7 @@ import {
   isFirefox,
   supportsExtensionNotifications,
 } from '@/core/utils/browser';
+import { customWebsiteOriginPatterns } from '@/core/utils/customWebsites';
 import { getNativeOpenConversationUrl } from '@/core/utils/nativeOpenConversation';
 import { hasNotificationsPermission } from '@/core/utils/notificationsPermission';
 import { getPromptNameConflictIds } from '@/core/utils/promptName';
@@ -771,16 +772,7 @@ function patternToDomain(pattern: string | undefined): string | null {
 }
 
 function toMatchPatterns(domain: string): string[] {
-  const normalized = domain
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .replace(/\/.*$/, '')
-    .replace(/^\*\./, '');
-
-  if (!normalized) return [];
-  return [`https://*.${normalized}/*`, `http://*.${normalized}/*`];
+  return customWebsiteOriginPatterns(domain) ?? [];
 }
 
 function toRelativeExtensionPath(resource: string): string {
