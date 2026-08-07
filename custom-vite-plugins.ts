@@ -8,6 +8,7 @@ const CHANGELOG_PROMO_BANNERS = [
   'changelog-promo-banner.png',
   'changelog-promo-banner-cn.png',
   'changelog-promo-banner-jp.png',
+  'changelog-activity-view.png',
 ];
 
 // plugin to remove dev icons from prod build

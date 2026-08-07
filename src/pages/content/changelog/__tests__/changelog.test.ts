@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -144,6 +144,39 @@ describe('resolveChangelogImageUrl', () => {
     const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
 
     expect(result).toBe('moz-extension://test-id/changelog-promo-banner-jp.png');
+  });
+
+  it('rewrites the activity view screenshot to its runtime URL', () => {
+    const source =
+      'https://github.com/Nagi-ovo/voyager/raw/main/docs/public/assets/promotion/Activity-View.png';
+
+    const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
+
+    expect(result).toBe('moz-extension://test-id/changelog-activity-view.png');
+  });
+
+  // Firefox applies the host page's CSP to content-script-injected DOM, so a
+  // remote image in a changelog note is blocked there and must resolve to a
+  // bundled runtime URL instead. An image added outside the promotion path (or
+  // without a getPromotionRuntimePath entry) fails silently — it renders in
+  // Chrome and is broken in Firefox — so pin every shipped note here.
+  it('resolves every image in every shipped changelog note to a runtime URL', () => {
+    const notesDir = resolve(__dirname, '../notes');
+    const notes = readdirSync(notesDir).filter((file) => file.endsWith('.md'));
+    expect(notes.length).toBeGreaterThan(0);
+
+    const unresolved: string[] = [];
+    for (const note of notes) {
+      const markdown = readFileSync(resolve(notesDir, note), 'utf8');
+      for (const match of markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g)) {
+        const url = match[1];
+        if (resolveChangelogImageUrl(url, (path) => `moz-extension://test-id/${path}`) === url) {
+          unresolved.push(`${note}: ${url}`);
+        }
+      }
+    }
+
+    expect(unresolved).toEqual([]);
   });
 
   it('keeps unsupported image URLs unchanged', () => {

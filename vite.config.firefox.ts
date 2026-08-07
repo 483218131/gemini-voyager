@@ -14,6 +14,7 @@ const FIREFOX_CHANGELOG_BANNER_RESOURCES = [
   'changelog-promo-banner.png',
   'changelog-promo-banner-cn.png',
   'changelog-promo-banner-jp.png',
+  'changelog-activity-view.png',
 ];
 const FIREFOX_SAKURA_RENDERER_RESOURCE = 'src/pages/sakuraRenderer/index.html';
 // This only makes the renderer frame loadable where a separately-authorized
