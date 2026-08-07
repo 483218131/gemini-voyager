@@ -2132,16 +2132,9 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
 
             const hasAnyPermission = async (domain: string) => {
               try {
-                const normalized = domain
-                  .trim()
-                  .toLowerCase()
-                  .replace(/^https?:\/\//, '')
-                  .replace(/^www\./, '')
-                  .replace(/\/.*$/, '')
-                  .replace(/^\*\./, '');
-                if (!normalized) return false;
+                const origins = customWebsiteOriginPatterns(domain);
+                if (!origins) return false;
 
-                const origins = [`https://*.${normalized}/*`, `http://*.${normalized}/*`];
                 for (const origin of origins) {
                   if (await browser.permissions.contains({ origins: [origin] })) return true;
                 }
