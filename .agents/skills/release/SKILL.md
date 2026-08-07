@@ -9,25 +9,12 @@ metadata:
 
 Treat the repository scripts and `.github/workflows/release.yml` as the source of truth. The normal release path is CI-first: pushing the release tag builds every browser artifact, signs and notarizes Safari, creates the GitHub Release, and submits the stores.
 
-## Do not ask for permission to do the checklist
+Invoking this skill is the approval. Do the checklist and report; never ask to
+run a step that is on it. Overrides any habit of ending a turn with a question.
 
-Every step below is already authorized — invoking this skill is the approval.
-Do the work and report what happened. Do not close a turn with "shall I do
-step N?" when step N is on the list; that reads as stalling, and across a
-release it turns one task into a dozen interruptions. This overrides any
-general instruction to end each turn with a question.
-
-Exactly four things need the maintainer, and nothing else does:
-
-1. The version number, when the range does not make it obvious.
-2. Open issues that might block, surfaced before the version bump.
-3. The tag push (Step 5) — the first irreversible, public action.
-4. Moving or deleting an already-published tag.
-
-Everything else — running gates, writing the changelog, committing, tagging
-locally, curating the release body, fixing what CI caught — is the job. When a
-step reveals a real choice with different outcomes, state your recommendation
-and act on it; report the call you made rather than requesting a decision.
+Ask only for: an ambiguous version number, possible blocking issues, the tag
+push, and moving a published tag. For anything else, decide and say what you
+decided.
 
 Copy this checklist into the response and update it while working:
 
