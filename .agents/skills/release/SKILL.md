@@ -124,13 +124,14 @@ grep -E 'MARKETING_VERSION|CURRENT_PROJECT_VERSION' \
 
 Create `src/pages/content/changelog/notes/{VERSION}.md`. Read `references/changelog.md` before authoring it.
 
-Before writing, cover every commit in `PREV_TAG..HEAD` with subagents, one commit or a small group per agent. Each agent must report:
+Every commit in `PREV_TAG..HEAD` must be accounted for before writing. Scale the effort to the range — do not fan out by default:
 
-- the actual user-facing effect,
-- whether the implementation matches the commit message,
-- whether it belongs in the changelog.
+- **15 commits or fewer**: read them yourself with `git show <sha> --stat` and the diff where the subject is ambiguous. No subagents. The transcription loss of delegating outweighs the parallelism at this size.
+- **More than 15 commits**: still read the range yourself, but delegate the groups where the commit message alone would lead to a wrong conclusion — same-scope clusters containing `fix`, `revert`, or `ux`, where a later commit may cancel, narrow, or quietly exceed an earlier one. **At most 4 agents.** Groups that are purely `ci`, `docs`, `chore`, `build`, `test`, or `refactor` are decided from the commit type; never spend an agent on them.
 
-This is a coverage gate, not optional parallelism. Write `zh` first, derive `en`, then translate the other eight locales while preserving the required on-disk locale order.
+Whoever does the reading — you or an agent — must establish, per commit: the actual user-facing effect, whether the implementation matches the commit message, and whether it belongs in the changelog. Watch specifically for pairs that net to zero inside the window (a `revert` undoing a `feat`, a `fix` deleting most of the feature it follows) — those are the findings that justify the effort, and they must not reach the changelog.
+
+Write `zh` first, derive `en`, then translate the other eight locales while preserving the required on-disk locale order.
 
 ## Step 4 — Commit and tag locally
 
