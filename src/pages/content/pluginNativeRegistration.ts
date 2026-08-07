@@ -4,7 +4,7 @@
  * its keys against NATIVE_BUILTIN_PLUGIN_IDS — adding a manifest without a
  * handler (or vice versa) fails the suite instead of shipping a dead toggle.
  */
-import { startFormulaCopy, stopFormulaCopy } from '@/features/formulaCopy';
+import { activateFormulaCopy } from '@/features/formulaCopy';
 import { NATIVE_BUILTIN_PLUGIN_IDS } from '@/features/plugins/builtin';
 import {
   activateClaudeTimeline,
@@ -19,8 +19,7 @@ import {
 
 export const NATIVE_HANDLER_BINDINGS: Readonly<Record<string, NativeHandler>> = {
   'voyager.formula-copy': {
-    start: startFormulaCopy,
-    stop: stopFormulaCopy,
+    activate: activateFormulaCopy,
   },
   'voyager.input-vim': {
     activate: activateInputVimPlugin,
