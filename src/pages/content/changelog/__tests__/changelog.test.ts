@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -175,6 +176,44 @@ describe('resolveChangelogImageUrl', () => {
     const result = resolveChangelogImageUrl(source, (path) => `moz-extension://test-id/${path}`);
 
     expect(result).toBe(source);
+  });
+});
+
+describe('changelog sanitizer URI policy', () => {
+  // The bundled screenshot resolves to a chrome-extension:// or moz-extension://
+  // URL. DOMPurify's default URI policy allows neither, so it strips the src and
+  // renders a broken image with no error anywhere — the exact failure this pins.
+  const SANITIZE_OPTIONS = {
+    ALLOWED_TAGS: ['img', 'p', 'a'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class'],
+    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|chrome-extension:|moz-extension:)/i,
+  };
+
+  it('matches the options the changelog actually sanitizes with', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/pages/content/changelog/index.ts'),
+      'utf8',
+    );
+
+    expect(source).toContain(
+      'ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|chrome-extension:|moz-extension:)/i',
+    );
+  });
+
+  it.each([
+    ['chrome-extension://abc/changelog-activity-view.png'],
+    ['moz-extension://abc/changelog-activity-view.png'],
+    ['https://voyager.nagi.fun/assets/promotion/Activity-View.png'],
+  ])('keeps the src for %s', (src) => {
+    const result = DOMPurify.sanitize(`<img src="${src}" alt="x">`, SANITIZE_OPTIONS);
+
+    expect(result).toContain(`src="${src}"`);
+  });
+
+  it('still drops a javascript: src', () => {
+    const result = DOMPurify.sanitize(`<img src="javascript:alert(1)" alt="x">`, SANITIZE_OPTIONS);
+
+    expect(result).not.toContain('javascript:');
   });
 });
 

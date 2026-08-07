@@ -622,6 +622,10 @@ async function showChangelogModal(
       'blockquote',
     ],
     ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class'],
+    // Changelog images are bundled and resolved to chrome-extension:// or
+    // moz-extension:// URLs. DOMPurify's default URI policy allows neither, so
+    // without this it silently drops the src and renders a broken image.
+    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|chrome-extension:|moz-extension:)/i,
   });
 
   // 5. Mark as dismissed BEFORE showing — ensures the modal never re-appears
