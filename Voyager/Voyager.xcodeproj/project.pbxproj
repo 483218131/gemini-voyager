@@ -519,7 +519,7 @@
 				CLOUDKIT_CONTAINER_ENVIRONMENT = Development;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Extension/Extension.entitlements;
-				CURRENT_PROJECT_VERSION = 1.7.0;
+				CURRENT_PROJECT_VERSION = 1.7.1;
 				DEVELOPMENT_TEAM = PJM828YBFJ;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -535,7 +535,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.7.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -557,7 +557,7 @@
 				CLOUDKIT_CONTAINER_ENVIRONMENT = Production;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Extension/Extension.entitlements;
-				CURRENT_PROJECT_VERSION = 1.7.0;
+				CURRENT_PROJECT_VERSION = 1.7.1;
 				DEVELOPMENT_TEAM = PJM828YBFJ;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -573,7 +573,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.7.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -598,7 +598,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1.7.0;
+				CURRENT_PROJECT_VERSION = 1.7.1;
 				DEVELOPMENT_TEAM = PJM828YBFJ;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -614,7 +614,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.7.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -641,7 +641,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1.7.0;
+				CURRENT_PROJECT_VERSION = 1.7.1;
 				DEVELOPMENT_TEAM = PJM828YBFJ;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -657,7 +657,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.7.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,

@@ -9823,6 +9823,22 @@ html.dark .gv-changelog-body > .gv-changelog-quote,
   opacity: 0.9;
 }
 
+/* Feature screenshots sit inside a changelog bullet: show a thumbnail, not a
+   full-width banner. Click still opens the lightbox at full size. */
+.gv-changelog-body li img {
+  display: block;
+  width: 300px;
+  max-width: 100%;
+  margin: 8px 0 2px;
+  border: 1px solid rgba(60, 64, 67, 0.16);
+}
+
+html.dark .gv-changelog-body li img,
+[data-theme='dark'] .gv-changelog-body li img,
+[data-color-scheme='dark'] .gv-changelog-body li img {
+  border-color: rgba(232, 234, 237, 0.18);
+}
+
 .gv-changelog-body a {
   color: #1a73e8;
   text-decoration: none;
