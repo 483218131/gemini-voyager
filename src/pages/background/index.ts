@@ -56,6 +56,7 @@ import {
 } from '@/features/backup/services/HighlightImportExportService';
 import { PromptImportExportService } from '@/features/backup/services/PromptImportExportService';
 import { computeNudgeDomains, normalizeIconResourcePath } from '@/features/plugins/promptNudge';
+import { PLUGIN_CONTENT_SCRIPT_SYNC_MESSAGE } from '@/features/plugins/runtime/messages';
 import {
   partitionPluginOriginPatterns,
   pluginsToOriginPatterns,
@@ -1749,6 +1750,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
       if (isRuntimeImageMessage(message)) {
         sendResponse(await handleRuntimeImageMessage(message, sender));
+        return;
+      }
+
+      if (message?.type === PLUGIN_CONTENT_SCRIPT_SYNC_MESSAGE) {
+        await syncPluginContentScripts();
+        sendResponse({ ok: true });
         return;
       }
 
