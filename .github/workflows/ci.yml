@@ -145,11 +145,14 @@ jobs:
       - run: bun run test
 
   # ── Native Swift Tests + Xcode Build ─────────────────────────────────
+  # app-only (src/public) changes skip this: the Safari web bundle is already
+  # packaging-verified by the Build (safari) matrix job on ubuntu; this job's
+  # extra coverage (swift test + xcodebuild app assembly) only varies with
+  # native code or build configs.
   native-test:
     name: Native Swift Test & Xcode Build
     needs: changes
     if: >-
-      needs.changes.outputs.app == 'true' ||
       needs.changes.outputs.native == 'true' ||
       needs.changes.outputs.core == 'true'
     runs-on: macos-latest
