@@ -62,6 +62,13 @@ import {
   getCachedLatestVersion,
   getManifestUpdateUrl,
 } from '@/pages/popup/utils/latestVersion';
+import {
+  NATIVE_POPUP_SECTION_IDS,
+  POPUP_SECTION_SEARCH_SETTING_ID,
+  isNativePopupSectionAvailable,
+  isNativePopupSettingAvailable,
+} from '@/pages/popup/utils/nativeSiteCapabilities';
+import type { NativePopupSectionId } from '@/pages/popup/utils/nativeSiteCapabilities';
 import { isPluginPopupSite } from '@/pages/popup/utils/siteMode';
 import { canUseVisualEffects } from '@/pages/popup/utils/visualEffectsAvailability';
 import type { TranslationKey } from '@/utils/translations';
@@ -119,33 +126,9 @@ type ScrollMode = 'jump' | 'flow';
 /**
  * Reorderable popup section IDs — order here is the default display order.
  */
-const POPUP_SECTION_IDS = [
-  'cloudSync',
-  'contextSync',
-  'timeline',
-  'folder',
-  'folderSpacing',
-  'folderTreeIndent',
-  'gemsSidebar',
-  'chatWidth',
-  'chatFontSize',
-  'chatLineHeight',
-  'editInputWidth',
-  'sidebarWidth',
-  'sidebarBehavior',
-  'visualEffect',
-  'formulaCopy',
-  'keyboardShortcuts',
-  'inputCollapse',
-  'promptManager',
-  'plugins',
-  'general',
-  'nanobanana',
-] as const;
+type PopupSectionId = NativePopupSectionId;
 
-type PopupSectionId = (typeof POPUP_SECTION_IDS)[number];
-
-const DEFAULT_SECTION_ORDER: readonly PopupSectionId[] = POPUP_SECTION_IDS;
+const DEFAULT_SECTION_ORDER: readonly PopupSectionId[] = NATIVE_POPUP_SECTION_IDS;
 const VALUE_BADGE_SECTION_IDS = new Set<PopupSectionId>([
   'folderSpacing',
   'folderTreeIndent',
@@ -163,8 +146,6 @@ interface PopupSettingsSearchItem extends SettingsSearchItem<PopupSettingsSearch
   sectionId: PopupSectionId;
   settingId: string;
 }
-
-const SECTION_SEARCH_SETTING_ID = '__section';
 
 function popupSearchTarget(
   sectionId: PopupSectionId,
@@ -186,7 +167,7 @@ function popupSectionSearchTarget(
   keys: readonly TranslationKey[],
   aliases?: readonly string[],
 ): PopupSettingsSearchItem {
-  return popupSearchTarget(sectionId, SECTION_SEARCH_SETTING_ID, keys, aliases);
+  return popupSearchTarget(sectionId, POPUP_SECTION_SEARCH_SETTING_ID, keys, aliases);
 }
 
 function isEmptyPromptImportPayload(value: unknown): boolean {
@@ -1098,6 +1079,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   }, []);
 
   const isAIStudio = activeAccountPlatform === 'aistudio';
+  const nativePopupPlatform = isAIStudio ? 'aistudio' : 'gemini';
   const currentPlatformLabel = isAIStudio ? t('platformAIStudio') : t('platformGemini');
 
   // Plugins whose match patterns cover the active tab's URL. A plugin only ever
@@ -2115,12 +2097,12 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
           // Section order
           const storedOrder = res?.[StorageKeys.GV_POPUP_SECTION_ORDER];
           if (Array.isArray(storedOrder)) {
-            const validIds = new Set<string>(POPUP_SECTION_IDS);
+            const validIds = new Set<string>(NATIVE_POPUP_SECTION_IDS);
             const filtered = storedOrder.filter(
               (id: unknown): id is PopupSectionId => typeof id === 'string' && validIds.has(id),
             );
             const seen = new Set(filtered);
-            const missing = POPUP_SECTION_IDS.filter((id) => !seen.has(id));
+            const missing = NATIVE_POPUP_SECTION_IDS.filter((id) => !seen.has(id));
             setSectionOrder([...filtered, ...missing]);
           }
 
@@ -2418,21 +2400,10 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
 
   // ── Section reorder helpers ──────────────────────────────────
   const isSectionVisible = (id: PopupSectionId): boolean => {
-    switch (id) {
-      case 'cloudSync':
-        return true;
-      case 'nanobanana':
-        return true;
-      case 'folderTreeIndent':
-      case 'sidebarBehavior':
-        return !isAIStudio;
-      case 'plugins':
-        // The Plugins section is always rendered pinned to the top (and only on
-        // sites a plugin targets). It never appears in the reorderable list.
-        return false;
-      default:
-        return true;
-    }
+    // The Plugins section is always rendered pinned to the top (and only on
+    // sites a plugin targets). It never appears in the reorderable list.
+    if (id === 'plugins') return false;
+    return isNativePopupSectionAvailable(nativePopupPlatform, id);
   };
 
   const visibleSections = sectionOrder.filter(isSectionVisible);
@@ -2445,8 +2416,14 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
     showStorageManager,
   });
   const settingsSearchMatches = useMemo(
-    () => getSettingsSearchMatches(POPUP_SETTINGS_SEARCH_ITEMS, settingsSearchQuery),
-    [settingsSearchQuery],
+    () =>
+      getSettingsSearchMatches(
+        POPUP_SETTINGS_SEARCH_ITEMS.filter((item) =>
+          isNativePopupSettingAvailable(nativePopupPlatform, item.sectionId, item.settingId),
+        ),
+        settingsSearchQuery,
+      ),
+    [nativePopupPlatform, settingsSearchQuery],
   );
   const settingsSearchSections = useMemo(() => {
     if (!hasSettingsSearch) return new Set<PopupSectionId>(visibleSections);
@@ -2466,12 +2443,16 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   ): PopupSettingsSearchTargetId => `${sectionId}:${settingId}` as PopupSettingsSearchTargetId;
 
   const sectionTitleMatchesSearch = (sectionId: PopupSectionId): boolean =>
-    settingsSearchMatches.has(getSearchTargetId(sectionId, SECTION_SEARCH_SETTING_ID));
+    settingsSearchMatches.has(getSearchTargetId(sectionId, POPUP_SECTION_SEARCH_SETTING_ID));
 
-  const shouldShowSetting = (sectionId: PopupSectionId, settingId: string): boolean =>
-    !hasSettingsSearch ||
-    sectionTitleMatchesSearch(sectionId) ||
-    settingsSearchMatches.has(getSearchTargetId(sectionId, settingId));
+  const shouldShowSetting = (sectionId: PopupSectionId, settingId: string): boolean => {
+    if (!isNativePopupSettingAvailable(nativePopupPlatform, sectionId, settingId)) return false;
+    return (
+      !hasSettingsSearch ||
+      sectionTitleMatchesSearch(sectionId) ||
+      settingsSearchMatches.has(getSearchTargetId(sectionId, settingId))
+    );
+  };
 
   const renderSetting = (
     sectionId: PopupSectionId,
@@ -2602,6 +2583,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
     // Plugins section only. Gemini-specific settings, including Prompt Manager
     // custom-site controls, remain available from the native Gemini/AI Studio popup.
     if (isPluginSite && !options.allowPluginSite) return null;
+    if (!isSectionVisible(id)) return null;
     if (hasSettingsSearch && !settingsSearchSections.has(id)) return null;
 
     return (
@@ -3416,39 +3398,36 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
             onChangeComplete={folderSpacingAdjuster.handleChangeComplete}
           />,
         )}
-        {!isAIStudio &&
-          wrapSection(
-            'folderTreeIndent',
-            <WidthSlider
-              label={t('folderTreeIndent')}
-              value={folderTreeIndentAdjuster.width}
-              min={FOLDER_TREE_INDENT.min}
-              max={FOLDER_TREE_INDENT.max}
-              step={1}
-              narrowLabel={t('folderTreeIndentCompact')}
-              wideLabel={t('folderTreeIndentSpacious')}
-              valueFormatter={(v) => `${v}px`}
-              onChange={folderTreeIndentAdjuster.handleChange}
-              onChangeComplete={folderTreeIndentAdjuster.handleChangeComplete}
-            />,
-          )}
-        {/* Gems sidebar — only on gemini.google.com, not AI Studio */}
-        {!isAIStudio &&
-          wrapSection(
-            'gemsSidebar',
-            <WidthSlider
-              label={t('gemsSidebarCount')}
-              value={gemsSidebarCountAdjuster.width}
-              min={GEMS_SIDEBAR_COUNT.min}
-              max={GEMS_SIDEBAR_COUNT.max}
-              step={1}
-              narrowLabel={t('gemsSidebarCountOff')}
-              wideLabel={t('gemsSidebarCountMany')}
-              valueFormatter={(v) => (v === 0 ? t('gemsSidebarCountOff') : String(v))}
-              onChange={gemsSidebarCountAdjuster.handleChange}
-              onChangeComplete={gemsSidebarCountAdjuster.handleChangeComplete}
-            />,
-          )}
+        {wrapSection(
+          'folderTreeIndent',
+          <WidthSlider
+            label={t('folderTreeIndent')}
+            value={folderTreeIndentAdjuster.width}
+            min={FOLDER_TREE_INDENT.min}
+            max={FOLDER_TREE_INDENT.max}
+            step={1}
+            narrowLabel={t('folderTreeIndentCompact')}
+            wideLabel={t('folderTreeIndentSpacious')}
+            valueFormatter={(v) => `${v}px`}
+            onChange={folderTreeIndentAdjuster.handleChange}
+            onChangeComplete={folderTreeIndentAdjuster.handleChangeComplete}
+          />,
+        )}
+        {wrapSection(
+          'gemsSidebar',
+          <WidthSlider
+            label={t('gemsSidebarCount')}
+            value={gemsSidebarCountAdjuster.width}
+            min={GEMS_SIDEBAR_COUNT.min}
+            max={GEMS_SIDEBAR_COUNT.max}
+            step={1}
+            narrowLabel={t('gemsSidebarCountOff')}
+            wideLabel={t('gemsSidebarCountMany')}
+            valueFormatter={(v) => (v === 0 ? t('gemsSidebarCountOff') : String(v))}
+            onChange={gemsSidebarCountAdjuster.handleChange}
+            onChangeComplete={gemsSidebarCountAdjuster.handleChangeComplete}
+          />,
+        )}
         {/* Chat Width */}
         {wrapSection(
           'chatWidth',
@@ -3571,59 +3550,57 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
           />,
         )}
 
-        {/* Sidebar Auto-Hide & Full-Hide - Gemini only */}
-        {!isAIStudio &&
-          wrapSection(
-            'sidebarBehavior',
-            <Card className="p-4 transition-all hover:shadow-md">
-              <CardContent className="space-y-3 p-0">
-                <div
-                  hidden={!shouldShowSetting('sidebarBehavior', 'sidebarAutoHide')}
-                  className="group flex items-center justify-between"
-                >
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="sidebar-auto-hide"
-                      className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
-                    >
-                      {t('sidebarAutoHide')}
-                    </Label>
-                    <p className="text-muted-foreground mt-1 text-xs">{t('sidebarAutoHideHint')}</p>
-                  </div>
-                  <Switch
-                    id="sidebar-auto-hide"
-                    checked={sidebarAutoHideEnabled}
-                    onChange={(e) => {
-                      setSidebarAutoHideEnabled(e.target.checked);
-                      apply({ sidebarAutoHideEnabled: e.target.checked });
-                    }}
-                  />
+        {wrapSection(
+          'sidebarBehavior',
+          <Card className="p-4 transition-all hover:shadow-md">
+            <CardContent className="space-y-3 p-0">
+              <div
+                hidden={!shouldShowSetting('sidebarBehavior', 'sidebarAutoHide')}
+                className="group flex items-center justify-between"
+              >
+                <div className="flex-1">
+                  <Label
+                    htmlFor="sidebar-auto-hide"
+                    className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
+                  >
+                    {t('sidebarAutoHide')}
+                  </Label>
+                  <p className="text-muted-foreground mt-1 text-xs">{t('sidebarAutoHideHint')}</p>
                 </div>
-                <div
-                  hidden={!shouldShowSetting('sidebarBehavior', 'sidebarFullHide')}
-                  className="group flex items-center justify-between"
-                >
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="sidebar-full-hide"
-                      className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
-                    >
-                      {t('sidebarFullHide')}
-                    </Label>
-                    <p className="text-muted-foreground mt-1 text-xs">{t('sidebarFullHideHint')}</p>
-                  </div>
-                  <Switch
-                    id="sidebar-full-hide"
-                    checked={sidebarFullHideEnabled}
-                    onChange={(e) => {
-                      setSidebarFullHideEnabled(e.target.checked);
-                      apply({ sidebarFullHideEnabled: e.target.checked });
-                    }}
-                  />
+                <Switch
+                  id="sidebar-auto-hide"
+                  checked={sidebarAutoHideEnabled}
+                  onChange={(e) => {
+                    setSidebarAutoHideEnabled(e.target.checked);
+                    apply({ sidebarAutoHideEnabled: e.target.checked });
+                  }}
+                />
+              </div>
+              <div
+                hidden={!shouldShowSetting('sidebarBehavior', 'sidebarFullHide')}
+                className="group flex items-center justify-between"
+              >
+                <div className="flex-1">
+                  <Label
+                    htmlFor="sidebar-full-hide"
+                    className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
+                  >
+                    {t('sidebarFullHide')}
+                  </Label>
+                  <p className="text-muted-foreground mt-1 text-xs">{t('sidebarFullHideHint')}</p>
                 </div>
-              </CardContent>
-            </Card>,
-          )}
+                <Switch
+                  id="sidebar-full-hide"
+                  checked={sidebarFullHideEnabled}
+                  onChange={(e) => {
+                    setSidebarFullHideEnabled(e.target.checked);
+                    apply({ sidebarFullHideEnabled: e.target.checked });
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>,
+        )}
 
         {/* Platform-neutral visual effects. Third-party sites expose this only
             after Prompt Manager or a matching plugin has activated the site. */}
