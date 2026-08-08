@@ -48,13 +48,18 @@ describe('release artifacts', () => {
     expect(firefoxConfig).toContain('version: firefoxVersionOverride ?? pkg.version');
   });
 
-  it('announces full Safari support without restoring obsolete image limitations', () => {
+  it('keeps full Safari support guidance collapsed without restoring obsolete limitations', () => {
     const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8');
+    const safariDetails = workflow.match(
+      /<details>\s*<summary><b>[^<]*Safari[^<]*<\/b><\/summary>[\s\S]*?<\/details>/,
+    )?.[0];
 
-    expect(workflow).toContain('🍎✨ Safari 正式支持！');
-    expect(workflow).toContain('image extraction in conversation exports are supported');
-    expect(workflow).toContain('voyager.nagi.fun/guide/safari-migration');
-    expect(workflow).not.toContain('Image extraction in chat exports remains limited by Safari');
+    expect(safariDetails).toBeDefined();
+    expect(safariDetails).toContain('image extraction in conversation exports are supported');
+    expect(safariDetails).toContain('voyager.nagi.fun/guide/safari-migration');
+    expect(safariDetails).not.toContain(
+      'Image extraction in chat exports remains limited by Safari',
+    );
   });
 
   it('does not assign to zsh reserved variables while reading notarization results', () => {
