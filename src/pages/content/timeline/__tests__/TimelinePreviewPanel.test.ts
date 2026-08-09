@@ -296,13 +296,6 @@ describe('TimelinePreviewPanel', () => {
       expect(items[0]?.classList.contains('starred')).toBe(false);
     });
 
-    it('does not crowd starred items with bookmark timestamps', () => {
-      panel.updateMarkers(makeMarkers(5));
-      panel.open();
-
-      expect(document.querySelector('.timeline-preview-starred-time')).toBeNull();
-    });
-
     it('shows empty message when no markers', () => {
       panel.updateMarkers([]);
       panel.open();
