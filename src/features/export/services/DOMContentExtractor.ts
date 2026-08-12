@@ -2,6 +2,7 @@
  * DOM Content Extractor
  * Extracts rich content from Gemini's DOM structure preserving formatting
  */
+import type { ExportPlatformAdapter } from '../../../pages/content/export/adapter/platformAdapters';
 import type { ExportAttachment } from '../types/export';
 
 export interface ExtractedContent {
@@ -56,8 +57,20 @@ type ExportCodeBlock =
 
 export class DOMContentExtractor {
   private static DEBUG = false;
+  private static exportAdapter: ExportPlatformAdapter;
+
   /**
-   * Extract user query content
+   * Set the export adapter.
+   * @param adapter - The export adapter.
+   */
+  static setExportAdapter(adapter: ExportPlatformAdapter) {
+    this.exportAdapter = adapter;
+  }
+
+  /**
+   * Extract user query content.
+   * @param imageSelectors - Platform-specific selectors for finding images.
+   *   Empty/omitted = use Gemini's built-in selectors only.
    */
   static extractUserContent(element: HTMLElement): ExtractedContent {
     const result: ExtractedContent = {
@@ -70,22 +83,19 @@ export class DOMContentExtractor {
       hasCode: false,
     };
 
-    // Check for images
-    const images = element.querySelectorAll('user-query-file-preview img, .preview-image');
+    const images = this.exportAdapter.extractUserImage(element) ?? [];
     result.hasImages = images.length > 0;
 
     const attachments = this.extractUserAttachments(element);
     result.attachments = attachments;
 
-    // Extract text from query-text-line paragraphs
-    const textLines = element.querySelectorAll('.query-text-line');
+    // Extract user message text. Each platform exposes its own DOM shape
+    // (Gemini's .query-text-line paragraphs vs. ChatGPT's plain text node),
+    // so the actual extraction strategy is delegated to the platform adapter.
+    const textLines = element.querySelectorAll<HTMLElement>('.query-text-line');
     const textParts: string[] = [];
-    textLines.forEach((line) => {
-      const el = line as HTMLElement;
-      const raw = el.dataset?.userLatexOriginal ?? line.textContent ?? '';
-      const text = this.normalizeText(raw);
-      if (text) textParts.push(text);
-    });
+    this.exportAdapter.extractUserText(textLines, textParts, element);
+
     result.text = textParts.join('\n');
 
     // Build HTML representation
@@ -96,7 +106,9 @@ export class DOMContentExtractor {
     images.forEach((img, index) => {
       const src = (img as HTMLImageElement).src;
       const alt = (img as HTMLImageElement).alt || `Uploaded image ${index + 1}`;
-      htmlParts.push(`<img src="${src}" alt="${alt}" />`);
+      htmlParts.push(
+        `<img src="${this.escapeHtmlAttribute(src)}" alt="${this.escapeHtmlAttribute(alt)}" />`,
+      );
       imageMarkdown.push(`![${alt}](${src})`);
     });
 
@@ -186,6 +198,7 @@ export class DOMContentExtractor {
     // Instead, skip model-thoughts during processNodes
     const htmlParts: string[] = [];
     const textParts: string[] = [];
+    const processedImageSrcs = new Set<string>();
 
     // STRATEGY CHANGE: Instead of recursing through DOM (which misses Angular-rendered elements),
     // process the .markdown div directly and then search for response-elements
@@ -208,13 +221,13 @@ export class DOMContentExtractor {
       }
 
       // First, process all direct children of markdown that are NOT response-element
-      this.processNodes(markdownDiv, htmlParts, textParts, result);
+      this.processNodes(markdownDiv, htmlParts, textParts, result, processedImageSrcs);
 
       // Note: response-element contents are processed by processNodes recursion above
     } else {
       // Fallback to old method
       if (this.DEBUG) console.log('[DOMContentExtractor] No markdown div found, using fallback');
-      this.processNodes(messageContent, htmlParts, textParts, result);
+      this.processNodes(messageContent, htmlParts, textParts, result, processedImageSrcs);
     }
 
     // Additionally, look for code blocks and tables at the element level
@@ -312,25 +325,15 @@ export class DOMContentExtractor {
   }
 
   /**
-   * Extract non-image uploads from Gemini's user-query-file-preview elements.
+   * Extract non-image uploads from platform-specific user message file cards.
    * Image previews are already exported as images above, so they are not duplicated.
    */
   private static extractUserAttachments(element: HTMLElement): ExportAttachment[] {
-    const uploadedFiles = Array.from(
-      element.querySelectorAll<HTMLElement>(
-        'user-query-file-preview [data-test-id="uploaded-file"]',
-      ),
-    );
-    const candidates =
-      uploadedFiles.length > 0
-        ? uploadedFiles
-        : Array.from(
-            element.querySelectorAll<HTMLElement>('user-query-file-preview .new-file-preview-file'),
-          );
+    const candidates = this.exportAdapter.getUserAttachmentCandidates(element);
     const attachments: ExportAttachment[] = [];
     const seen = new Set<string>();
 
-    candidates.forEach((candidate) => {
+    candidates?.forEach((candidate) => {
       const labelledElement = candidate.matches('[aria-label]')
         ? candidate
         : candidate.querySelector<HTMLElement>('[aria-label]');
@@ -364,25 +367,26 @@ export class DOMContentExtractor {
    * Process DOM nodes recursively
    */
   private static processNodes(
-    container: Element,
+    container: Element | ShadowRoot,
     htmlParts: string[],
     textParts: string[],
     flags: Pick<ExtractedContent, 'hasImages' | 'hasFormulas' | 'hasTables' | 'hasCode'>,
+    processedImageSrcs: Set<string> = new Set<string>(),
   ): void {
     const children = Array.from(container.children);
     if (this.DEBUG)
       console.log(
         `[DOMContentExtractor] processNodes: ${children.length} children in`,
-        container.tagName,
-        container.className,
+        container instanceof Element ? container.tagName : '#shadow-root',
+        container instanceof Element ? container.className : '',
       );
 
     // Check for Shadow DOM
-    const shadowRoot = container.shadowRoot;
+    const shadowRoot = container instanceof Element ? container.shadowRoot : null;
     if (shadowRoot) {
       if (this.DEBUG)
         console.log('[DOMContentExtractor] Found Shadow DOM! Processing shadow children');
-      this.processNodes(shadowRoot as unknown as Element, htmlParts, textParts, flags);
+      this.processNodes(shadowRoot, htmlParts, textParts, flags, processedImageSrcs);
     }
 
     for (const child of children) {
@@ -393,6 +397,11 @@ export class DOMContentExtractor {
       // Skip certain elements
       if (this.shouldSkipElement(child)) {
         if (this.DEBUG) console.log('[DOMContentExtractor] Skipping element:', tagName);
+        continue;
+      }
+
+      if (child.shadowRoot && child.children.length === 0) {
+        this.processNodes(child.shadowRoot, htmlParts, textParts, flags, processedImageSrcs);
         continue;
       }
 
@@ -410,41 +419,9 @@ export class DOMContentExtractor {
         continue;
       }
 
-      // Images
-      if (tagName === 'img') {
-        const img = child as HTMLImageElement;
-        const src = img.getAttribute('src') || img.src || '';
-        if (src && src !== 'about:blank') {
-          flags.hasImages = true;
-          const altRaw = img.getAttribute('alt') || '';
-          const alt = altRaw.trim() || 'Image';
-          htmlParts.push(
-            `<img src="${this.escapeHtmlAttribute(src)}" alt="${this.escapeHtmlAttribute(alt)}" />`,
-          );
-          const mdAlt = alt.replace(/\]/g, '\\]');
-          textParts.push(`\n![${mdAlt}](${src})\n`);
-        }
+      // Extract formula
+      if (this.exportAdapter.extractFormula(child, flags, htmlParts, textParts, this.DEBUG)) {
         continue;
-      }
-
-      // Math block (display formula) - check both class and data-math attribute
-      if (child.classList.contains('math-block') || child.hasAttribute('data-math')) {
-        const latex = child.getAttribute('data-math') || '';
-        if (latex) {
-          if (this.DEBUG) console.log('[DOMContentExtractor] Found math-block, latex:', latex);
-          flags.hasFormulas = true;
-          // For HTML output: preserve the rendered formula HTML for PDF export
-          // Clone the element to preserve its rendered content
-          const clonedFormula = (child as HTMLElement).cloneNode(true) as HTMLElement;
-          // Ensure data-math attribute is preserved for potential re-rendering
-          if (!clonedFormula.hasAttribute('data-math')) {
-            clonedFormula.setAttribute('data-math', latex);
-          }
-          htmlParts.push(clonedFormula.outerHTML);
-          // For text output: use Markdown format
-          textParts.push(`\n$$\n${latex}\n$$\n`);
-          continue;
-        }
       }
 
       const exportCodeBlocks = this.findExportCodeBlocks(child);
@@ -464,6 +441,13 @@ export class DOMContentExtractor {
         continue;
       }
 
+      // Extract code block via the per-platform adapter
+      if (
+        this.exportAdapter.extractCodeBlock(child, htmlParts, textParts, flags, tagName, this.DEBUG)
+      ) {
+        continue;
+      }
+
       // Traverse containers that own export blocks instead of consuming only their first
       // descendant. This keeps prose, code, and Mermaid output in DOM order.
       if (tagName !== 'ul' && tagName !== 'ol' && exportCodeBlocks.length > 0) {
@@ -473,7 +457,12 @@ export class DOMContentExtractor {
 
       // Table block (check for nested table-block first)
       const tableBlock = child.querySelector('table-block');
-      if (tagName === 'table-block' || tableBlock || child.querySelector('table')) {
+      if (
+        tagName === 'table' ||
+        tagName === 'table-block' ||
+        tableBlock ||
+        child.querySelector('table')
+      ) {
         if (this.DEBUG) console.log('[DOMContentExtractor] Found table block!');
         const elementToExtract = (tableBlock || child) as HTMLElement;
         const tableContent = this.extractTable(elementToExtract);
@@ -487,96 +476,19 @@ export class DOMContentExtractor {
         continue;
       }
 
-      // Search result images (web images found by Gemini)
-      // Structure: <div.attachment-container.search-images> > <response-element> >
-      //   <single-image> > <div.image-container[data-full-size-image-uri]> > ... > <img>
-      {
-        const searchImageContainers = child.querySelectorAll(
-          '.attachment-container.search-images .image-container[data-full-size-image-uri]',
-        );
-        if (searchImageContainers.length > 0) {
-          for (const container of Array.from(searchImageContainers)) {
-            const fullSizeUri = container.getAttribute('data-full-size-image-uri') || '';
-            const imgEl = container.querySelector('img.image') as HTMLImageElement | null;
-            if (!imgEl) continue;
-            // Use the Google-cached thumbnail (gstatic.com) as the downloadable src.
-            // The full-size URI points to arbitrary third-party domains that are blocked
-            // by both CORS and Gemini's CSP, so it's only usable as an attribution link.
-            const src = imgEl.src || '';
-            if (!src || src === 'about:blank') continue;
-            const alt = imgEl.alt || 'Search result image';
-            const sourceLink = container.querySelector('a.source') as HTMLAnchorElement | null;
-            const sourceUrl = sourceLink?.href || '';
-            const sourceLabel =
-              container.querySelector('.source .label')?.textContent?.trim() || '';
-
-            flags.hasImages = true;
-            htmlParts.push(
-              `<img src="${this.escapeHtmlAttribute(src)}" alt="${this.escapeHtmlAttribute(alt)}" />`,
-            );
-            const mdAlt = alt.replace(/\]/g, '\\]');
-            // Link to the full-size image or source when available
-            const linkUrl = fullSizeUri || sourceUrl;
-            const linkLabel = sourceLabel || (sourceUrl ? sourceUrl : '');
-            if (linkUrl) {
-              textParts.push(
-                `\n![${mdAlt}](${src})\n*Source: [${linkLabel || linkUrl}](${linkUrl})*\n`,
-              );
-            } else {
-              textParts.push(`\n![${mdAlt}](${src})\n`);
-            }
-          }
-          if (this.DEBUG)
-            console.log(
-              '[DOMContentExtractor] Extracted',
-              searchImageContainers.length,
-              'search result images',
-            );
-          continue;
-        }
-      }
-
-      // Generated images (model-generated images in assistant responses)
-      // These are typically wrapped in: <p> > <div.attachment-container.generated-images> >
-      //   <response-element> > <generated-image> > <single-image> > ... > <img>
-      // Also handle standalone generated-image / single-image custom elements
-      {
-        const generatedImgs = child.querySelectorAll(
-          'generated-image img, single-image img, .attachment-container.generated-images img',
-        );
-        if (generatedImgs.length > 0) {
-          for (const img of Array.from(generatedImgs)) {
-            const imgEl = img as HTMLImageElement;
-            const src = imgEl.src || imgEl.getAttribute('src') || '';
-            if (!src || src === 'about:blank') continue;
-            const alt = imgEl.alt || 'Generated image';
-            flags.hasImages = true;
-            htmlParts.push(
-              `<img src="${this.escapeHtmlAttribute(src)}" alt="${this.escapeHtmlAttribute(alt)}" />`,
-            );
-            const mdAlt = alt.replace(/\]/g, '\\]');
-            textParts.push(`\n![${mdAlt}](${src})\n`);
-          }
-          if (this.DEBUG)
-            console.log(
-              '[DOMContentExtractor] Extracted',
-              generatedImgs.length,
-              'generated images',
-            );
-          continue;
-        }
-      }
-
-      // YouTube video cards — export the cover thumbnail (linked to the video).
-      // The <iframe> player can't be exported, so the cover image stands in.
+      // Extract assistant image
       if (
-        child.querySelector(
-          '.attachment-container.youtube img.thumbnail, youtube-block img.thumbnail, single-video img.thumbnail',
+        this.exportAdapter.extractAssistantImage(
+          child,
+          htmlParts,
+          textParts,
+          flags,
+          tagName,
+          this.DEBUG,
+          processedImageSrcs,
         )
       ) {
-        if (this.processYouTubeCovers(child, htmlParts, textParts, flags)) {
-          continue;
-        }
+        continue;
       }
 
       // Horizontal rule
@@ -614,28 +526,47 @@ export class DOMContentExtractor {
         continue;
       }
 
-      // Generic containers - recurse into children
-      if (
-        tagName === 'response-element' ||
-        tagName === 'div' ||
-        tagName === 'section' ||
-        tagName === 'article' ||
-        tagName === 'generated-image' ||
-        tagName === 'single-image' ||
-        child.classList.contains('horizontal-scroll-wrapper') ||
-        child.classList.contains('table-block-component')
-      ) {
-        if (this.DEBUG)
-          console.log('[DOMContentExtractor] Recursing into container:', tagName, child.className);
-        // Recursively process children instead of extracting text directly
-        this.processNodes(child, htmlParts, textParts, flags);
+      if (tagName === 'blockquote') {
+        const quoteHtml: string[] = [];
+        const quoteText: string[] = [];
+        this.processNodes(child, quoteHtml, quoteText, flags, processedImageSrcs);
+        htmlParts.push(`<blockquote>${quoteHtml.join('')}</blockquote>`);
+        const markdown = quoteText
+          .join('')
+          .trim()
+          .split('\n')
+          .map((line) => (line ? `> ${line}` : '>'))
+          .join('\n');
+        if (markdown) textParts.push(`\n${markdown}\n`);
         continue;
       }
 
-      // Default: extract text content for unknown inline elements
+      // Generic containers: recurse if the element has child elements,
+      // regardless of tag name. This handles custom elements from any platform
+      // (e.g. Claude's response containers) without needing a whitelist.
+      if (child.children.length > 0) {
+        if (this.DEBUG)
+          console.log('[DOMContentExtractor] Recursing into container:', tagName, child.className);
+        const hasDirectText = Array.from(child.childNodes).some(
+          (node) => node.nodeType === Node.TEXT_NODE && this.normalizeText(node.textContent || ''),
+        );
+        const onlyInlineChildren = Array.from(child.children).every((element) =>
+          /^(?:A|B|CODE|EM|I|IMG|SPAN|STRONG|SUB|SUP)$/.test(element.tagName),
+        );
+        if (hasDirectText && onlyInlineChildren) {
+          const processed = this.processInlineContent(child as HTMLElement);
+          if (processed.hasFormulas) flags.hasFormulas = true;
+          htmlParts.push(`<span>${processed.html}</span>`);
+          textParts.push(processed.text);
+        } else {
+          this.processNodes(child, htmlParts, textParts, flags, processedImageSrcs);
+        }
+        continue;
+      }
+
+      // Leaf element with no child elements: extract text content
       const text = this.normalizeText(child.textContent || '');
       if (text) {
-        // Only add text if it's not already processed by parent
         htmlParts.push(`<span>${this.escapeHtml(text)}</span>`);
         textParts.push(text);
       }
@@ -655,7 +586,7 @@ export class DOMContentExtractor {
    * Deduped across call sites via a `processedByGV` marker on the <img>.
    * Returns true if at least one cover was emitted.
    */
-  private static processYouTubeCovers(
+  public static processYouTubeCovers(
     scope: Element,
     htmlParts: string[],
     textParts: string[],
@@ -719,8 +650,14 @@ export class DOMContentExtractor {
    * Check if element should be skipped
    */
   private static shouldSkipElement(element: Element): boolean {
-    // Skip buttons, tooltips, and action elements
+    // Skip non-content HTML nodes and interactive/action elements. Some hosts
+    // colocate component styles inside message cards; their textContent is CSS,
+    // not conversation text.
     if (
+      element.tagName === 'STYLE' ||
+      element.tagName === 'SCRIPT' ||
+      element.tagName === 'NOSCRIPT' ||
+      element.tagName === 'TEMPLATE' ||
       element.tagName === 'BUTTON' ||
       element.tagName === 'MAT-ICON' ||
       // Gemini inline sources/citation chips (appear as link icons in export/print)
@@ -788,22 +725,9 @@ export class DOMContentExtractor {
           return;
         }
 
-        // Inline formula - check both class and data-math attribute
-        if (el.classList.contains('math-inline') || el.hasAttribute('data-math')) {
-          const latex = el.getAttribute('data-math') || '';
-          if (latex) {
-            hasFormulas = true;
-            // For HTML output: preserve the rendered formula HTML for PDF export
-            const clonedFormula = (el as HTMLElement).cloneNode(true) as HTMLElement;
-            // Ensure data-math attribute is preserved
-            if (!clonedFormula.hasAttribute('data-math')) {
-              clonedFormula.setAttribute('data-math', latex);
-            }
-            htmlParts.push(clonedFormula.outerHTML);
-            // For text output: use Markdown format
-            textParts.push(`$${latex}$`);
-            return;
-          }
+        if (this.exportAdapter.extractInlineFormula(el, htmlParts, textParts)) {
+          hasFormulas = true;
+          return;
         }
 
         // Emphasis
@@ -924,7 +848,7 @@ export class DOMContentExtractor {
   /**
    * Extract code block content
    */
-  private static extractCodeBlock(
+  public static extractCodeBlock(
     element: HTMLElement,
     languageOverride?: string,
   ): { html: string; text: string } {
@@ -991,16 +915,18 @@ export class DOMContentExtractor {
     this.stripExportArtifacts(cleanTable);
 
     // Convert to Markdown
+    const normalizeCell = (cell: Element): string =>
+      this.normalizeText(cell.textContent || '').replace(/\|/g, '\\|');
     const rows: string[][] = [];
     const headerCells = Array.from(table.querySelectorAll('thead tr td, thead tr th'));
     if (headerCells.length > 0) {
-      rows.push(headerCells.map((cell) => this.normalizeText(cell.textContent || '')));
+      rows.push(headerCells.map(normalizeCell));
     }
 
     const bodyRows = table.querySelectorAll('tbody tr');
     bodyRows.forEach((row) => {
       const cells = Array.from(row.querySelectorAll('td, th'));
-      rows.push(cells.map((cell) => this.normalizeText(cell.textContent || '')));
+      rows.push(cells.map(normalizeCell));
     });
 
     // Build Markdown table
@@ -1017,17 +943,13 @@ export class DOMContentExtractor {
       // Fallback: treat first tbody row as header if no thead present
       const firstBodyRow = table.querySelector('tbody tr');
       if (firstBodyRow) {
-        const header = Array.from(firstBodyRow.querySelectorAll('td, th')).map((cell) =>
-          this.normalizeText(cell.textContent || ''),
-        );
+        const header = Array.from(firstBodyRow.querySelectorAll('td, th')).map(normalizeCell);
         if (header.length > 0) {
           markdownLines.push('| ' + header.join(' | ') + ' |');
           markdownLines.push('| ' + header.map(() => '---').join(' | ') + ' |');
           const rest = Array.from(table.querySelectorAll('tbody tr')).slice(1);
           rest.forEach((row) => {
-            const cells = Array.from(row.querySelectorAll('td, th')).map((cell) =>
-              this.normalizeText(cell.textContent || ''),
-            );
+            const cells = Array.from(row.querySelectorAll('td, th')).map(normalizeCell);
             markdownLines.push('| ' + cells.join(' | ') + ' |');
           });
         }
@@ -1048,6 +970,7 @@ export class DOMContentExtractor {
     depth: number = 0,
   ): { html: string; text: string; hasFormulas: boolean; hasCode: boolean } {
     const isOrdered = element.tagName === 'OL';
+    const orderedStart = isOrdered ? (element as HTMLOListElement).start : 1;
     const items = Array.from(element.querySelectorAll(':scope > li'));
     const indent = '  '.repeat(depth); // 2 spaces per level
 
@@ -1055,7 +978,7 @@ export class DOMContentExtractor {
     let hasFormulas = false;
     let hasCode = false;
     items.forEach((item, index) => {
-      const prefix = isOrdered ? `${index + 1}. ` : '- ';
+      const prefix = isOrdered ? `${orderedStart + index}. ` : '- ';
       const continuationIndent = indent + ' '.repeat(prefix.length);
       let hasItemContent = false;
       let proseNodes: Node[] = [];
@@ -1180,6 +1103,10 @@ export class DOMContentExtractor {
    */
   private static stripExportArtifacts(root: HTMLElement): void {
     const selector = [
+      'style',
+      'script',
+      'noscript',
+      'template',
       'button',
       'mat-icon',
       'model-thoughts',
@@ -1207,14 +1134,14 @@ export class DOMContentExtractor {
   /**
    * Normalize whitespace in text
    */
-  private static normalizeText(text: string): string {
+  public static normalizeText(text: string): string {
     return text.replace(/\s+/g, ' ').trim();
   }
 
   /**
    * Escape HTML special characters
    */
-  private static escapeHtml(text: string): string {
+  public static escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -1223,7 +1150,7 @@ export class DOMContentExtractor {
   /**
    * Escape HTML for attribute context.
    */
-  private static escapeHtmlAttribute(text: string): string {
+  public static escapeHtmlAttribute(text: string): string {
     return String(text)
       .replace(/&/g, '&amp;')
       .replace(/"/g, '&quot;')

@@ -12,7 +12,15 @@ import {
   type ExportSpeakerLabels,
 } from '../types/export';
 import { DOMContentExtractor } from './DOMContentExtractor';
+import {
+  EXPORT_IMAGE_FETCH_CONCURRENCY,
+  MAX_EXPORT_IMAGE_COUNT,
+  MAX_EXPORT_IMAGE_TOTAL_BYTES,
+  fetchBoundedExportImage,
+  mapWithConcurrency,
+} from './boundedImageFetch';
 import { buildKatexExportStyles } from './katexExportStyles';
+import { buildListExportStyles } from './listExportStyles';
 import { buildMermaidExportStyles } from './mermaidExportStyles';
 import { isolateMermaidSvgImages, rasterizeMermaidSvgImages } from './mermaidSvgImage';
 
@@ -44,9 +52,16 @@ export class PDFPrintService {
   static async export(
     turns: ChatTurn[],
     metadata: ConversationMetadata,
-    options?: { fontSize?: number; speakerLabels?: ExportSpeakerLabels },
+    options?: { fontSize?: number; speakerLabels?: ExportSpeakerLabels; signal?: AbortSignal },
   ): Promise<void> {
-    await this.exportInternal(turns, metadata, false, options?.fontSize, options?.speakerLabels);
+    await this.exportInternal(
+      turns,
+      metadata,
+      false,
+      options?.fontSize,
+      options?.speakerLabels,
+      options?.signal,
+    );
   }
 
   static async exportDocument(content: PrintableDocumentContent): Promise<void> {
@@ -55,6 +70,7 @@ export class PDFPrintService {
       exportedAt: content.exportedAt,
       count: 1,
       title: content.title,
+      platform: 'web',
     };
 
     const htmlContainer = document.createElement('div');
@@ -80,24 +96,22 @@ export class PDFPrintService {
     preferMetadataTitle: boolean,
     fontSize?: number,
     speakerLabels: ExportSpeakerLabels = DEFAULT_EXPORT_SPEAKER_LABELS,
+    signal?: AbortSignal,
   ): Promise<void> {
+    this.assertNotAborted(signal);
     // Ensure we don't leave a previous export container around (e.g. if a prior export failed)
     this.cleanup();
 
     const safari = isSafari();
 
     // Create print container
-    const container = this.createPrintContainer(
-      turns,
-      metadata,
-      preferMetadataTitle,
-      speakerLabels,
-    );
+    const container = this.createPrintContainer(turns, metadata, speakerLabels);
     if (safari) {
       isolateMermaidSvgImages(container);
     } else {
       await rasterizeMermaidSvgImages(container);
     }
+    this.assertNotAborted(signal);
     document.body.appendChild(container);
 
     // Remove existing print styles so we can re-inject with new font size
@@ -118,11 +132,12 @@ export class PDFPrintService {
     // Inline images as data URLs (best-effort) to avoid auth-bound links failing in print.
     // Safari is very strict about `window.print()` being called with a user gesture; awaiting here
     // may cause the print dialog to be blocked. So on Safari we do not await.
-    const inlineImagesPromise = this.inlineImages(container).catch(() => {
+    const inlineImagesPromise = this.inlineImages(container, signal).catch(() => {
       /* ignore */
     });
 
     if (safari) {
+      this.assertNotAborted(signal);
       this.forceStyleFlush(container);
       this.triggerPrint();
       this.registerCleanupHandlers();
@@ -132,8 +147,16 @@ export class PDFPrintService {
 
     await inlineImagesPromise;
     await this.delay(100);
+    this.assertNotAborted(signal);
     this.triggerPrint();
     this.registerCleanupHandlers();
+  }
+
+  private static assertNotAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+      this.cleanup();
+      throw new DOMException('Export cancelled', 'AbortError');
+    }
   }
 
   private static triggerPrint(): void {
@@ -200,7 +223,6 @@ export class PDFPrintService {
   private static createPrintContainer(
     turns: ChatTurn[],
     metadata: ConversationMetadata,
-    preferMetadataTitle: boolean,
     speakerLabels: ExportSpeakerLabels,
   ): HTMLElement {
     const container = document.createElement('div');
@@ -210,7 +232,7 @@ export class PDFPrintService {
     // Build HTML content
     container.innerHTML = `
       <div class="gv-print-document">
-        ${this.renderHeader(metadata, preferMetadataTitle)}
+        ${this.renderHeader(metadata)}
         ${this.renderContent(turns, speakerLabels)}
         ${this.renderFooter(metadata)}
       </div>
@@ -238,84 +260,70 @@ export class PDFPrintService {
   /**
    * Convert <img src> links in container to data URLs (best-effort)
    */
-  private static async inlineImages(container: HTMLElement): Promise<void> {
-    const imgs = Array.from(container.querySelectorAll('img')) as HTMLImageElement[];
+  private static async inlineImages(container: HTMLElement, signal?: AbortSignal): Promise<void> {
+    const allImages = Array.from(container.querySelectorAll('img')) as HTMLImageElement[];
+    const imgs = allImages.slice(0, MAX_EXPORT_IMAGE_COUNT);
     if (imgs.length === 0) return;
+    const budget = { remainingBytes: MAX_EXPORT_IMAGE_TOTAL_BYTES };
+
     const toDataUrl = async (url: string): Promise<string | null> => {
-      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeoutHandle = this.setTimeoutUnref(() => {
-        try {
-          controller?.abort();
-        } catch {
-          /* ignore */
-        }
-      }, this.INLINE_FETCH_TIMEOUT_MS);
-
       try {
-        const init: RequestInit = { credentials: 'include', mode: 'cors' as RequestMode };
-        if (controller) init.signal = controller.signal;
-
-        const resp = await fetch(url, init);
-        if (!resp.ok) return null;
-        const blob = await resp.blob();
-        const data = await new Promise<string>((resolve, reject) => {
+        const fetched = await fetchBoundedExportImage(
+          url,
+          budget,
+          signal,
+          this.INLINE_FETCH_TIMEOUT_MS,
+        );
+        if (!fetched) return null;
+        return await new Promise<string>((resolve, reject) => {
           try {
             const reader = new FileReader();
             reader.onerror = () => reject(new Error('readAsDataURL failed'));
             reader.onload = () => resolve(String(reader.result || ''));
-            reader.readAsDataURL(blob);
-          } catch (e) {
-            reject(e);
+            reader.readAsDataURL(fetched.blob);
+          } catch (error) {
+            reject(error);
           }
         });
-        return data;
       } catch {
         return null;
-      } finally {
-        clearTimeout(timeoutHandle);
       }
     };
 
-    await Promise.all(
-      imgs.map(async (img) => {
-        let src = img.getAttribute('src') || '';
-        // Handle both http(s) and blob: URLs (watermark-removed images use blob: URLs)
-        if (!/^(https?:\/\/|blob:)/i.test(src)) return;
-        // For Google images, request original size (=s0) instead of thumbnail
-        if (
-          (src.includes('googleusercontent.com') || src.includes('ggpht.com')) &&
-          !src.startsWith('blob:')
-        ) {
-          const sizePattern = /=[swh]\d+[^?#]*/;
-          src = sizePattern.test(src) ? src.replace(sizePattern, '=s0') : src + '=s0';
-        }
-        const data = await toDataUrl(src);
-        if (data) {
-          try {
-            img.src = data;
-          } catch {}
-        }
-      }),
-    );
+    await mapWithConcurrency(imgs, EXPORT_IMAGE_FETCH_CONCURRENCY, async (img) => {
+      this.assertNotAborted(signal);
+      let src = img.getAttribute('src') || '';
+      if (
+        (src.includes('googleusercontent.com') || src.includes('ggpht.com')) &&
+        !src.startsWith('blob:')
+      ) {
+        const sizePattern = /=[swh]\d+[^?#]*/;
+        src = sizePattern.test(src) ? src.replace(sizePattern, '=s0') : src + '=s0';
+      }
+      const data = await toDataUrl(src);
+      if (data) img.src = data;
+    });
 
-    // Attempt to wait for image decoding
+    this.assertNotAborted(signal);
     type DecodableImage = HTMLImageElement & { decode?: () => Promise<void> };
     await Promise.all(
-      imgs.map(async (img) => {
-        const decode = (img as DecodableImage).decode;
-        if (typeof decode !== 'function') return;
+      imgs
+        .filter((img) => img.isConnected)
+        .map(async (img) => {
+          const decode = (img as DecodableImage).decode;
+          if (typeof decode !== 'function') return;
 
-        try {
-          await Promise.race([
-            decode.call(img).catch(() => {
-              /* ignore */
-            }),
-            this.delay(this.INLINE_DECODE_TIMEOUT_MS),
-          ]);
-        } catch {
-          /* ignore */
-        }
-      }),
+          try {
+            await Promise.race([
+              decode.call(img).catch(() => {
+                /* ignore */
+              }),
+              this.delay(this.INLINE_DECODE_TIMEOUT_MS),
+            ]);
+          } catch {
+            /* ignore */
+          }
+        }),
     );
   }
 
@@ -508,18 +516,16 @@ export class PDFPrintService {
   /**
    * Render document header with cover page
    */
-  private static renderHeader(
-    metadata: ConversationMetadata,
-    preferMetadataTitle: boolean,
-  ): string {
-    const metadataTitle = this.normalizeConversationTitle(metadata.title);
-    const pageConversationTitle = this.normalizeConversationTitle(this.getConversationTitle());
-    const conversationTitle = preferMetadataTitle
-      ? metadataTitle || pageConversationTitle || 'Untitled Conversation'
-      : pageConversationTitle || metadataTitle || 'Untitled Conversation';
+  private static renderHeader(metadata: ConversationMetadata): string {
+    const metadataTitle = this.normalizeConversationTitle(metadata.title, metadata.platform);
+    const pageConversationTitle = this.normalizeConversationTitle(
+      this.getConversationTitle(),
+      metadata.platform,
+    );
+    const conversationTitle = metadataTitle || pageConversationTitle || 'Untitled Conversation';
     // For PDF, avoid repeating the same title in smaller text under the H1.
     // Always derive a neutral "source" label from the URL instead of using metadata.title.
-    const urlTitle = this.extractTitleFromURL(metadata.url);
+    const urlTitle = this.extractTitleFromURL(metadata.url, metadata.platform);
     const date = this.formatDate(metadata.exportedAt);
     const turnsCount = metadata.count;
 
@@ -558,14 +564,20 @@ export class PDFPrintService {
   ): string {
     const starredClass = turn.starred ? 'gv-print-turn-starred' : '';
 
-    const userContent = turn.userElement
-      ? DOMContentExtractor.extractUserContent(turn.userElement).html || '<em>No content</em>'
-      : this.formatContent(turn.user) || '<em>No content</em>';
+    // Virtualized-platform content is captured before subsequent scrolling can
+    // unmount the original DOM subtree; use it before falling back to live DOM.
+    const userContent =
+      turn.userContent?.html ||
+      (turn.userElement
+        ? DOMContentExtractor.extractUserContent(turn.userElement).html || '<em>No content</em>'
+        : this.formatContent(turn.user) || '<em>No content</em>');
 
-    const assistantContent = turn.assistantElement
-      ? DOMContentExtractor.extractAssistantContent(turn.assistantElement).html ||
-        '<em>No content</em>'
-      : this.formatContent(turn.assistant) || '<em>No content</em>';
+    const assistantContent =
+      turn.assistantContent?.html ||
+      (turn.assistantElement
+        ? DOMContentExtractor.extractAssistantContent(turn.assistantElement).html ||
+          '<em>No content</em>'
+        : this.formatContent(turn.assistant) || '<em>No content</em>');
 
     if (!turn.omitEmptySections) {
       return `
@@ -588,8 +600,9 @@ export class PDFPrintService {
     `;
     }
 
-    const hasUser = !!turn.userElement || !!turn.user.trim();
-    const hasAssistant = !!turn.assistantElement || !!turn.assistant.trim();
+    const hasUser = !!turn.userContent || !!turn.userElement || !!turn.user.trim();
+    const hasAssistant =
+      !!turn.assistantContent || !!turn.assistantElement || !!turn.assistant.trim();
 
     return `
       <div class="gv-print-turn ${starredClass}">
@@ -934,6 +947,8 @@ export class PDFPrintService {
           diagramMaxHeight: '160mm',
         })}
 
+        ${buildListExportStyles('.gv-print-turn-text', true)}
+
         .gv-print-turn-assistant .gv-print-turn-text {
           border-left-color: #93c5fd;
         }
@@ -1075,18 +1090,19 @@ export class PDFPrintService {
   /**
    * Helper: Extract title from URL
    */
-  private static extractTitleFromURL(url: string): string {
+  private static extractTitleFromURL(url: string, platform?: string): string {
+    const name = platform || 'Gemini';
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
-      const match = pathname.match(/\/(app|chat)\/([^/]+)/);
+      const match = pathname.match(/\/(app|chat|c)\/([^/]+)/);
       if (match) {
         const id = match[2];
-        return `Gemini Conversation ${id.substring(0, 8)}`;
+        return `${name} Conversation ${id.substring(0, 8)}`;
       }
-      return 'Gemini Conversation';
+      return `${name} Conversation`;
     } catch {
-      return 'Gemini Conversation';
+      return `${name} Conversation`;
     }
   }
 
@@ -1108,14 +1124,24 @@ export class PDFPrintService {
     }
   }
 
-  private static normalizeConversationTitle(rawTitle: string | undefined): string {
+  private static normalizeConversationTitle(
+    rawTitle: string | undefined,
+    platform?: string,
+  ): string {
     if (!rawTitle) return '';
-    const normalized = rawTitle
+    let normalized = rawTitle
       .trim()
       .replace(/\s+-\s+Gemini$/i, '')
       .replace(/\s+-\s+Google Gemini$/i, '')
       .replace(/\s+/g, ' ')
       .trim();
+    if (platform && platform !== 'Gemini') {
+      const escaped = platform.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      normalized = normalized.replace(new RegExp(`\\s+-\\s+${escaped}$`, 'i'), '').trim();
+    }
+    if (platform && normalized.toLocaleLowerCase() === platform.trim().toLocaleLowerCase()) {
+      return '';
+    }
     return this.isMeaningfulConversationTitle(normalized) ? normalized : '';
   }
 
@@ -1123,16 +1149,20 @@ export class PDFPrintService {
     metadata: ConversationMetadata,
     preferMetadataTitle: boolean,
   ): string {
-    const metadataTitle = this.normalizeConversationTitle(metadata.title);
-    const conversationTitle = this.normalizeConversationTitle(this.getConversationTitle());
+    const platform = metadata.platform || 'Gemini';
+    const metadataTitle = this.normalizeConversationTitle(metadata.title, platform);
+    const conversationTitle = this.normalizeConversationTitle(
+      this.getConversationTitle(),
+      platform,
+    );
 
     if (preferMetadataTitle) {
-      return metadataTitle || conversationTitle || 'Gemini Conversation';
+      return metadataTitle || conversationTitle || `${platform} Conversation`;
     }
 
-    const base = conversationTitle || metadataTitle;
-    if (!base) return 'Gemini Conversation';
-    return `${base} - Gemini`;
+    const base = metadataTitle || conversationTitle;
+    if (!base) return `${platform} Conversation`;
+    return `${base} - ${platform}`;
   }
 
   /**
