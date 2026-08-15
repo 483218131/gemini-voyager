@@ -82,7 +82,7 @@ Avant de commencer, vérifiez si le ticket est déjà assigné à quelqu'un en r
 
 ### 2. Réclamer un Ticket
 
-Pour un ticket non assigné **sans** le label `community-only`, commentez `/claim` pour vous l'assigner automatiquement. Un bot confirmera l'assignation.
+Pour un ticket non assigné **sans** le label `community-only` ni `enhancement`, commentez `/claim` pour vous l'assigner automatiquement. Un bot confirmera l'assignation. Un ticket portant l'un de ces labels n'est assigné qu'après un `/approve @votre-pseudo` d'un mainteneur.
 
 ### 3. Tickets réservés à la communauté
 

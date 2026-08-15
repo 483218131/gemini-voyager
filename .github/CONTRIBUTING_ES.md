@@ -82,7 +82,7 @@ Antes de comenzar, verifica si el problema ya está asignado a alguien mirando l
 
 ### 2. Reclamar un Problema
 
-En un problema no asignado **sin** la etiqueta `community-only`, comenta `/claim` para asignártelo automáticamente. Un bot confirmará la asignación.
+En un problema no asignado **sin** la etiqueta `community-only` ni `enhancement`, comenta `/claim` para asignártelo automáticamente. Un bot confirmará la asignación. Un problema con cualquiera de esas etiquetas solo se asigna después de que un mantenedor responda `/approve @tu-usuario`.
 
 ### 3. Problemas exclusivos de la comunidad
 

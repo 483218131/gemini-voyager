@@ -89,7 +89,7 @@ bun run dev
 
 ### 2. 认领 Issue
 
-对于未分配且**没有** `community-only` 标签的 issue，评论 `/claim`，机器人会自动将你分配为负责人。
+对于未分配、且**没有** `community-only` 或 `enhancement` 标签的 issue，评论 `/claim`，机器人会自动将你分配为负责人。带这两个标签中任意一个的 issue，必须等维护者回复 `/approve @你的用户名` 后才会分配。
 
 ### 3. 社群专属 Issue
 
@@ -382,7 +382,7 @@ Before starting, check if the issue is already assigned to someone by looking at
 
 ### 2. Claim an Issue
 
-For an unassigned issue **without** the `community-only` label, comment `/claim` to assign yourself automatically. A bot will confirm the assignment.
+For an unassigned issue **without** the `community-only` or `enhancement` label, comment `/claim` to assign yourself automatically. A bot will confirm the assignment. An issue carrying either label is assigned only after a maintainer replies `/approve @your-username`.
 
 ### 3. Community-only Issues
 
