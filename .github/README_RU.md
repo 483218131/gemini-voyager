@@ -211,7 +211,8 @@
 
 Мы приветствуем любую помощь!
 
-- **Issues**: Используйте наши шаблоны для [отчетов об ошибках](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) или [предложений новых функций](https://github.com/Nagi-ovo/voyager/issues/new?template=feature_request.yml).
+- **Issues**: Только воспроизводимые ошибки — используйте шаблон [отчета об ошибке](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml).
+- **Discussions**: [Запросы функций, идеи и вопросы](https://github.com/Nagi-ovo/voyager/discussions) публикуйте здесь, а не в issues.
 - **Pull Requests**: Ознакомьтесь с [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Спасибо, что помогаете делать Voyager лучше! ❤️

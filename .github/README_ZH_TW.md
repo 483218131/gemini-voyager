@@ -242,7 +242,8 @@
 
 歡迎參與貢獻！
 
-- **Issue**：使用 [Bug 報告](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) 或 [功能請求](https://github.com/Nagi-ovo/voyager/issues/new?template=feature_request.yml) 模板。
+- **Issue**：僅接受可重現的缺陷，請使用 [Bug 報告](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) 模板。
+- **Discussions**：[功能需求、想法和提問](https://github.com/Nagi-ovo/voyager/discussions)請發到討論區，不要開 Issue。
 - **Pull Request**：請查看 [貢獻指南](./CONTRIBUTING.md)。
 
 <details>

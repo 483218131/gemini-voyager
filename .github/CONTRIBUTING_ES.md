@@ -280,7 +280,7 @@ Voyager mejora la experiencia de chat de Gemini AI con:
 - Personalización de UI
 
 > [!NOTE]
-> **Consideramos que el conjunto de funcionalidades de Voyager ya es completo y suficiente.** Añadir demasiadas funciones especializadas o excesivamente personalizadas no mejora el software, solo aumenta la carga de mantenimiento. A menos que consideres que una función es verdaderamente esencial y beneficiaría a la mayoría de los usuarios, te pedimos que reconsideres enviar un Feature Request.
+> **Consideramos que el conjunto de funcionalidades de Voyager ya es completo y suficiente.** Añadir demasiadas funciones especializadas o excesivamente personalizadas no mejora el software, solo aumenta la carga de mantenimiento. A menos que consideres que una función es verdaderamente esencial y beneficiaría a la mayoría de los usuarios, te pedimos que reconsideres enviar un Feature Request. Si realmente es esencial, plantéalo en [Discussions](https://github.com/Nagi-ovo/voyager/discussions), no como un Issue.
 
 **Fuera de alcance**: Scraping de sitios, intercepción de red, automatización de cuentas.
 

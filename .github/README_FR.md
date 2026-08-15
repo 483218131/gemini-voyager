@@ -211,7 +211,8 @@ Je recommande vivement **[Typeless (typeless.com)](https://www.typeless.com/?via
 
 Toute contribution est la bienvenue !
 
-- **Issues** : Utilisez nos templates de [bug report](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) ou [feature request](https://github.com/Nagi-ovo/voyager/issues/new?template=feature_request.yml).
+- **Issues** : Bugs reproductibles uniquement — utilisez le template de [bug report](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml).
+- **Discussions** : [Demandes de fonctionnalités, idées et questions](https://github.com/Nagi-ovo/voyager/discussions) vont ici, pas dans les issues.
 - **Pull Requests** : Consultez [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Merci d'aider à rendre Voyager meilleur ! ❤️

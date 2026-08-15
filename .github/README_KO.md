@@ -236,7 +236,8 @@ Voyager 개발 중에 광범위하게 사용한 AI 음성 - 텍스트 변환 도
 
 여러분의 기여를 환영합니다! 버그 보고, 기능 제안, 문서 개선 또는 코드 제출 등 무엇이든 환영합니다:
 
-- **이슈**: [버그 보고](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) 또는 [기능 제안](https://github.com/Nagi-ovo/voyager/issues/new?template=feature_request.yml) 템플릿을 사용하세요.
+- **이슈**: 재현 가능한 버그만 받습니다. [버그 보고](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) 템플릿을 사용하세요.
+- **Discussions**: [기능 제안, 아이디어, 질문](https://github.com/Nagi-ovo/voyager/discussions)은 이슈가 아니라 Discussions에 올려주세요.
 - **풀 리퀘스트**: 가이드라인은 [CONTRIBUTING.md](../.github/CONTRIBUTING.md)를 확인하세요.
 
 <details>

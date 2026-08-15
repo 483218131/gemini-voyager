@@ -211,7 +211,8 @@ Voyager の開発中、私は AI 音声入力ツール **[Typeless (typeless.com
 
 バグ報告、機能提案、ドキュメントの改善など、あらゆる貢献を歓迎します！
 
-- **Issues**: [バグ報告](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) または [機能提案](https://github.com/Nagi-ovo/voyager/issues/new?template=feature_request.yml) テンプレートを使用してください。
+- **Issues**: 再現可能なバグのみ。[バグ報告](https://github.com/Nagi-ovo/voyager/issues/new?template=bug_report.yml) テンプレートを使用してください。
+- **Discussions**: [機能リクエスト・アイデア・質問](https://github.com/Nagi-ovo/voyager/discussions)は Issue ではなく Discussions へ。
 - **Pull Requests**: [CONTRIBUTING.md](./CONTRIBUTING.md) をご確認ください。
 
 <details>
