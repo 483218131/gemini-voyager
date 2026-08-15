@@ -116,6 +116,14 @@ Por eso creamos **Voyager**. No es solo una herramienta; es un compañero que te
 - **↔️ Ancho de lectura cómodo**: Ajusta el ancho del chat para una mejor experiencia de lectura en Claude y ChatGPT.
 - **🔤 Corrección CJK**: Soluciona problemas de renderizado de caracteres CJK en Claude.
 
+### 🧩 Cualquier sitio — incluso localhost
+
+Añade cualquier sitio desde el popup y el Prompt Manager te acompaña allí, también en aplicaciones locales. Aquí está dentro de [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) en `localhost:3080`:
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="Prompt Manager dentro de DeepSeek Harness" width="720">
+</p>
+
 ### 🎨 Personalización
 
 - Abre el popup de la extensión y busca **Efectos Visuales** para cambiar entre `Apagado`, `Nieve`, `Sakura` y `Lluvia`.

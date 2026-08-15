@@ -122,6 +122,14 @@
 - **📏 舒適閱讀寬度**: 調整 Claude 和 ChatGPT 的對話寬度，獲得更好的閱讀體驗。
 - **🔤 CJK 渲染修復**: 修復 Claude 上的中日韓字元渲染問題。
 
+### 🧩 任意站台，包括本機
+
+在擴充功能彈出視窗中新增任意網站，Prompt Manager 就會跟著過去，本機應用也一樣。下圖是它執行在 `localhost:3080` 的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 裡：
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="在 DeepSeek Harness 中執行的 Prompt Manager" width="720">
+</p>
+
 ### 🎨 個性化體驗
 
 - 點擊插件圖標，在設定中的 **視覺特效** 裡可切換 `關閉`、`飄雪`、`櫻花`、`雨`。

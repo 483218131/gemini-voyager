@@ -122,6 +122,14 @@ Para um guia completo, visite a nossa [Documentação](https://voyager.nagi.fun/
 - **📏 Largura de Leitura Confortável**: Ajuste a largura do chat para uma melhor experiência de leitura no Claude e ChatGPT.
 - **🈲 Correção CJK**: Correção de problemas de renderização de caracteres CJK no Claude.
 
+### 🧩 Qualquer site — até localhost
+
+Adicione qualquer site no popup e o Prompt Manager vai junto, incluindo aplicativos locais. Aqui está ele dentro do [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) rodando em `localhost:3080`:
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="Prompt Manager dentro do DeepSeek Harness" width="720">
+</p>
+
 ### 🎨 Personalização
 
 - Abra o popup da extensão e encontre **Efeitos Visuais** para alternar entre `Desligado`, `Neve`, `Sakura` e `Chuva`.

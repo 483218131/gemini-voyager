@@ -118,6 +118,14 @@ Powered by the [Voyager Plugin Engine](https://voyager.nagi.fun/en/plugins), the
 - **📖 Comfortable Reading Width**: Adjust chat width for a better reading experience on Claude and ChatGPT.
 - **🈶 CJK Render Fix**: Fix CJK character rendering issues on Claude.
 
+### 🧩 Any Site — Even Localhost
+
+Add any site in the extension popup and the Prompt Manager follows you there, local apps included. Here it is inside [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) running on `localhost:3080`:
+
+<p align="center">
+  <img src="docs/public/assets/prompt-manager-deepseek-harness.png" alt="Prompt Manager running inside DeepSeek Harness" width="720">
+</p>
+
 ### 🎨 Personalization
 
 - Open the extension popup and find **Visual Effects** to switch between `Off`, `Snow`, `Sakura`, and `Rain`.

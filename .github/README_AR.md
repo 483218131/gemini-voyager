@@ -116,6 +116,14 @@
 - **📖 عرض قراءة مريح**: ضبط عرض الدردشة للحصول على تجربة قراءة أفضل على Claude و ChatGPT.
 - **🔤 إصلاح عرض CJK**: إصلاح مشاكل عرض الأحرف الصينية واليابانية والكورية على Claude.
 
+### 🧩 أي موقع — حتى localhost
+
+أضف أي موقع من النافذة المنبثقة وسيتبعك Prompt Manager إلى هناك، بما في ذلك التطبيقات المحلية. ها هو داخل [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) الذي يعمل على `localhost:3080`:
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="Prompt Manager داخل DeepSeek Harness" width="720">
+</p>
+
 ### 🎨 التخصيص
 
 - افتح نافذة الإضافة المنبثقة وابحث عن **التأثيرات البصرية** للتبديل بين `إيقاف`، `ثلج`، `ساكورا`، و`مطر`.

@@ -116,6 +116,14 @@
 - **📏 편안한 읽기 너비**: Claude와 ChatGPT의 대화 너비를 조절하여 더 나은 읽기 경험 제공.
 - **🔧 CJK 렌더링 수정**: Claude에서의 한중일 문자 렌더링 문제 수정.
 
+### 🧩 모든 사이트 — localhost 까지
+
+팝업에서 원하는 사이트를 추가하면 Prompt Manager가 그곳까지 따라갑니다. 로컬 앱도 마찬가지입니다. 아래는 `localhost:3080`에서 실행 중인 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 안의 모습입니다:
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="DeepSeek Harness 안에서 실행 중인 Prompt Manager" width="720">
+</p>
+
 ### 🎨 개인화
 
 - 확장 프로그램 팝업을 열고 **시각 효과**에서 `끄기`, `눈`, `벚꽃`, `비`를 전환할 수 있습니다.

@@ -119,6 +119,14 @@
 - **📖 舒适阅读宽度**: 调整 Claude 和 ChatGPT 的对话宽度，获得更好的阅读体验。
 - **🈶 CJK 渲染修复**: 修复 Claude 上的中日韩字符渲染问题。
 
+### 🧩 任意站点，包括本地
+
+在扩展弹窗里添加任意网站，Prompt Manager 就会跟到那里，本地应用也一样。下图是它运行在 `localhost:3080` 的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 里：
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="在 DeepSeek Harness 中运行的 Prompt Manager" width="720">
+</p>
+
 ### 🎨 个性化体验
 
 - 点击插件图标，在设置中的 **视觉特效** 里可切换 `关闭`、`飘雪`、`樱花`、`雨`。

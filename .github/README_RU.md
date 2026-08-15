@@ -116,6 +116,14 @@
 - **📏 Комфортная ширина чтения**: Настройте ширину чата для лучшего чтения в Claude и ChatGPT.
 - **🔤 Исправление CJK**: Исправление проблем отображения CJK-символов в Claude.
 
+### 🧩 Любой сайт — даже localhost
+
+Добавьте любой сайт во всплывающем окне, и Prompt Manager последует за вами — включая локальные приложения. Вот он внутри [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) на `localhost:3080`:
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="Prompt Manager внутри DeepSeek Harness" width="720">
+</p>
+
 ### 🎨 Персонализация
 
 - Откройте всплывающее окно расширения и найдите **Визуальные эффекты**, чтобы переключаться между `Выключено`, `Снег`, `Сакура` и `Дождь`.

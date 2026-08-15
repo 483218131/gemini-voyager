@@ -116,6 +116,14 @@ AI チャットボット — Gemini、Claude、ChatGPT — は強力ですが、
 - **📏 快適な閲覧幅**: Claude と ChatGPT のチャット幅を調整し、より良い読書体験を。
 - **🈶 CJK レンダリング修正**: Claude での日中韓文字のレンダリング問題を修正。
 
+### 🧩 どんなサイトでも — localhost も
+
+ポップアップでサイトを追加すれば、Prompt Manager はそこにも付いてきます。ローカルアプリも同様です。下は `localhost:3080` で動く [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) の中での様子です：
+
+<p align="center">
+  <img src="../docs/public/assets/prompt-manager-deepseek-harness.png" alt="DeepSeek Harness 内で動作する Prompt Manager" width="720">
+</p>
+
 ### 🎨 パーソナライズ
 
 - 拡張機能のポップアップを開き、**ビジュアルエフェクト** で `オフ`、`雪`、`桜`、`雨` を切り替えられます。
