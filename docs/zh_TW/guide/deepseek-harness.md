@@ -25,15 +25,13 @@ dsh web
 
 瀏覽器打開 `http://localhost:3080`。
 
-### 2. 告訴 Voyager 這個位址
+### 2. 在彈窗裡打開開關
 
-點瀏覽器工具列上的 Voyager 圖標，找到 **提示詞管理器** 區域，填入：
+![點工具列的拼圖圖標，點 Voyager，打開「在 localhost:3080 上開啟提示詞管理器」](/assets/dsh-enable-steps-zh.png)
 
-```
-localhost:3080
-```
+因為你人就在 `localhost:3080` 這個頁面上，彈窗頂上會直接出現這一條。打開它，授權存取。
 
-點 **添加網站**，授權。
+不用手打位址。
 
 ### 3. 重新整理頁面
 
@@ -48,6 +46,8 @@ localhost:3080
 你在 Gemini、Claude、ChatGPT 上存過的提示詞，打開 DSH 就在那兒，一條不少。反過來也一樣：在 DSH 裡新寫的提示詞，回到 Gemini 照樣叫得出來。
 
 標籤、收藏、搜尋，全都是同一套。
+
+![同一份提示詞庫，落到每一個介面上](/assets/one-prompt-library.png)
 
 ## 幾件小事
 

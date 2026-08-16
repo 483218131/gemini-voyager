@@ -25,15 +25,13 @@ dsh web
 
 Abra `http://localhost:3080` no navegador.
 
-### 2. Indique o endereço ao Voyager
+### 2. Ligue o interruptor no popup
 
-Clique no ícone do Voyager na barra de ferramentas, desça até à secção **Gestor de Prompts** e introduza:
+![Clique no ícone de puzzle da barra de ferramentas, clique em Voyager e ligue o Gestor de Prompts em localhost:3080](/assets/dsh-enable-steps-en.png)
 
-```
-localhost:3080
-```
+Como já está em `localhost:3080`, o popup mostra-lhe essa opção logo no topo. Ligue-a e conceda o acesso.
 
-Clique em **Adicionar Site** e conceda a permissão.
+Não é preciso escrever o endereço.
 
 ### 3. Atualize a página
 
@@ -48,6 +46,8 @@ Não tem uma biblioteca por cada site. Tem uma só, e ela acompanha-o.
 Cada prompt que guardou no Gemini, no Claude ou no ChatGPT já lá está quando abre o DSH. Todos, sem faltar nenhum. E ao contrário também: escreva um prompt dentro do DSH e ele espera por si de volta no Gemini.
 
 As mesmas etiquetas, os mesmos favoritos, a mesma pesquisa.
+
+![Uma só biblioteca a chegar a todas as interfaces](/assets/one-prompt-library.png)
 
 ## Algumas notas
 

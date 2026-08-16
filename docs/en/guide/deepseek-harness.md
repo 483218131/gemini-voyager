@@ -25,15 +25,13 @@ dsh web
 
 Open `http://localhost:3080` in your browser.
 
-### 2. Tell Voyager about it
+### 2. Flip the switch in the popup
 
-Click the Voyager icon in your browser toolbar, scroll to the **Prompt Manager** section, and enter:
+![Click the toolbar puzzle icon, click Voyager, then enable Prompt Manager on localhost:3080](/assets/dsh-enable-steps-en.png)
 
-```
-localhost:3080
-```
+Since you're already on `localhost:3080`, the popup offers it right at the top. Turn it on and grant access.
 
-Click **Add website** and grant permission.
+No typing the address.
 
 ### 3. Reload the page
 
@@ -48,6 +46,8 @@ You don't get a separate library per site. You get one library that follows you.
 Every prompt you saved on Gemini, Claude or ChatGPT is already there when you open DSH — all of them. It works the other way too: write a prompt inside DSH and it's waiting for you back on Gemini.
 
 Same tags, same favourites, same search.
+
+![One library reaching every interface](/assets/one-prompt-library.png)
 
 ## A few notes
 
