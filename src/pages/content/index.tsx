@@ -68,6 +68,7 @@ import { startUsageStatus } from './usageStatus/index';
 import { usageCoachmarkStep } from './usageStatus/usageCoachmark';
 import { startUserLatex } from './userLatex/index';
 import { startVisualEffects } from './visualEffects';
+import { startWatermarkNativeNotice } from './watermarkNativeNotice';
 import {
   restartWatermarkRemover,
   startWatermarkRemover,
@@ -357,6 +358,10 @@ async function initializeFeatures(): Promise<void> {
       cleanupManager.registerCleanupFunction(
         () => stopWatermarkRemover(),
         CleanupPositions.StopWatermarkRemover,
+      );
+      cleanupManager.registerCleanupFunction(
+        startWatermarkNativeNotice(),
+        CleanupPositions.CleanupWatermarkNativeNotice,
       );
       startDeepResearchExport();
       startContextSync();

@@ -398,6 +398,16 @@ export const NON_SETTINGS_BACKUP_POLICIES = {
     disposition: 'device-local',
     reason: 'Collapsed plugin cards are a per-device popup layout choice.',
   },
+  [StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]: {
+    storage: 'local',
+    disposition: 'device-local',
+    reason: 'One-time notice receipt; restoring it would re-suppress the notice elsewhere.',
+  },
+  [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: {
+    storage: 'local',
+    disposition: 'device-local',
+    reason: 'Rolling observation counter rebuilt from the images seen on this device.',
+  },
 } as const satisfies Record<NonSettingsStorageKey, NonSettingsBackupPolicy>;
 
 export const BACKUPABLE_SYNC_SETTINGS_KEYS = Object.keys(BACKUPABLE_SYNC_SETTINGS_DEFAULTS);

@@ -1994,6 +1994,50 @@
     "message": "Дождь",
     "description": "Visual effect rain option"
   },
+  "watermarkNotice_title": {
+    "message": "В Gemini появился переключатель водяного знака",
+    "description": "Title of the notice about Gemini's native media watermark switch"
+  },
+  "watermarkNotice_body": {
+    "message": "Google добавил официальную настройку, которая убирает видимый водяной знак в углу сгенерированных изображений, видео и музыки. После её отключения удаление водяного знака в Voyager больше не нужно.",
+    "description": "Body text explaining Gemini's native watermark switch"
+  },
+  "watermarkNotice_step1": {
+    "message": "Откройте настройки (шестерёнка внизу слева)",
+    "description": "Step 1 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step2": {
+    "message": "Выберите Media watermark",
+    "description": "Step 2 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step3": {
+    "message": "Выберите Off",
+    "description": "Step 3 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_detected": {
+    "message": "Voyager заметил, что ваши последние изображения уже приходят без водяного знака.",
+    "description": "Shown when Voyager has observed several watermark-free images in a row"
+  },
+  "watermarkNotice_caveat": {
+    "message": "Обратите внимание: невидимая метка SynthID и метаданные C2PA остаются в любом случае. Настройка разворачивается постепенно, а рабочим и учебным аккаунтам она недоступна.",
+    "description": "Caveats about SynthID, gradual rollout and account restrictions"
+  },
+  "watermarkNotice_disableCta": {
+    "message": "Уже выключил — остановить удаление в Voyager",
+    "description": "Primary button: disable Voyager's watermark removal"
+  },
+  "watermarkNotice_keepCta": {
+    "message": "Оставить удаление в Voyager",
+    "description": "Secondary button: keep Voyager's watermark removal on"
+  },
+  "watermarkNotice_done": {
+    "message": "Удаление водяного знака в Voyager отключено. Включить обратно можно в окне расширения.",
+    "description": "Confirmation shown after Voyager's watermark removal is disabled"
+  },
+  "watermarkNotice_imageAlt": {
+    "message": "Настройки Gemini с Media watermark в положении Off",
+    "description": "Alt text for the annotated Gemini settings screenshot"
+  },
   "changelog_title": {
     "message": "Что нового",
     "description": "Changelog modal title"

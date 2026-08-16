@@ -21,5 +21,6 @@ export enum CleanupPositions {
   CleanupAccountContextBridge,
   CleanupCodeBlockCollapse,
   CleanupUsageStatus,
+  CleanupWatermarkNativeNotice,
   RemoveStorageOnChangedListener,
 }

@@ -1994,6 +1994,50 @@
     "message": "Lluvia",
     "description": "Visual effect rain option"
   },
+  "watermarkNotice_title": {
+    "message": "Gemini ya puede ocultar la marca de agua",
+    "description": "Title of the notice about Gemini's native media watermark switch"
+  },
+  "watermarkNotice_body": {
+    "message": "Google añadió un ajuste oficial que quita la marca de agua visible de la esquina en imágenes, vídeos y música generados. Con él desactivado, ya no hace falta la eliminación de marcas de agua de Voyager.",
+    "description": "Body text explaining Gemini's native watermark switch"
+  },
+  "watermarkNotice_step1": {
+    "message": "Abre Configuración (engranaje, abajo a la izquierda)",
+    "description": "Step 1 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step2": {
+    "message": "Elige Media watermark",
+    "description": "Step 2 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step3": {
+    "message": "Selecciona Off",
+    "description": "Step 3 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_detected": {
+    "message": "Voyager ha detectado que tus imágenes recientes ya llegan sin marca de agua.",
+    "description": "Shown when Voyager has observed several watermark-free images in a row"
+  },
+  "watermarkNotice_caveat": {
+    "message": "Ten en cuenta: la marca invisible SynthID y los metadatos C2PA siguen ahí en cualquier caso. El ajuste llega de forma gradual y las cuentas de trabajo o centro educativo no lo tienen.",
+    "description": "Caveats about SynthID, gradual rollout and account restrictions"
+  },
+  "watermarkNotice_disableCta": {
+    "message": "Ya lo desactivé — detener la eliminación de Voyager",
+    "description": "Primary button: disable Voyager's watermark removal"
+  },
+  "watermarkNotice_keepCta": {
+    "message": "Mantener la eliminación de Voyager",
+    "description": "Secondary button: keep Voyager's watermark removal on"
+  },
+  "watermarkNotice_done": {
+    "message": "La eliminación de marcas de agua de Voyager está desactivada. Puedes volver a activarla desde la ventana de la extensión.",
+    "description": "Confirmation shown after Voyager's watermark removal is disabled"
+  },
+  "watermarkNotice_imageAlt": {
+    "message": "Ajustes de Gemini con Media watermark en Off",
+    "description": "Alt text for the annotated Gemini settings screenshot"
+  },
   "changelog_title": {
     "message": "Novedades",
     "description": "Changelog modal title"

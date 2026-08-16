@@ -333,10 +333,21 @@ export function chooseDifficultWatermarkAnchorOption(
   return best?.option;
 }
 
+/**
+ * What the anchor scan concluded about the image it was handed.
+ *   reliable  — a watermark cleared the trusted thresholds and was removed
+ *   difficult — no anchor was trusted, but a weak candidate was suppressed
+ *   none      — nothing watermark-shaped was found, so the pixels are untouched
+ *
+ * 'none' is what tells us Gemini's own "Media watermark: Off" switch is doing
+ * the work for this account, which the native-watermark notice reports back.
+ */
+export type WatermarkPresence = 'reliable' | 'difficult' | 'none';
+
 export function removeWatermarkFromAnchorOptions(
   imageData: ImageData,
   anchorOptions: WatermarkAnchorOption[],
-): void {
+): WatermarkPresence {
   const trustedOption = chooseWatermarkAnchorOption(imageData, anchorOptions);
   const trustedPosition = calculateWatermarkPosition(
     imageData.width,
@@ -357,14 +368,14 @@ export function removeWatermarkFromAnchorOptions(
       trustedPosition,
       allowSupportedReliabilityTransition,
     );
-    return;
+    return 'reliable';
   }
 
   // Only fall back after every known anchor misses the trusted thresholds.
   // Each difficult candidate is trialed against, and restored to, the same
   // original pixels before the strongest safe suppression is applied once.
   const difficultOption = chooseDifficultWatermarkAnchorOption(imageData, anchorOptions);
-  if (!difficultOption) return;
+  if (!difficultOption) return 'none';
 
   const difficultPosition = calculateWatermarkPosition(
     imageData.width,
@@ -372,6 +383,7 @@ export function removeWatermarkFromAnchorOptions(
     difficultOption.config,
   );
   removeWatermark(imageData, difficultOption.alphaMap, difficultPosition);
+  return 'difficult';
 }
 
 function createGaussianKernel(radius: number, sigma: number): Float32Array {
@@ -712,10 +724,14 @@ export class WatermarkEngine {
   /**
    * Remove watermark from image based on watermark size
    * @param image - Input image
+   * @param onPresence - Optional observer for what the anchor scan concluded.
+   *   Passed as a callback rather than folded into the return value so every
+   *   existing caller keeps working unchanged.
    * @returns Processed canvas
    */
   async removeWatermarkFromImage(
     image: HTMLImageElement | HTMLCanvasElement,
+    onPresence?: (presence: WatermarkPresence) => void,
   ): Promise<HTMLCanvasElement> {
     // Create canvas to process image
     const canvas = document.createElement('canvas');
@@ -738,7 +754,12 @@ export class WatermarkEngine {
         alphaMap: await this.getAlphaMap(this.getAlphaMapKey(config)),
       })),
     );
-    removeWatermarkFromAnchorOptions(imageData, anchorOptions);
+    const presence = removeWatermarkFromAnchorOptions(imageData, anchorOptions);
+    try {
+      onPresence?.(presence);
+    } catch {
+      // Observation is bookkeeping only — never let it break image processing.
+    }
 
     // Write processed image data back to canvas
     ctx.putImageData(imageData, 0, 0);

@@ -149,6 +149,7 @@ describe('willCleanUp tests module', () => {
       'CleanupAccountContextBridge',
       'CleanupCodeBlockCollapse',
       'CleanupUsageStatus',
+      'CleanupWatermarkNativeNotice',
       'RemoveStorageOnChangedListener',
     ]);
   });

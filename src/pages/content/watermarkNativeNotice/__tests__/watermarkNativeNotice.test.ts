@@ -1,0 +1,273 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { StorageKeys } from '@/core/types/common';
+import { isSafari } from '@/core/utils/browser';
+
+import {
+  CLEAN_IMAGE_STREAK_CAP,
+  hasCleanImageStreak,
+  nextCleanStreak,
+  recordWatermarkPresence,
+} from '../cleanStreak';
+import { shouldShowWatermarkNativeNotice, startWatermarkNativeNotice } from '../index';
+
+vi.mock('@/core/utils/browser', () => ({
+  isSafari: vi.fn(() => false),
+}));
+
+vi.mock('@/utils/i18n', () => ({
+  getCurrentLanguage: vi.fn(async () => 'zh'),
+}));
+
+type StorageState = Record<string, unknown>;
+
+type MockFn = ReturnType<typeof vi.fn>;
+
+function mockLocalStorage(state: StorageState): void {
+  (chrome.storage.local.get as unknown as MockFn).mockImplementation(
+    (defaults: Record<string, unknown>, callback?: (result: StorageState) => void) => {
+      const merged = { ...defaults, ...state };
+      if (typeof callback === 'function') {
+        callback(merged);
+        return undefined;
+      }
+      return Promise.resolve(merged);
+    },
+  );
+  (chrome.storage.local.set as unknown as MockFn).mockImplementation(
+    (values: StorageState, callback?: () => void) => {
+      Object.assign(state, values);
+      callback?.();
+      return Promise.resolve();
+    },
+  );
+}
+
+function mockSyncStorage(state: StorageState): void {
+  (chrome.storage.sync.get as unknown as MockFn).mockImplementation(() => Promise.resolve(state));
+  (chrome.storage.sync.set as unknown as MockFn).mockImplementation((values: StorageState) => {
+    Object.assign(state, values);
+    return Promise.resolve();
+  });
+}
+
+describe('shouldShowWatermarkNativeNotice', () => {
+  it('shows once while Voyager removal is still doing work', () => {
+    expect(shouldShowWatermarkNativeNotice({ alreadyShown: false, removalActive: true })).toBe(
+      true,
+    );
+  });
+
+  it('never repeats after the user has seen it', () => {
+    expect(shouldShowWatermarkNativeNotice({ alreadyShown: true, removalActive: true })).toBe(
+      false,
+    );
+  });
+
+  it('stays silent for users who already turned removal off', () => {
+    expect(shouldShowWatermarkNativeNotice({ alreadyShown: false, removalActive: false })).toBe(
+      false,
+    );
+  });
+});
+
+describe('clean image streak', () => {
+  it('counts consecutive watermark-free images', () => {
+    expect(nextCleanStreak(0, 'none')).toBe(1);
+    expect(nextCleanStreak(1, 'none')).toBe(2);
+  });
+
+  it('resets as soon as any watermark is found', () => {
+    expect(nextCleanStreak(5, 'reliable')).toBe(0);
+    expect(nextCleanStreak(5, 'difficult')).toBe(0);
+  });
+
+  it('treats corrupted stored values as zero', () => {
+    expect(nextCleanStreak(undefined, 'none')).toBe(1);
+    expect(nextCleanStreak('3', 'none')).toBe(1);
+    expect(nextCleanStreak(Number.NaN, 'none')).toBe(1);
+    expect(nextCleanStreak(-4, 'none')).toBe(1);
+  });
+
+  it('caps the stored counter', () => {
+    expect(nextCleanStreak(CLEAN_IMAGE_STREAK_CAP, 'none')).toBe(CLEAN_IMAGE_STREAK_CAP);
+  });
+
+  it('reports the streak only at the threshold', () => {
+    expect(hasCleanImageStreak(2)).toBe(false);
+    expect(hasCleanImageStreak(3)).toBe(true);
+    expect(hasCleanImageStreak(undefined)).toBe(false);
+  });
+});
+
+describe('recordWatermarkPresence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('increments the stored streak for a clean image', async () => {
+    const state: StorageState = { [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: 1 };
+    mockLocalStorage(state);
+
+    await recordWatermarkPresence('none');
+
+    expect(state[StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]).toBe(2);
+  });
+
+  it('resets the streak when a watermark is removed', async () => {
+    const state: StorageState = { [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: 2 };
+    mockLocalStorage(state);
+
+    await recordWatermarkPresence('reliable');
+
+    expect(state[StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]).toBe(0);
+  });
+
+  it('stops writing once the threshold is reached', async () => {
+    const state: StorageState = { [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: 3 };
+    mockLocalStorage(state);
+
+    await recordWatermarkPresence('none');
+
+    expect(chrome.storage.local.set).not.toHaveBeenCalled();
+    expect(state[StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]).toBe(3);
+  });
+
+  it('skips redundant writes when the value would not change', async () => {
+    const state: StorageState = { [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: 0 };
+    mockLocalStorage(state);
+
+    await recordWatermarkPresence('difficult');
+
+    expect(chrome.storage.local.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('startWatermarkNativeNotice', () => {
+  let cleanup: (() => void) | null = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+    vi.mocked(isSafari).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    cleanup?.();
+    cleanup = null;
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  async function flush(): Promise<void> {
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
+  }
+
+  it('shows the dialog with steps once the delay elapses', async () => {
+    mockLocalStorage({});
+    mockSyncStorage({});
+
+    cleanup = startWatermarkNativeNotice(1000);
+    await flush();
+    expect(document.querySelector('.gv-wm-notice')).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    const dialog = document.querySelector('.gv-wm-notice');
+    expect(dialog?.textContent).toContain('Gemini 现在自带关水印的开关');
+    expect(dialog?.querySelectorAll('.gv-wm-notice__step')).toHaveLength(3);
+    // The clean-image hint only appears once the streak has been observed.
+    expect(dialog?.querySelector('.gv-wm-notice__detected')).toBeNull();
+  });
+
+  it('adds the detected hint after a clean-image streak', async () => {
+    mockLocalStorage({ [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: 3 });
+    mockSyncStorage({});
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(document.querySelector('.gv-wm-notice__detected')).not.toBeNull();
+  });
+
+  it('stays away when the user already turned removal off', async () => {
+    mockLocalStorage({});
+    mockSyncStorage({
+      [StorageKeys.WATERMARK_DOWNLOAD_ENABLED]: false,
+      [StorageKeys.WATERMARK_PREVIEW_ENABLED]: false,
+    });
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(document.querySelector('.gv-wm-notice')).toBeNull();
+  });
+
+  it('stays away after it has been shown once', async () => {
+    mockLocalStorage({ [StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]: true });
+    mockSyncStorage({});
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(document.querySelector('.gv-wm-notice')).toBeNull();
+  });
+
+  it('does nothing on Safari, which never ran watermark removal', async () => {
+    vi.mocked(isSafari).mockReturnValue(true);
+    mockLocalStorage({});
+    mockSyncStorage({});
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(document.querySelector('.gv-wm-notice')).toBeNull();
+  });
+
+  it('turns both removal paths off when the user confirms', async () => {
+    const localState: StorageState = {};
+    const syncState: StorageState = {};
+    mockLocalStorage(localState);
+    mockSyncStorage(syncState);
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+
+    const disableBtn = document.querySelector<HTMLButtonElement>('.gv-wm-notice__btn--primary');
+    expect(disableBtn?.textContent).toBe('我已关闭，停用 Voyager 去水印');
+    disableBtn?.click();
+    await flush();
+
+    expect(syncState[StorageKeys.WATERMARK_DOWNLOAD_ENABLED]).toBe(false);
+    expect(syncState[StorageKeys.WATERMARK_PREVIEW_ENABLED]).toBe(false);
+    // The legacy key is deliberately left untouched.
+    expect(syncState[StorageKeys.WATERMARK_REMOVER_ENABLED]).toBeUndefined();
+    expect(localState[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]).toBe(true);
+    expect(document.querySelector('.gv-wm-notice__done')).not.toBeNull();
+  });
+
+  it('marks the notice seen when dismissed without changing settings', async () => {
+    const localState: StorageState = {};
+    const syncState: StorageState = {};
+    mockLocalStorage(localState);
+    mockSyncStorage(syncState);
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+
+    document.querySelector<HTMLButtonElement>('.gv-wm-notice__btn--secondary')?.click();
+    await flush();
+
+    expect(localState[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]).toBe(true);
+    expect(syncState[StorageKeys.WATERMARK_DOWNLOAD_ENABLED]).toBeUndefined();
+    expect(document.querySelector('.gv-wm-notice')).toBeNull();
+  });
+});

@@ -1991,6 +1991,50 @@
     "message": "雨",
     "description": "Visual effect rain option"
   },
+  "watermarkNotice_title": {
+    "message": "Gemini に透かしを消す設定が追加されました",
+    "description": "Title of the notice about Gemini's native media watermark switch"
+  },
+  "watermarkNotice_body": {
+    "message": "生成した画像・動画・音楽の隅に表示される透かしを、Google 公式の設定でオフにできるようになりました。オフにすれば Voyager の透かし除去は不要です。",
+    "description": "Body text explaining Gemini's native watermark switch"
+  },
+  "watermarkNotice_step1": {
+    "message": "左下の設定（歯車）を開く",
+    "description": "Step 1 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step2": {
+    "message": "Media watermark を選ぶ",
+    "description": "Step 2 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step3": {
+    "message": "Off を選択する",
+    "description": "Step 3 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_detected": {
+    "message": "最近生成された画像に透かしが付いていないことを Voyager が確認しました。",
+    "description": "Shown when Voyager has observed several watermark-free images in a row"
+  },
+  "watermarkNotice_caveat": {
+    "message": "注意：どちらの設定でも、目に見えない SynthID と C2PA メタデータは残ります。この設定は順次提供中で、職場や学校のアカウントでは利用できません。",
+    "description": "Caveats about SynthID, gradual rollout and account restrictions"
+  },
+  "watermarkNotice_disableCta": {
+    "message": "オフにしたので Voyager の除去を停止",
+    "description": "Primary button: disable Voyager's watermark removal"
+  },
+  "watermarkNotice_keepCta": {
+    "message": "Voyager の除去を続ける",
+    "description": "Secondary button: keep Voyager's watermark removal on"
+  },
+  "watermarkNotice_done": {
+    "message": "Voyager の透かし除去を停止しました。拡張機能のポップアップからいつでも再開できます。",
+    "description": "Confirmation shown after Voyager's watermark removal is disabled"
+  },
+  "watermarkNotice_imageAlt": {
+    "message": "Media watermark を Off に設定した Gemini の設定画面",
+    "description": "Alt text for the annotated Gemini settings screenshot"
+  },
   "changelog_title": {
     "message": "新機能",
     "description": "Changelog modal title"

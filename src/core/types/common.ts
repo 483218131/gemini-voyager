@@ -252,6 +252,13 @@ export const StorageKeys = {
   EDGE_FINAL_VERSION_NOTICE_SHOWN: 'gvEdgeFinalVersionNoticeShown',
   EDGE_CONTINUED_SUPPORT_NOTICE_FIRST_SEEN_AT: 'gvEdgeContinuedSupportNoticeFirstSeenAt',
   EDGE_CONTINUED_SUPPORT_NOTICE_SHOWN: 'gvEdgeContinuedSupportNoticeShown',
+  // One-time notice announcing Gemini's own "Media watermark" switch, which
+  // makes Voyager's watermark removal redundant for accounts that have it.
+  WATERMARK_NATIVE_NOTICE_SHOWN: 'gvWatermarkNativeNoticeShown',
+  // Consecutive Gemini images observed with no visible watermark signal. Once
+  // this crosses the threshold the notice may surface on its own, independent
+  // of Google's staged rollout.
+  WATERMARK_CLEAN_IMAGE_STREAK: 'gvWatermarkCleanImageStreak',
 
   // Fork nodes
   FORK_NODES: 'gvForkNodes',

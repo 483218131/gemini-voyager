@@ -20,6 +20,7 @@ import { WATERMARK_STORAGE_KEYS, resolveWatermarkSettings } from '@/core/utils/w
 import { getTranslationSync } from '@/utils/i18n';
 import type { TranslationKey } from '@/utils/translations';
 
+import { recordWatermarkPresence } from '../watermarkNativeNotice/cleanStreak';
 import { DOWNLOAD_ICON_SELECTOR, findNativeDownloadButton } from './downloadButton';
 import {
   IMAGE_HEALTH_SAMPLE_SIZE,
@@ -312,7 +313,10 @@ async function processImage(imgElement: HTMLImageElement): Promise<void> {
     if (isStale()) return;
 
     // Process image to remove watermark
-    const processedCanvas = await engine.removeWatermarkFromImage(normalSizeImg);
+    const processedCanvas = await engine.removeWatermarkFromImage(
+      normalSizeImg,
+      (presence) => void recordWatermarkPresence(presence),
+    );
     if (isStale()) return;
     const processedBlob = await canvasToBlob(processedCanvas);
     if (isStale()) return;
@@ -557,7 +561,10 @@ async function processImageRequest(
         : null;
 
     // Process image to remove watermark
-    const processedCanvas = await engine.removeWatermarkFromImage(img);
+    const processedCanvas = await engine.removeWatermarkFromImage(
+      img,
+      (presence) => void recordWatermarkPresence(presence),
+    );
     const processedDataUrl = canvasToDataURL(processedCanvas);
 
     // Send response via bridge element

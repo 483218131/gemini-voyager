@@ -1985,6 +1985,50 @@
     "message": "비",
     "description": "Visual effect rain option"
   },
+  "watermarkNotice_title": {
+    "message": "Gemini에 워터마크 끄기 설정이 생겼습니다",
+    "description": "Title of the notice about Gemini's native media watermark switch"
+  },
+  "watermarkNotice_body": {
+    "message": "생성된 이미지·동영상·음악 모서리의 보이는 워터마크를 지우는 공식 설정이 추가됐습니다. 꺼두면 Voyager의 워터마크 제거는 더 이상 필요하지 않습니다.",
+    "description": "Body text explaining Gemini's native watermark switch"
+  },
+  "watermarkNotice_step1": {
+    "message": "왼쪽 아래 설정(톱니바퀴)을 엽니다",
+    "description": "Step 1 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step2": {
+    "message": "Media watermark를 선택합니다",
+    "description": "Step 2 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_step3": {
+    "message": "Off를 선택합니다",
+    "description": "Step 3 of turning off Gemini's media watermark"
+  },
+  "watermarkNotice_detected": {
+    "message": "최근 생성된 이미지에 워터마크가 없다는 것을 Voyager가 확인했습니다.",
+    "description": "Shown when Voyager has observed several watermark-free images in a row"
+  },
+  "watermarkNotice_caveat": {
+    "message": "참고: 어느 쪽이든 보이지 않는 SynthID 표시와 C2PA 메타데이터는 그대로 남습니다. 이 설정은 순차 배포 중이며 직장·학교 계정에는 제공되지 않습니다.",
+    "description": "Caveats about SynthID, gradual rollout and account restrictions"
+  },
+  "watermarkNotice_disableCta": {
+    "message": "껐습니다 — Voyager 제거 기능 중지",
+    "description": "Primary button: disable Voyager's watermark removal"
+  },
+  "watermarkNotice_keepCta": {
+    "message": "Voyager 제거 기능 유지",
+    "description": "Secondary button: keep Voyager's watermark removal on"
+  },
+  "watermarkNotice_done": {
+    "message": "Voyager의 워터마크 제거를 중지했습니다. 확장 프로그램 팝업에서 언제든 다시 켤 수 있습니다.",
+    "description": "Confirmation shown after Voyager's watermark removal is disabled"
+  },
+  "watermarkNotice_imageAlt": {
+    "message": "Media watermark가 Off로 설정된 Gemini 설정 화면",
+    "description": "Alt text for the annotated Gemini settings screenshot"
+  },
   "changelog_title": {
     "message": "새로운 기능",
     "description": "Changelog modal title"

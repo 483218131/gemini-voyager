@@ -32,6 +32,7 @@
 		B60723EC2FB752BD00F3A4FD /* fetchInterceptor.js in Resources */ = {isa = PBXBuildFile; fileRef = B60723DF2FB752BD00F3A4FD /* fetchInterceptor.js */; };
 		B60723ED2FB752BD00F3A4FD /* icon-128.png in Resources */ = {isa = PBXBuildFile; fileRef = B60723E02FB752BD00F3A4FD /* icon-128.png */; };
 		B60A20002FB752BD00F3A4FD /* changelog-activity-view.png in Resources */ = {isa = PBXBuildFile; fileRef = B60A10002FB752BD00F3A4FD /* changelog-activity-view.png */; };
+		B60A20012FB752BD00F3A4FD /* watermark-native-steps.png in Resources */ = {isa = PBXBuildFile; fileRef = B60A10012FB752BD00F3A4FD /* watermark-native-steps.png */; };
 		B60723EE2FB752BD00F3A4FD /* icon-32.png in Resources */ = {isa = PBXBuildFile; fileRef = B60723E12FB752BD00F3A4FD /* icon-32.png */; };
 		B60723EF2FB752BD00F3A4FD /* src in Resources */ = {isa = PBXBuildFile; fileRef = B60723E22FB752BD00F3A4FD /* src */; };
 		B60723F02FB752BD00F3A4FD /* claude-usage-observer.js in Resources */ = {isa = PBXBuildFile; fileRef = B60723F52FB752BD00F3A4FD /* claude-usage-observer.js */; };
@@ -98,6 +99,7 @@
 		B60723DF2FB752BD00F3A4FD /* fetchInterceptor.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = fetchInterceptor.js; path = ../../dist_safari/fetchInterceptor.js; sourceTree = "<group>"; };
 		B60723E02FB752BD00F3A4FD /* icon-128.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "icon-128.png"; path = "../../dist_safari/icon-128.png"; sourceTree = "<group>"; };
 		B60A10002FB752BD00F3A4FD /* changelog-activity-view.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "changelog-activity-view.png"; path = "../../dist_safari/changelog-activity-view.png"; sourceTree = "<group>"; };
+		B60A10012FB752BD00F3A4FD /* watermark-native-steps.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "watermark-native-steps.png"; path = "../../dist_safari/watermark-native-steps.png"; sourceTree = "<group>"; };
 		B60723E12FB752BD00F3A4FD /* icon-32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "icon-32.png"; path = "../../dist_safari/icon-32.png"; sourceTree = "<group>"; };
 		B60723E22FB752BD00F3A4FD /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; name = src; path = ../../dist_safari/src; sourceTree = "<group>"; };
 		B60723F52FB752BD00F3A4FD /* claude-usage-observer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "claude-usage-observer.js"; path = "../../dist_safari/claude-usage-observer.js"; sourceTree = "<group>"; };
@@ -197,6 +199,7 @@
 				B60723DF2FB752BD00F3A4FD /* fetchInterceptor.js */,
 				B60723E02FB752BD00F3A4FD /* icon-128.png */,
 				B60A10002FB752BD00F3A4FD /* changelog-activity-view.png */,
+				B60A10012FB752BD00F3A4FD /* watermark-native-steps.png */,
 				B60723E12FB752BD00F3A4FD /* icon-32.png */,
 				B60723E22FB752BD00F3A4FD /* src */,
 				B60723F52FB752BD00F3A4FD /* claude-usage-observer.js */,
@@ -335,6 +338,7 @@
 				B60723EB2FB752BD00F3A4FD /* assets in Resources */,
 				B60723ED2FB752BD00F3A4FD /* icon-128.png in Resources */,
 				B60A20002FB752BD00F3A4FD /* changelog-activity-view.png in Resources */,
+				B60A20012FB752BD00F3A4FD /* watermark-native-steps.png in Resources */,
 				B60723EE2FB752BD00F3A4FD /* icon-32.png in Resources */,
 				B60723E42FB752BD00F3A4FD /* katex-config.js in Resources */,
 				B60723E92FB752BD00F3A4FD /* contentStyle.css in Resources */,
