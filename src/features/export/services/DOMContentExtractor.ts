@@ -2,6 +2,10 @@
  * DOM Content Extractor
  * Extracts rich content from Gemini's DOM structure preserving formatting
  */
+import {
+  requestEChartsDataUrl,
+  resolveEChartsExportContainer,
+} from '../../../pages/content/echarts/exportBridge';
 import type { ExportPlatformAdapter } from '../../../pages/content/export/adapter/platformAdapters';
 import type { ExportAttachment } from '../types/export';
 
@@ -55,9 +59,15 @@ const WAVEDROM_WRAPPER_SELECTOR = '.gv-wavedrom-wrapper';
 const WAVEDROM_RENDERED_SVG_SELECTOR = '.gv-wavedrom-diagram svg';
 const WAVEDROM_EXPORT_CLASS = 'gv-export-wavedrom';
 
+const ECHARTS_WRAPPER_SELECTOR = '.gv-echarts-wrapper';
+const ECHARTS_RENDERED_DIAGRAM_SELECTOR = '.gv-echarts-diagram';
+const ECHARTS_RENDERED_CANVAS_SELECTOR = '.gv-echarts-diagram canvas';
+const ECHARTS_EXPORT_CLASS = 'gv-export-echarts';
+
 type ExportCodeBlock =
   | { kind: 'mermaid'; element: HTMLElement }
   | { kind: 'wavedrom'; element: HTMLElement }
+  | { kind: 'echarts'; element: HTMLElement }
   | { kind: 'code'; element: HTMLElement };
 
 interface SerializedTableCell {
@@ -486,7 +496,9 @@ export class DOMContentExtractor {
             ? this.extractMermaidContent(directExportCodeBlock.element)
             : directExportCodeBlock.kind === 'wavedrom'
               ? this.extractWavedromContent(directExportCodeBlock.element)
-              : this.extractCodeBlock(directExportCodeBlock.element);
+              : directExportCodeBlock.kind === 'echarts'
+                ? this.extractEchartsContent(directExportCodeBlock.element)
+                : this.extractCodeBlock(directExportCodeBlock.element);
         if (content) {
           htmlParts.push(content.html);
         }
@@ -1013,11 +1025,65 @@ export class DOMContentExtractor {
   }
 
   /**
-   * Find top-level Mermaid/WaveDrom and ordinary code blocks in DOM order.
+   * Extract ECharts content for rich and text exports.
+   * The rendered canvas is snapshotted to a PNG image; the option source is
+   * the fallback (canvas readback can throw when tainted).
+   */
+  private static extractEchartsContent(
+    wrapper: HTMLElement,
+    renderedWrapper: HTMLElement = wrapper,
+  ): { html: string; text: string } | null {
+    const diagram =
+      resolveEChartsExportContainer(renderedWrapper) ??
+      renderedWrapper.querySelector<HTMLElement>(ECHARTS_RENDERED_DIAGRAM_SELECTOR);
+    const canvas = diagram?.querySelector<HTMLCanvasElement>(ECHARTS_RENDERED_CANVAS_SELECTOR);
+    const codeBlock = wrapper.querySelector<HTMLElement>('code-block, .code-block');
+    const codeContent = codeBlock
+      ? this.extractCodeBlock(codeBlock, 'echarts')
+      : { html: '', text: '' };
+
+    if (canvas && canvas.width > 0 && canvas.height > 0) {
+      try {
+        const liveExport = diagram
+          ? requestEChartsDataUrl(diagram)
+          : { handled: false, dataUrl: null };
+        const dataUrl = liveExport.handled ? liveExport.dataUrl : canvas.toDataURL('image/png');
+        if (!dataUrl) throw new Error('ECharts composited export unavailable');
+        const exportContainer = document.createElement('div');
+        exportContainer.className = ECHARTS_EXPORT_CLASS;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        const chartDescription =
+          diagram?.getAttribute('aria-label')?.trim() ||
+          canvas.getAttribute('aria-label')?.trim() ||
+          diagram?.querySelector<HTMLElement>('[aria-label]')?.getAttribute('aria-label')?.trim();
+        img.alt = chartDescription || 'Chart';
+        const inlineWidth = canvas.style.width.endsWith('px')
+          ? Number.parseFloat(canvas.style.width)
+          : 0;
+        const displayWidth =
+          canvas.getBoundingClientRect().width || canvas.clientWidth || inlineWidth;
+        if (displayWidth > 0) {
+          img.width = Math.round(displayWidth);
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+        }
+        exportContainer.appendChild(img);
+        return { html: exportContainer.outerHTML, text: codeContent.text };
+      } catch {
+        // Tainted/read-only canvas: fall back to the option source below.
+      }
+    }
+
+    return codeContent.text ? codeContent : null;
+  }
+
+  /**
+   * Find top-level Mermaid/WaveDrom/ECharts and ordinary code blocks in DOM order.
    * Hidden source blocks inside diagram wrappers and nested code-block shells are excluded.
    */
   private static findExportCodeBlocks(container: Element): ExportCodeBlock[] {
-    const selector = `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, code-block, .code-block`;
+    const selector = `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, ${ECHARTS_WRAPPER_SELECTOR}, code-block, .code-block`;
     const elements = [
       ...(container.matches(selector) ? [container as HTMLElement] : []),
       ...Array.from(container.querySelectorAll<HTMLElement>(selector)),
@@ -1030,7 +1096,15 @@ export class DOMContentExtractor {
       if (element.matches(WAVEDROM_WRAPPER_SELECTOR)) {
         return [{ kind: 'wavedrom', element }];
       }
-      if (element.closest(`${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}`)) return [];
+      if (element.matches(ECHARTS_WRAPPER_SELECTOR)) {
+        return [{ kind: 'echarts', element }];
+      }
+      if (
+        element.closest(
+          `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, ${ECHARTS_WRAPPER_SELECTOR}`,
+        )
+      )
+        return [];
       if (element.parentElement?.closest('code-block, .code-block')) return [];
       return [{ kind: 'code', element }];
     });
@@ -1261,7 +1335,9 @@ export class DOMContentExtractor {
                 ? this.extractMermaidContent(directExportCodeBlock.element)
                 : directExportCodeBlock.kind === 'wavedrom'
                   ? this.extractWavedromContent(directExportCodeBlock.element)
-                  : this.extractCodeBlock(directExportCodeBlock.element);
+                  : directExportCodeBlock.kind === 'echarts'
+                    ? this.extractEchartsContent(directExportCodeBlock.element)
+                    : this.extractCodeBlock(directExportCodeBlock.element);
             if (!content?.text) return;
 
             ensureItemMarker();
@@ -1293,6 +1369,9 @@ export class DOMContentExtractor {
       }
     });
 
+    const liveEchartsWrappers = Array.from(
+      element.querySelectorAll<HTMLElement>(ECHARTS_WRAPPER_SELECTOR),
+    );
     const cleanList = element.cloneNode(true) as HTMLElement;
     this.stripExportArtifacts(cleanList);
     cleanList.querySelectorAll<HTMLElement>(MERMAID_WRAPPER_SELECTOR).forEach((wrapper) => {
@@ -1315,8 +1394,23 @@ export class DOMContentExtractor {
         wrapper.replaceWith(replacement.firstElementChild);
       }
     });
+    cleanList.querySelectorAll<HTMLElement>(ECHARTS_WRAPPER_SELECTOR).forEach((wrapper, index) => {
+      const content = this.extractEchartsContent(wrapper, liveEchartsWrappers[index] ?? wrapper);
+      if (!content) return;
+
+      const replacement = document.createElement('div');
+      replacement.innerHTML = content.html;
+      if (replacement.firstElementChild) {
+        wrapper.replaceWith(replacement.firstElementChild);
+      }
+    });
     cleanList.querySelectorAll<HTMLElement>('code-block, .code-block').forEach((codeBlock) => {
-      if (codeBlock.closest(`${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}`)) return;
+      if (
+        codeBlock.closest(
+          `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, ${ECHARTS_WRAPPER_SELECTOR}`,
+        )
+      )
+        return;
       if (codeBlock.parentElement?.closest('code-block, .code-block')) return;
 
       const content = this.extractCodeBlock(codeBlock);

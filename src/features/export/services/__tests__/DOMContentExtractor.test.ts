@@ -3,8 +3,9 @@
  */
 import { Marked, marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { provideEChartsDataUrl } from '@/pages/content/echarts/exportBridge';
 import { resolveExportAdapter } from '@/pages/content/export/adapter/platformAdapters';
 
 import { DOMContentExtractor } from '../DOMContentExtractor';
@@ -604,6 +605,343 @@ describe('DOMContentExtractor', () => {
     expect(extracted.html).not.toContain('gv-mermaid-wrapper');
     expect(extracted.html).not.toContain('<pre><code');
     expect(extracted.text).toContain('- Diagram\n  ```mermaid\n  flowchart TD\n  A --> B\n  ```');
+  });
+
+  it('exports a rendered ECharts canvas as an image while preserving option source in text', () => {
+    const toDataURLSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,TESTDATA');
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div class="gv-echarts-wrapper">
+              <code-block style="display: none;">
+                <div class="code-block-decoration">echarts</div>
+                <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}</code></pre>
+              </code-block>
+              <div class="gv-echarts-toggle">
+                <button class="active">Diagram</button>
+                <button>Code</button>
+              </div>
+              <div class="gv-echarts-diagram">
+                <canvas width="800" height="400"></canvas>
+              </div>
+            </div>
+          </div>
+        </message-content>
+      `;
+      const canvas = assistant.querySelector('canvas')!;
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+        width: 400,
+        height: 200,
+        top: 0,
+        right: 400,
+        bottom: 200,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.hasCode).toBe(true);
+      expect(extracted.html).toContain('class="gv-export-echarts"');
+      expect(extracted.html).toContain('<img src="data:image/png;base64,TESTDATA"');
+      expect(extracted.html).toContain('alt="Chart"');
+      expect(extracted.html).toContain('width="400"');
+      expect(extracted.html).not.toContain('<pre><code');
+      expect(extracted.html).not.toContain('gv-echarts-toggle');
+      expect(extracted.text).toContain(
+        '```echarts\n{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}\n```',
+      );
+    } finally {
+      toDataURLSpy.mockRestore();
+    }
+  });
+
+  it('uses the live ECharts composited export instead of dropping stacked canvas layers', () => {
+    const canvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,FIRST_LAYER_ONLY');
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "zlevel": 2, "data": [1]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-diagram">
+              <canvas width="800" height="400"></canvas>
+              <canvas width="800" height="400"></canvas>
+            </div>
+          </div>
+        </div>
+      </message-content>
+    `;
+    const diagram = assistant.querySelector<HTMLElement>('.gv-echarts-diagram')!;
+    const firstCanvas = assistant.querySelector('canvas')!;
+    vi.spyOn(firstCanvas, 'getBoundingClientRect').mockReturnValue({
+      width: 400,
+      height: 200,
+      top: 0,
+      right: 400,
+      bottom: 200,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const getComposite = vi.fn(() => 'data:image/png;base64,ALL_LAYERS');
+    const stopProviding = provideEChartsDataUrl(diagram, getComposite);
+
+    try {
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(getComposite).toHaveBeenCalledTimes(1);
+      expect(canvasReadback).not.toHaveBeenCalled();
+      expect(extracted.html).toContain('src="data:image/png;base64,ALL_LAYERS"');
+      expect(extracted.html).toContain('width="400"');
+    } finally {
+      stopProviding();
+      canvasReadback.mockRestore();
+    }
+  });
+
+  it('exports the live chart while its diagram is moved into fullscreen', () => {
+    const canvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,FIRST_LAYER_ONLY');
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "data": [1]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-diagram"><canvas width="800" height="400"></canvas></div>
+          </div>
+        </div>
+      </message-content>
+    `;
+    const wrapper = assistant.querySelector<HTMLElement>('.gv-echarts-wrapper')!;
+    const diagram = assistant.querySelector<HTMLElement>('.gv-echarts-diagram')!;
+    const canvas = diagram.querySelector('canvas')!;
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      width: 400,
+      height: 200,
+      top: 0,
+      right: 400,
+      bottom: 200,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const fullscreen = document.createElement('div');
+    document.body.appendChild(fullscreen);
+    fullscreen.appendChild(diagram);
+    const getComposite = vi.fn(() => 'data:image/png;base64,FULLSCREEN');
+    const stopProviding = provideEChartsDataUrl(diagram, getComposite, wrapper);
+
+    try {
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(getComposite).toHaveBeenCalledTimes(1);
+      expect(canvasReadback).not.toHaveBeenCalled();
+      expect(extracted.html).toContain('src="data:image/png;base64,FULLSCREEN"');
+      expect(extracted.html).not.toContain('<pre><code');
+    } finally {
+      stopProviding();
+      fullscreen.remove();
+      canvasReadback.mockRestore();
+    }
+  });
+
+  it('uses the generated ECharts description as the exported image alt text', () => {
+    const canvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,ACCESSIBLE');
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "data": [1]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-diagram" aria-label="A pie chart showing Cats &amp; Dogs">
+              <canvas width="800" height="400"></canvas>
+            </div>
+          </div>
+        </div>
+      </message-content>
+    `;
+
+    try {
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.html).toContain('alt="A pie chart showing Cats &amp; Dogs"');
+    } finally {
+      canvasReadback.mockRestore();
+    }
+  });
+
+  it('snapshots the live ECharts canvas inside list items', () => {
+    const clonedCanvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockImplementation(() => {
+        throw new Error('A cloned canvas has no rendered pixels');
+      });
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <ul>
+              <li>
+                <span>Chart</span>
+                <div class="gv-echarts-wrapper">
+                  <code-block style="display: none;">
+                    <div class="code-block-decoration">echarts</div>
+                    <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1}]}]}</code></pre>
+                  </code-block>
+                  <div class="gv-echarts-toggle"><button>Diagram</button></div>
+                  <div class="gv-echarts-diagram"><canvas width="800" height="400"></canvas></div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </message-content>
+      `;
+      const liveCanvas = assistant.querySelector('canvas')!;
+      const liveReadback = vi.fn(() => 'data:image/png;base64,LIVE');
+      Object.defineProperty(liveCanvas, 'toDataURL', { value: liveReadback });
+      vi.spyOn(liveCanvas, 'getBoundingClientRect').mockReturnValue({
+        width: 400,
+        height: 200,
+        top: 0,
+        right: 400,
+        bottom: 200,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(liveReadback).toHaveBeenCalledWith('image/png');
+      expect(extracted.html).toContain('class="gv-export-echarts"');
+      expect(extracted.html).toContain('src="data:image/png;base64,LIVE"');
+      expect(extracted.html).toContain('alt="Chart"');
+      expect(extracted.html).toContain('width="400"');
+      expect(extracted.html).not.toContain('gv-echarts-wrapper');
+      expect(extracted.text).toContain(
+        '- Chart\n  ```echarts\n  {"series": [{"type": "pie", "data": [{"value": 1}]}]}\n  ```',
+      );
+    } finally {
+      clonedCanvasReadback.mockRestore();
+    }
+  });
+
+  it('preserves the ECharts CSS width when exporting from code view', () => {
+    const toDataURLSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,HIDDEN');
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div class="gv-echarts-wrapper">
+              <code-block>
+                <div class="code-block-decoration">echarts</div>
+                <pre><code role="text">{"series": {"type": "pie", "data": [{"value": 1}]}}</code></pre>
+              </code-block>
+              <div class="gv-echarts-diagram" style="display: none;">
+                <canvas width="800" height="400" style="width: 400px; height: 200px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.html).toContain('src="data:image/png;base64,HIDDEN"');
+      expect(extracted.html).toContain('width="400"');
+    } finally {
+      toDataURLSpy.mockRestore();
+    }
+  });
+
+  it('falls back to option source when a rendered ECharts canvas is unavailable', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block>
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-toggle"><button>Diagram</button></div>
+            <div class="gv-echarts-diagram"></div>
+          </div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.hasCode).toBe(true);
+    expect(extracted.html).toContain('<pre><code class="language-echarts">');
+    expect(extracted.html).not.toContain('class="gv-export-echarts"');
+    expect(extracted.text).toContain(
+      '```echarts\n{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}\n```',
+    );
+  });
+
+  it('falls back to option source when the ECharts canvas is tainted', () => {
+    const toDataURLSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockImplementation(() => {
+        throw new Error('Tainted canvas');
+      });
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div class="gv-echarts-wrapper">
+              <code-block style="display: none;">
+                <div class="code-block-decoration">echarts</div>
+                <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}</code></pre>
+              </code-block>
+              <div class="gv-echarts-diagram"><canvas width="800" height="400"></canvas></div>
+            </div>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.html).toContain('<pre><code class="language-echarts">');
+      expect(extracted.html).not.toContain('class="gv-export-echarts"');
+      expect(extracted.text).toContain(
+        '```echarts\n{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}\n```',
+      );
+    } finally {
+      toDataURLSpy.mockRestore();
+    }
   });
 
   it('preserves regular fenced code when list extraction handles block content', () => {
