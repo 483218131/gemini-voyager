@@ -1597,6 +1597,71 @@
     "message": "Show a floating button to quote selected text when text is selected in conversations",
     "description": "Quote reply feature hint"
   },
+  "enableWaveDromRendering": {
+    "message": "Enable WaveDrom timing diagram rendering",
+    "description": "WaveDrom rendering toggle label"
+  },
+  "enableWaveDromRenderingHint": {
+    "message": "Automatically render WaveJSON code blocks as interactive timing diagrams",
+    "description": "WaveDrom rendering feature hint"
+  },
+  "wavedromDiagramButton": {
+    "message": "〜 Diagram",
+    "description": "Toggle button label to show the rendered diagram"
+  },
+  "wavedromCodeButton": {
+    "message": "</> Code",
+    "description": "Toggle button label to show the WaveJSON source"
+  },
+  "wavedromZoomIn": {
+    "message": "Zoom In",
+    "description": "Fullscreen toolbar: zoom in button title"
+  },
+  "wavedromZoomOut": {
+    "message": "Zoom Out",
+    "description": "Fullscreen toolbar: zoom out button title"
+  },
+  "wavedromResetView": {
+    "message": "Reset",
+    "description": "Fullscreen toolbar: reset view button title"
+  },
+  "wavedromCloseFullscreen": {
+    "message": "Close (ESC)",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "wavedromFullscreenHint": {
+    "message": "Scroll to zoom • Drag to pan • ESC to close",
+    "description": "Fullscreen overlay usage hint"
+  },
+  "enableEchartsRendering": {
+    "message": "Enable ECharts rendering",
+    "description": "ECharts rendering toggle label"
+  },
+  "enableEchartsRenderingHint": {
+    "message": "Automatically render ECharts option code blocks as interactive charts",
+    "description": "ECharts rendering feature hint"
+  },
+  "echartsDiagramButton": {
+    "message": "📊 Diagram",
+    "description": "Toggle button label to show the rendered chart"
+  },
+  "echartsCodeButton": {
+    "message": "</> Code",
+    "description": "Toggle button label to show the ECharts option source"
+  },
+  "echartsFullscreenButton": {
+    "message": "Fullscreen",
+    "description": "Button title to open an ECharts diagram in fullscreen"
+  },
+  "echartsCloseFullscreen": {
+    "message": "Close (ESC)",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "echartsFullscreenHint": {
+    "message": "Press ESC to close",
+    "description": "Fullscreen overlay usage hint"
+  },
+
   "enableHighlights": {
     "message": "Enable highlights",
     "description": "Highlight feature toggle label"
@@ -2689,5 +2754,69 @@
   "diagnosticsCopyFailed": {
     "message": "Clipboard unavailable. Select the preview manually or download JSON."
   },
-  "diagnosticsDownloadJson": { "message": "Download JSON" }
+  "diagnosticsDownloadJson": { "message": "Download JSON" },
+  "promptHistoryTitle": {
+    "message": "Prompt History",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEnabledHint": {
+    "message": "Save sent and updated prompts on this device, separately for each Gemini account.",
+    "description": "Prompt History setting hint (#923)"
+  },
+  "promptHistoryEmpty": {
+    "message": "No prompt history yet",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistorySent": {
+    "message": "Sent",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEdited": {
+    "message": "Edited",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopy": {
+    "message": "Copy",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsert": {
+    "message": "Insert",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryDelete": {
+    "message": "Delete",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClear": {
+    "message": "Clear",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopied": {
+    "message": "Copied",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInserted": {
+    "message": "Inserted",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsertFailed": {
+    "message": "Insert failed",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopyFailed": {
+    "message": "Copy failed",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClearConfirm": {
+    "message": "Clear prompt history for this Gemini account?",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryCancel": {
+    "message": "Cancel",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryStorageFailed": {
+    "message": "Prompt history could not be saved. Check extension storage.",
+    "description": "Prompt History storage error (#923)"
+  }
 }

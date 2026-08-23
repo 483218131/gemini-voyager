@@ -1588,6 +1588,71 @@
     "message": "إظهار زر عائم لاقتباس النص المحدد عند تحديد نص في المحادثات",
     "description": "Quote reply feature hint"
   },
+  "enableWaveDromRendering": {
+    "message": "تفعيل عرض مخططات التوقيت WaveDrom",
+    "description": "تسمية مفتاح عرض WaveDrom"
+  },
+  "enableWaveDromRenderingHint": {
+    "message": "عرض تلقائي لكتل أكواد WaveJSON كمخططات توقيت تفاعلية",
+    "description": "وصف ميزة WaveDrom"
+  },
+  "wavedromDiagramButton": {
+    "message": "〜 المخطط",
+    "description": "تسمية زر التحويل إلى المخطط المعروض"
+  },
+  "wavedromCodeButton": {
+    "message": "</> الكود",
+    "description": "تسمية زر التحويل إلى كود WaveJSON المصدري"
+  },
+  "wavedromZoomIn": {
+    "message": "تكبير",
+    "description": "شريط أدوات ملء الشاشة: عنوان زر التكبير"
+  },
+  "wavedromZoomOut": {
+    "message": "تصغير",
+    "description": "شريط أدوات ملء الشاشة: عنوان زر التصغير"
+  },
+  "wavedromResetView": {
+    "message": "إعادة تعيين",
+    "description": "شريط أدوات ملء الشاشة: عنوان زر إعادة تعيين العرض"
+  },
+  "wavedromCloseFullscreen": {
+    "message": "إغلاق (ESC)",
+    "description": "شريط أدوات ملء الشاشة: عنوان زر الإغلاق"
+  },
+  "wavedromFullscreenHint": {
+    "message": "مرر للتكبير • اسحب للتحريك • ESC للإغلاق",
+    "description": "توجيه استخدام طبقة ملء الشاشة"
+  },
+  "enableEchartsRendering": {
+    "message": "تفعيل عرض ECharts",
+    "description": "ECharts rendering toggle label"
+  },
+  "enableEchartsRenderingHint": {
+    "message": "عرض أكواد خيارات ECharts تلقائيًا كرسوم بيانية تفاعلية",
+    "description": "ECharts rendering feature hint"
+  },
+  "echartsDiagramButton": {
+    "message": "📊 رسم بياني",
+    "description": "Toggle button label to show the rendered chart"
+  },
+  "echartsCodeButton": {
+    "message": "</> الكود",
+    "description": "Toggle button label to show the ECharts option source"
+  },
+  "echartsFullscreenButton": {
+    "message": "ملء الشاشة",
+    "description": "Button title to open an ECharts diagram in fullscreen"
+  },
+  "echartsCloseFullscreen": {
+    "message": "إغلاق (ESC)",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "echartsFullscreenHint": {
+    "message": "اضغط ESC للإغلاق",
+    "description": "Fullscreen overlay usage hint"
+  },
+
   "enableHighlights": {
     "message": "تمكين التمييز",
     "description": "Highlight feature toggle label"
@@ -2656,5 +2721,69 @@
   "diagnosticsCopyFailed": {
     "message": "الحافظة غير متاحة. حدّد نص المعاينة يدويًا أو نزّل ملف JSON."
   },
-  "diagnosticsDownloadJson": { "message": "تنزيل JSON" }
+  "diagnosticsDownloadJson": { "message": "تنزيل JSON" },
+  "promptHistoryTitle": {
+    "message": "سجل المطالبات",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEnabledHint": {
+    "message": "حفظ المطالبات المرسلة والمحدّثة على هذا الجهاز بشكل منفصل لكل حساب Gemini.",
+    "description": "Prompt History setting hint (#923)"
+  },
+  "promptHistoryEmpty": {
+    "message": "لا يوجد سجل بعد",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistorySent": {
+    "message": "أُرسل",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEdited": {
+    "message": "تم التعديل",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopy": {
+    "message": "نسخ",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsert": {
+    "message": "إدراج",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryDelete": {
+    "message": "حذف",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClear": {
+    "message": "مسح",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopied": {
+    "message": "تم النسخ",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInserted": {
+    "message": "تم الإدراج",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsertFailed": {
+    "message": "فشل الإدراج",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopyFailed": {
+    "message": "فشل النسخ",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClearConfirm": {
+    "message": "هل تريد مسح سجل المطالبات لحساب Gemini هذا؟",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryCancel": {
+    "message": "إلغاء",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryStorageFailed": {
+    "message": "تعذّر حفظ سجل المطالبات. تحقّق من مساحة تخزين الإضافة.",
+    "description": "Prompt History storage error (#923)"
+  }
 }

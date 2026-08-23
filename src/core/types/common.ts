@@ -124,6 +124,8 @@ export const StorageKeys = {
   HIDE_PROMPT_MANAGER: 'gvHidePromptManager',
   TAB_TITLE_UPDATE_ENABLED: 'gvTabTitleUpdateEnabled',
   MERMAID_ENABLED: 'gvMermaidEnabled',
+  WAVEDROM_ENABLED: 'gvWaveDromEnabled',
+  ECHARTS_ENABLED: 'gvEchartsEnabled',
   QUOTE_REPLY_ENABLED: 'gvQuoteReplyEnabled',
   RESPONSE_COMPLETE_NOTIFICATION_ENABLED: 'gvResponseCompleteNotificationEnabled',
   REMOTE_ANNOUNCEMENTS_ENABLED: 'gvRemoteAnnouncementsEnabled',
@@ -141,6 +143,11 @@ export const StorageKeys = {
   INPUT_VIM_MODE: 'gvInputVimMode',
   DRAFT_AUTO_SAVE: 'gvDraftAutoSave',
   PREVENT_AUTO_SCROLL_ENABLED: 'gvPreventAutoScrollEnabled',
+  // Prompt history (#923). chrome.storage.local only — a per-device, per-account
+  // record of sent/edited prompts so users can recover prompts that Gemini
+  // swallowed on error.
+  PROMPT_HISTORY_ENABLED: 'gvPromptHistoryEnabled',
+  PROMPT_HISTORY_ITEMS: 'gvPromptHistoryItems',
 
   // Default Model
   DEFAULT_MODEL: 'gvDefaultModel',

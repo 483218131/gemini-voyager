@@ -84,6 +84,8 @@ export const BACKUPABLE_SYNC_SETTINGS_DEFAULTS = {
   [StorageKeys.HIDE_PROMPT_MANAGER]: false,
   [StorageKeys.TAB_TITLE_UPDATE_ENABLED]: false,
   [StorageKeys.MERMAID_ENABLED]: true,
+  [StorageKeys.WAVEDROM_ENABLED]: true,
+  [StorageKeys.ECHARTS_ENABLED]: true,
   [StorageKeys.QUOTE_REPLY_ENABLED]: true,
   [StorageKeys.RESPONSE_COMPLETE_NOTIFICATION_ENABLED]: false,
   [StorageKeys.REMOTE_ANNOUNCEMENTS_ENABLED]: true,
@@ -99,6 +101,7 @@ export const BACKUPABLE_SYNC_SETTINGS_DEFAULTS = {
   [StorageKeys.INPUT_VIM_MODE]: false,
   [StorageKeys.DRAFT_AUTO_SAVE]: false,
   [StorageKeys.PREVENT_AUTO_SCROLL_ENABLED]: false,
+  [StorageKeys.PROMPT_HISTORY_ENABLED]: false,
   [StorageKeys.DEFAULT_MODEL]: null,
   [StorageKeys.DEFAULT_THINKING_LEVEL]: null,
   [StorageKeys.DEFAULT_MODEL_AUTO_APPLY]: true,
@@ -362,6 +365,12 @@ export const NON_SETTINGS_BACKUP_POLICIES = {
     disposition: 'cache',
     reason:
       'Gemini response-id aliases are bounded, device-local, and rebuilt from conversation history.',
+  },
+  [StorageKeys.PROMPT_HISTORY_ITEMS]: {
+    storage: 'local',
+    disposition: 'device-local',
+    reason:
+      'Prompt history is a device-local record of sent/edited prompts and is intentionally not backed up.',
   },
   [StorageKeys.GV_POPUP_SCROLL_TOP]: {
     storage: 'local',

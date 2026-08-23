@@ -2,6 +2,10 @@
  * DOM Content Extractor
  * Extracts rich content from Gemini's DOM structure preserving formatting
  */
+import {
+  requestEChartsDataUrl,
+  resolveEChartsExportContainer,
+} from '../../../pages/content/echarts/exportBridge';
 import type { ExportPlatformAdapter } from '../../../pages/content/export/adapter/platformAdapters';
 import type { ExportAttachment } from '../types/export';
 
@@ -51,9 +55,38 @@ const MERMAID_LIGHT_EXPORT_TEMPLATE_SELECTOR = 'template.gv-mermaid-light-export
 const MERMAID_EXPORT_CLASS = 'gv-export-mermaid';
 const MERMAID_THEME_ATTRIBUTE = 'data-gv-mermaid-theme';
 
+const WAVEDROM_WRAPPER_SELECTOR = '.gv-wavedrom-wrapper';
+const WAVEDROM_RENDERED_SVG_SELECTOR = '.gv-wavedrom-diagram svg';
+const WAVEDROM_EXPORT_CLASS = 'gv-export-wavedrom';
+
+const ECHARTS_WRAPPER_SELECTOR = '.gv-echarts-wrapper';
+const ECHARTS_RENDERED_DIAGRAM_SELECTOR = '.gv-echarts-diagram';
+const ECHARTS_RENDERED_CANVAS_SELECTOR = '.gv-echarts-diagram canvas';
+const ECHARTS_EXPORT_CLASS = 'gv-export-echarts';
+
 type ExportCodeBlock =
   | { kind: 'mermaid'; element: HTMLElement }
+  | { kind: 'wavedrom'; element: HTMLElement }
+  | { kind: 'echarts'; element: HTMLElement }
   | { kind: 'code'; element: HTMLElement };
+
+interface SerializedTableCell {
+  text: string;
+  hasFormulas: boolean;
+}
+
+interface SerializedTable {
+  rows: string[][];
+  hasFormulas: boolean;
+}
+
+interface ProcessedInlineContent {
+  html: string;
+  text: string;
+  hasFormulas: boolean;
+  hasLeadingWhitespace: boolean;
+  hasTrailingWhitespace: boolean;
+}
 
 export class DOMContentExtractor {
   private static DEBUG = false;
@@ -133,7 +166,7 @@ export class DOMContentExtractor {
 
     // Add text paragraphs to HTML
     textParts.forEach((text) => {
-      htmlParts.push(`<p>${this.escapeHtml(text)}</p>`);
+      htmlParts.push(`<p>${this.escapeHtml(text).replace(/\n/g, '<br />')}</p>`);
     });
 
     result.html = htmlParts.join('\n');
@@ -374,6 +407,37 @@ export class DOMContentExtractor {
     processedImageSrcs: Set<string> = new Set<string>(),
   ): void {
     const children = Array.from(container.children);
+    const appendInlineContent = (processed: ProcessedInlineContent): void => {
+      const isWhitespaceOnly =
+        !processed.html &&
+        !processed.text &&
+        (processed.hasLeadingWhitespace || processed.hasTrailingWhitespace);
+
+      if (isWhitespaceOnly) {
+        const previousText = textParts.at(-1) ?? '';
+        if (previousText && !/\s$/.test(previousText)) {
+          htmlParts.push('<span> </span>');
+          textParts.push(' ');
+        }
+        return;
+      }
+
+      if (processed.html) {
+        htmlParts.push(`<span>${processed.html}</span>`);
+      }
+
+      if (processed.text) {
+        const previousText = textParts.at(-1) ?? '';
+        const needsLeadingSpace =
+          processed.hasLeadingWhitespace && previousText.length > 0 && !/\s$/.test(previousText);
+
+        textParts.push(
+          `${needsLeadingSpace ? ' ' : ''}${processed.text}${
+            processed.hasTrailingWhitespace ? ' ' : ''
+          }`,
+        );
+      }
+    };
     if (this.DEBUG)
       console.log(
         `[DOMContentExtractor] processNodes: ${children.length} children in`,
@@ -430,7 +494,11 @@ export class DOMContentExtractor {
         const content =
           directExportCodeBlock.kind === 'mermaid'
             ? this.extractMermaidContent(directExportCodeBlock.element)
-            : this.extractCodeBlock(directExportCodeBlock.element);
+            : directExportCodeBlock.kind === 'wavedrom'
+              ? this.extractWavedromContent(directExportCodeBlock.element)
+              : directExportCodeBlock.kind === 'echarts'
+                ? this.extractEchartsContent(directExportCodeBlock.element)
+                : this.extractCodeBlock(directExportCodeBlock.element);
         if (content) {
           htmlParts.push(content.html);
         }
@@ -467,11 +535,12 @@ export class DOMContentExtractor {
         const elementToExtract = (tableBlock || child) as HTMLElement;
         const tableContent = this.extractTable(elementToExtract);
         if (this.DEBUG) console.log('[DOMContentExtractor] Table content:', tableContent.text);
+        if (tableContent.hasFormulas) flags.hasFormulas = true;
         if (tableContent.text) {
           // Only add if table was successfully extracted
           flags.hasTables = true;
           htmlParts.push(tableContent.html);
-          textParts.push(`\n${tableContent.text}\n`);
+          textParts.push(`\n${tableContent.text}\n\n`);
         }
         continue;
       }
@@ -556,8 +625,7 @@ export class DOMContentExtractor {
         if (hasDirectText && onlyInlineChildren) {
           const processed = this.processInlineContent(child as HTMLElement);
           if (processed.hasFormulas) flags.hasFormulas = true;
-          htmlParts.push(`<span>${processed.html}</span>`);
-          textParts.push(processed.text);
+          appendInlineContent(processed);
         } else {
           this.processNodes(child, htmlParts, textParts, flags, processedImageSrcs);
         }
@@ -565,11 +633,15 @@ export class DOMContentExtractor {
       }
 
       // Leaf element with no child elements: extract text content
-      const text = this.normalizeText(child.textContent || '');
-      if (text) {
-        htmlParts.push(`<span>${this.escapeHtml(text)}</span>`);
-        textParts.push(text);
-      }
+      const rawText = child.textContent || '';
+      const text = this.normalizeText(rawText);
+      appendInlineContent({
+        html: this.escapeHtml(text),
+        text,
+        hasFormulas: false,
+        hasLeadingWhitespace: /^\s/.test(rawText),
+        hasTrailingWhitespace: /\s$/.test(rawText),
+      });
     }
   }
 
@@ -701,14 +773,38 @@ export class DOMContentExtractor {
   /**
    * Process inline content (text with inline formulas)
    */
-  private static processInlineContent(element: HTMLElement): {
-    html: string;
-    text: string;
-    hasFormulas: boolean;
-  } {
+  private static processInlineContent(
+    element: HTMLElement,
+    forMarkdownTable = false,
+  ): ProcessedInlineContent {
     let hasFormulas = false;
     const htmlParts: string[] = [];
     const textParts: string[] = [];
+
+    const appendFormattedContent = (
+      processed: ProcessedInlineContent,
+      htmlTag: 'code' | 'em' | 'strong',
+      serializeMarkdown: (text: string) => string,
+    ): void => {
+      if (processed.hasFormulas) hasFormulas = true;
+
+      const leadingSpace = processed.hasLeadingWhitespace ? ' ' : '';
+      const trailingSpace = processed.hasTrailingWhitespace ? ' ' : '';
+      const hasBoundaryWhitespace =
+        processed.hasLeadingWhitespace || processed.hasTrailingWhitespace;
+
+      if (processed.html) {
+        htmlParts.push(`${leadingSpace}<${htmlTag}>${processed.html}</${htmlTag}>${trailingSpace}`);
+      } else if (hasBoundaryWhitespace) {
+        htmlParts.push(' ');
+      }
+
+      if (processed.text) {
+        textParts.push(`${leadingSpace}${serializeMarkdown(processed.text)}${trailingSpace}`);
+      } else if (hasBoundaryWhitespace) {
+        textParts.push(' ');
+      }
+    };
 
     // Process all child nodes including text nodes
     const processNode = (node: Node): void => {
@@ -717,6 +813,11 @@ export class DOMContentExtractor {
         if (text.trim()) {
           htmlParts.push(this.escapeHtml(text));
           textParts.push(text);
+        } else if (text && (htmlParts.length > 0 || textParts.length > 0)) {
+          // Whitespace-only nodes can be the only separator between adjacent
+          // inline elements, for example <strong>high</strong> <em>risk</em>.
+          htmlParts.push(' ');
+          textParts.push(' ');
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const el = node as Element;
@@ -725,32 +826,42 @@ export class DOMContentExtractor {
           return;
         }
 
-        if (this.exportAdapter.extractInlineFormula(el, htmlParts, textParts)) {
+        const formulaHtmlParts: string[] = [];
+        const formulaTextParts: string[] = [];
+
+        if (this.exportAdapter.extractInlineFormula(el, formulaHtmlParts, formulaTextParts)) {
           hasFormulas = true;
+          htmlParts.push(...formulaHtmlParts);
+
+          const formulaMarkdown = formulaTextParts.join('');
+          textParts.push(
+            forMarkdownTable
+              ? this.preserveLatexPipeCommandsInMarkdownTable(formulaMarkdown)
+              : formulaMarkdown,
+          );
           return;
         }
 
         // Emphasis
         if (el.tagName === 'I' || el.tagName === 'EM') {
-          const text = this.normalizeText(el.textContent || '');
-          htmlParts.push(`<em>${this.escapeHtml(text)}</em>`);
-          textParts.push(`*${text}*`);
+          const processed = this.processInlineContent(el as HTMLElement, forMarkdownTable);
+          appendFormattedContent(processed, 'em', (text) => `*${text}*`);
           return;
         }
 
         // Strong
         if (el.tagName === 'B' || el.tagName === 'STRONG') {
-          const text = this.normalizeText(el.textContent || '');
-          htmlParts.push(`<strong>${this.escapeHtml(text)}</strong>`);
-          textParts.push(`**${text}**`);
+          const processed = this.processInlineContent(el as HTMLElement, forMarkdownTable);
+          appendFormattedContent(processed, 'strong', (text) => `**${text}**`);
           return;
         }
 
         // Code
         if (el.tagName === 'CODE' && !el.closest('pre')) {
-          const text = this.normalizeText(el.textContent || '');
-          htmlParts.push(`<code>${this.escapeHtml(text)}</code>`);
-          textParts.push(`\`${text}\``);
+          const processed = this.processInlineCodeContent(el as HTMLElement);
+          appendFormattedContent(processed, 'code', (text) =>
+            this.serializeInlineCodeSpan(text, forMarkdownTable),
+          );
           return;
         }
 
@@ -776,11 +887,77 @@ export class DOMContentExtractor {
 
     Array.from(element.childNodes).forEach(processNode);
 
+    const rawHtml = htmlParts.join('');
+    const rawText = textParts.join('');
+
     return {
-      html: htmlParts.join(''),
-      text: textParts.join(''),
+      html: rawHtml.trim(),
+      text: rawText.trim(),
       hasFormulas,
+      hasLeadingWhitespace: /^\s/.test(rawText),
+      hasTrailingWhitespace: /\s$/.test(rawText),
     };
+  }
+
+  private static processInlineCodeContent(element: HTMLElement): ProcessedInlineContent {
+    const textParts: string[] = [];
+
+    const collectText = (node: Node): void => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        textParts.push(node.textContent || '');
+        return;
+      }
+
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+      const child = node as Element;
+      if (this.shouldSkipElement(child)) return;
+
+      Array.from(child.childNodes).forEach(collectText);
+    };
+
+    Array.from(element.childNodes).forEach(collectText);
+
+    const rawText = textParts.join('');
+    const text = rawText.trim();
+
+    return {
+      html: this.escapeHtml(text),
+      text,
+      hasFormulas: false,
+      hasLeadingWhitespace: /^\s/.test(rawText),
+      hasTrailingWhitespace: /\s$/.test(rawText),
+    };
+  }
+
+  private static serializeInlineCodeSpan(text: string, forMarkdownTable = false): string {
+    const needsTableSafeHtml =
+      forMarkdownTable &&
+      (/\\+\|/.test(text) || (text.includes('|') && this.normalizeText(text) !== text));
+
+    if (needsTableSafeHtml) {
+      // Marked continues parsing Markdown inside raw inline HTML. Encode every
+      // code point so backslashes and collapsible whitespace stay literal.
+      const escapedCode = Array.from(
+        text,
+        (character) => `&#x${character.codePointAt(0)!.toString(16)};`,
+      ).join('');
+
+      return `<code>${escapedCode}</code>`;
+    }
+
+    const longestBacktickRun = (text.match(/`+/g) ?? []).reduce(
+      (longest, run) => Math.max(longest, run.length),
+      0,
+    );
+    const delimiter = '`'.repeat(longestBacktickRun + 1);
+    const needsPadding =
+      text.startsWith('`') ||
+      text.endsWith('`') ||
+      (text.startsWith(' ') && text.endsWith(' ') && text.trim() !== '');
+    const padding = needsPadding ? ' ' : '';
+
+    return `${delimiter}${padding}${text}${padding}${delimiter}`;
   }
 
   /**
@@ -825,11 +1002,88 @@ export class DOMContentExtractor {
   }
 
   /**
-   * Find top-level Mermaid and ordinary code blocks in DOM order.
-   * Hidden source blocks inside Mermaid wrappers and nested code-block shells are excluded.
+   * Extract WaveDrom content for rich and text exports.
+   * The rendered SVG is preferred; the WaveJSON source is the fallback.
+   */
+  private static extractWavedromContent(
+    wrapper: HTMLElement,
+  ): { html: string; text: string } | null {
+    const renderedSvg = wrapper.querySelector<SVGSVGElement>(WAVEDROM_RENDERED_SVG_SELECTOR);
+    const codeBlock = wrapper.querySelector<HTMLElement>('code-block, .code-block');
+    const codeContent = codeBlock
+      ? this.extractCodeBlock(codeBlock, 'wavedrom')
+      : { html: '', text: '' };
+
+    if (renderedSvg) {
+      const exportContainer = document.createElement('div');
+      exportContainer.className = WAVEDROM_EXPORT_CLASS;
+      exportContainer.appendChild(renderedSvg.cloneNode(true));
+      return { html: exportContainer.outerHTML, text: codeContent.text };
+    }
+
+    return codeContent.text ? codeContent : null;
+  }
+
+  /**
+   * Extract ECharts content for rich and text exports.
+   * The rendered canvas is snapshotted to a PNG image; the option source is
+   * the fallback (canvas readback can throw when tainted).
+   */
+  private static extractEchartsContent(
+    wrapper: HTMLElement,
+    renderedWrapper: HTMLElement = wrapper,
+  ): { html: string; text: string } | null {
+    const diagram =
+      resolveEChartsExportContainer(renderedWrapper) ??
+      renderedWrapper.querySelector<HTMLElement>(ECHARTS_RENDERED_DIAGRAM_SELECTOR);
+    const canvas = diagram?.querySelector<HTMLCanvasElement>(ECHARTS_RENDERED_CANVAS_SELECTOR);
+    const codeBlock = wrapper.querySelector<HTMLElement>('code-block, .code-block');
+    const codeContent = codeBlock
+      ? this.extractCodeBlock(codeBlock, 'echarts')
+      : { html: '', text: '' };
+
+    if (canvas && canvas.width > 0 && canvas.height > 0) {
+      try {
+        const liveExport = diagram
+          ? requestEChartsDataUrl(diagram)
+          : { handled: false, dataUrl: null };
+        const dataUrl = liveExport.handled ? liveExport.dataUrl : canvas.toDataURL('image/png');
+        if (!dataUrl) throw new Error('ECharts composited export unavailable');
+        const exportContainer = document.createElement('div');
+        exportContainer.className = ECHARTS_EXPORT_CLASS;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        const chartDescription =
+          diagram?.getAttribute('aria-label')?.trim() ||
+          canvas.getAttribute('aria-label')?.trim() ||
+          diagram?.querySelector<HTMLElement>('[aria-label]')?.getAttribute('aria-label')?.trim();
+        img.alt = chartDescription || 'Chart';
+        const inlineWidth = canvas.style.width.endsWith('px')
+          ? Number.parseFloat(canvas.style.width)
+          : 0;
+        const displayWidth =
+          canvas.getBoundingClientRect().width || canvas.clientWidth || inlineWidth;
+        if (displayWidth > 0) {
+          img.width = Math.round(displayWidth);
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+        }
+        exportContainer.appendChild(img);
+        return { html: exportContainer.outerHTML, text: codeContent.text };
+      } catch {
+        // Tainted/read-only canvas: fall back to the option source below.
+      }
+    }
+
+    return codeContent.text ? codeContent : null;
+  }
+
+  /**
+   * Find top-level Mermaid/WaveDrom/ECharts and ordinary code blocks in DOM order.
+   * Hidden source blocks inside diagram wrappers and nested code-block shells are excluded.
    */
   private static findExportCodeBlocks(container: Element): ExportCodeBlock[] {
-    const selector = `${MERMAID_WRAPPER_SELECTOR}, code-block, .code-block`;
+    const selector = `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, ${ECHARTS_WRAPPER_SELECTOR}, code-block, .code-block`;
     const elements = [
       ...(container.matches(selector) ? [container as HTMLElement] : []),
       ...Array.from(container.querySelectorAll<HTMLElement>(selector)),
@@ -839,7 +1093,18 @@ export class DOMContentExtractor {
       if (element.matches(MERMAID_WRAPPER_SELECTOR)) {
         return [{ kind: 'mermaid', element }];
       }
-      if (element.closest(MERMAID_WRAPPER_SELECTOR)) return [];
+      if (element.matches(WAVEDROM_WRAPPER_SELECTOR)) {
+        return [{ kind: 'wavedrom', element }];
+      }
+      if (element.matches(ECHARTS_WRAPPER_SELECTOR)) {
+        return [{ kind: 'echarts', element }];
+      }
+      if (
+        element.closest(
+          `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, ${ECHARTS_WRAPPER_SELECTOR}`,
+        )
+      )
+        return [];
       if (element.parentElement?.closest('code-block, .code-block')) return [];
       return [{ kind: 'code', element }];
     });
@@ -898,7 +1163,11 @@ export class DOMContentExtractor {
   /**
    * Extract table content
    */
-  private static extractTable(element: HTMLElement): { html: string; text: string } {
+  private static extractTable(element: HTMLElement): {
+    html: string;
+    text: string;
+    hasFormulas: boolean;
+  } {
     // Accept either a container that holds a <table>, or a <table> element itself
     let table: HTMLTableElement | null = null;
     if (element.tagName && element.tagName.toLowerCase() === 'table') {
@@ -907,7 +1176,7 @@ export class DOMContentExtractor {
       table = element.querySelector('table') as HTMLTableElement | null;
     }
     if (!table) {
-      return { html: '', text: '' };
+      return { html: '', text: '', hasFormulas: false };
     }
 
     // Extract HTML (clean version)
@@ -915,51 +1184,82 @@ export class DOMContentExtractor {
     this.stripExportArtifacts(cleanTable);
 
     // Convert to Markdown
-    const normalizeCell = (cell: Element): string =>
-      this.normalizeText(cell.textContent || '').replace(/\|/g, '\\|');
-    const rows: string[][] = [];
+    const rowCells: Element[][] = [];
     const headerCells = Array.from(table.querySelectorAll('thead tr td, thead tr th'));
     if (headerCells.length > 0) {
-      rows.push(headerCells.map(normalizeCell));
+      rowCells.push(headerCells);
     }
 
     const bodyRows = table.querySelectorAll('tbody tr');
     bodyRows.forEach((row) => {
-      const cells = Array.from(row.querySelectorAll('td, th'));
-      rows.push(cells.map(normalizeCell));
+      rowCells.push(Array.from(row.querySelectorAll('td, th')));
     });
+    const serializedTable = this.serializeTableRows(rowCells);
 
     // Build Markdown table
     const markdownLines: string[] = [];
-    if (rows.length > 0) {
+    if (serializedTable.rows.length > 0) {
       // Header
-      markdownLines.push('| ' + rows[0].join(' | ') + ' |');
-      markdownLines.push('| ' + rows[0].map(() => '---').join(' | ') + ' |');
+      markdownLines.push('| ' + serializedTable.rows[0].join(' | ') + ' |');
+      markdownLines.push('| ' + serializedTable.rows[0].map(() => '---').join(' | ') + ' |');
       // Body
-      for (let i = 1; i < rows.length; i++) {
-        markdownLines.push('| ' + rows[i].join(' | ') + ' |');
-      }
-    } else {
-      // Fallback: treat first tbody row as header if no thead present
-      const firstBodyRow = table.querySelector('tbody tr');
-      if (firstBodyRow) {
-        const header = Array.from(firstBodyRow.querySelectorAll('td, th')).map(normalizeCell);
-        if (header.length > 0) {
-          markdownLines.push('| ' + header.join(' | ') + ' |');
-          markdownLines.push('| ' + header.map(() => '---').join(' | ') + ' |');
-          const rest = Array.from(table.querySelectorAll('tbody tr')).slice(1);
-          rest.forEach((row) => {
-            const cells = Array.from(row.querySelectorAll('td, th')).map(normalizeCell);
-            markdownLines.push('| ' + cells.join(' | ') + ' |');
-          });
-        }
+      for (let i = 1; i < serializedTable.rows.length; i++) {
+        markdownLines.push('| ' + serializedTable.rows[i].join(' | ') + ' |');
       }
     }
 
     return {
       html: cleanTable.outerHTML,
       text: markdownLines.join('\n'),
+      hasFormulas: serializedTable.hasFormulas,
     };
+  }
+
+  private static serializeTableRows(rowCells: Element[][]): SerializedTable {
+    let hasFormulas = false;
+    const rows = rowCells.map((cells) =>
+      cells.map((cell) => {
+        const serializedCell = this.serializeTableCell(cell as HTMLElement);
+        if (serializedCell.hasFormulas) hasFormulas = true;
+        return serializedCell.text;
+      }),
+    );
+
+    return { rows, hasFormulas };
+  }
+
+  private static serializeTableCell(cell: HTMLElement): SerializedTableCell {
+    const processed = this.processInlineContent(cell, true);
+
+    return {
+      text: this.escapeMarkdownTableCell(this.normalizeText(processed.text)),
+      hasFormulas: processed.hasFormulas,
+    };
+  }
+
+  /**
+   * Escape pipes before joining cells into a Markdown table row.
+   * Existing backslashes are doubled so the rendered cell preserves them while
+   * the final odd backslash still prevents the pipe from becoming a delimiter.
+   * Inline code containing pipes is serialized without literal pipes before
+   * reaching this table-level escape.
+   */
+  private static escapeMarkdownTableCell(text: string): string {
+    return text.replace(/(\\*)\|/g, (_match, backslashes: string) => {
+      return `${'\\'.repeat(backslashes.length * 2 + 1)}|`;
+    });
+  }
+
+  /**
+   * Keep LaTeX's `\|` double-vertical-bar command intact when the formula is
+   * embedded in a Markdown table. The table parser consumes backslashes used
+   * to escape pipes before the KaTeX extension receives the formula, so use
+   * the equivalent pipe-free command instead.
+   */
+  private static preserveLatexPipeCommandsInMarkdownTable(latex: string): string {
+    return latex.replace(/\\+\|/g, (command) => {
+      return command === '\\|' ? '\\Vert{}' : command;
+    });
   }
 
   /**
@@ -1033,7 +1333,11 @@ export class DOMContentExtractor {
             const content =
               directExportCodeBlock.kind === 'mermaid'
                 ? this.extractMermaidContent(directExportCodeBlock.element)
-                : this.extractCodeBlock(directExportCodeBlock.element);
+                : directExportCodeBlock.kind === 'wavedrom'
+                  ? this.extractWavedromContent(directExportCodeBlock.element)
+                  : directExportCodeBlock.kind === 'echarts'
+                    ? this.extractEchartsContent(directExportCodeBlock.element)
+                    : this.extractCodeBlock(directExportCodeBlock.element);
             if (!content?.text) return;
 
             ensureItemMarker();
@@ -1065,6 +1369,9 @@ export class DOMContentExtractor {
       }
     });
 
+    const liveEchartsWrappers = Array.from(
+      element.querySelectorAll<HTMLElement>(ECHARTS_WRAPPER_SELECTOR),
+    );
     const cleanList = element.cloneNode(true) as HTMLElement;
     this.stripExportArtifacts(cleanList);
     cleanList.querySelectorAll<HTMLElement>(MERMAID_WRAPPER_SELECTOR).forEach((wrapper) => {
@@ -1077,8 +1384,33 @@ export class DOMContentExtractor {
         wrapper.replaceWith(replacement.firstElementChild);
       }
     });
+    cleanList.querySelectorAll<HTMLElement>(WAVEDROM_WRAPPER_SELECTOR).forEach((wrapper) => {
+      const content = this.extractWavedromContent(wrapper);
+      if (!content) return;
+
+      const replacement = document.createElement('div');
+      replacement.innerHTML = content.html;
+      if (replacement.firstElementChild) {
+        wrapper.replaceWith(replacement.firstElementChild);
+      }
+    });
+    cleanList.querySelectorAll<HTMLElement>(ECHARTS_WRAPPER_SELECTOR).forEach((wrapper, index) => {
+      const content = this.extractEchartsContent(wrapper, liveEchartsWrappers[index] ?? wrapper);
+      if (!content) return;
+
+      const replacement = document.createElement('div');
+      replacement.innerHTML = content.html;
+      if (replacement.firstElementChild) {
+        wrapper.replaceWith(replacement.firstElementChild);
+      }
+    });
     cleanList.querySelectorAll<HTMLElement>('code-block, .code-block').forEach((codeBlock) => {
-      if (codeBlock.closest(MERMAID_WRAPPER_SELECTOR)) return;
+      if (
+        codeBlock.closest(
+          `${MERMAID_WRAPPER_SELECTOR}, ${WAVEDROM_WRAPPER_SELECTOR}, ${ECHARTS_WRAPPER_SELECTOR}`,
+        )
+      )
+        return;
       if (codeBlock.parentElement?.closest('code-block, .code-block')) return;
 
       const content = this.extractCodeBlock(codeBlock);
@@ -1128,7 +1460,13 @@ export class DOMContentExtractor {
       '.hide-from-message-actions',
     ].join(',');
 
-    root.querySelectorAll(selector).forEach((el) => el.remove());
+    root.querySelectorAll(selector).forEach((el) => {
+      // WaveDrom skins live in an embedded SVG stylesheet. List extraction
+      // strips UI artifacts before it replaces the wrapper with the exported
+      // SVG, so preserve that one content-bearing style element.
+      if (el.localName === 'style' && el.closest(WAVEDROM_WRAPPER_SELECTOR)) return;
+      el.remove();
+    });
   }
 
   /**

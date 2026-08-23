@@ -1543,6 +1543,71 @@
     "message": "在對話中選取文字時顯示懸浮按鈕，用於引用所選內容",
     "description": "引用回覆功能提示"
   },
+  "enableWaveDromRendering": {
+    "message": "啟用 WaveDrom 時序圖渲染",
+    "description": "WaveDrom 渲染開關標籤"
+  },
+  "enableWaveDromRenderingHint": {
+    "message": "自動將程式碼區塊中的 WaveJSON 渲染為可互動的時序波形圖",
+    "description": "WaveDrom 渲染功能提示"
+  },
+  "wavedromDiagramButton": {
+    "message": "〜 圖示",
+    "description": "切換到已渲染圖示的按鈕標籤"
+  },
+  "wavedromCodeButton": {
+    "message": "</> 程式碼",
+    "description": "切換到 WaveJSON 原始碼的按鈕標籤"
+  },
+  "wavedromZoomIn": {
+    "message": "放大",
+    "description": "全螢幕工具列：放大按鈕標題"
+  },
+  "wavedromZoomOut": {
+    "message": "縮小",
+    "description": "全螢幕工具列：縮小按鈕標題"
+  },
+  "wavedromResetView": {
+    "message": "重設檢視",
+    "description": "全螢幕工具列：重設檢視按鈕標題"
+  },
+  "wavedromCloseFullscreen": {
+    "message": "關閉 (ESC)",
+    "description": "全螢幕工具列：關閉按鈕標題"
+  },
+  "wavedromFullscreenHint": {
+    "message": "捲動縮放 • 拖曳平移 • ESC 關閉",
+    "description": "全螢幕遮罩操作提示"
+  },
+  "enableEchartsRendering": {
+    "message": "啟用 ECharts 圖表渲染",
+    "description": "ECharts rendering toggle label"
+  },
+  "enableEchartsRenderingHint": {
+    "message": "自動將 ECharts 設定程式碼區塊轉換為互動式圖表",
+    "description": "ECharts rendering feature hint"
+  },
+  "echartsDiagramButton": {
+    "message": "📊 圖表",
+    "description": "Toggle button label to show the rendered chart"
+  },
+  "echartsCodeButton": {
+    "message": "</> 程式碼",
+    "description": "Toggle button label to show the ECharts option source"
+  },
+  "echartsFullscreenButton": {
+    "message": "全螢幕",
+    "description": "Button title to open an ECharts diagram in fullscreen"
+  },
+  "echartsCloseFullscreen": {
+    "message": "關閉（ESC）",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "echartsFullscreenHint": {
+    "message": "按 ESC 關閉",
+    "description": "Fullscreen overlay usage hint"
+  },
+
   "enableHighlights": {
     "message": "啟用醒目標記",
     "description": "醒目標記功能開關標籤"
@@ -2651,5 +2716,69 @@
   "diagnosticsCopyFailed": {
     "message": "無法存取剪貼簿，請手動選取預覽內容或下載 JSON。"
   },
-  "diagnosticsDownloadJson": { "message": "下載 JSON" }
+  "diagnosticsDownloadJson": { "message": "下載 JSON" },
+  "promptHistoryTitle": {
+    "message": "提示詞歷史",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEnabledHint": {
+    "message": "在此裝置上按 Gemini 帳號分別儲存已傳送和已更新的提示詞。",
+    "description": "Prompt History setting hint (#923)"
+  },
+  "promptHistoryEmpty": {
+    "message": "暫無提示詞歷史",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistorySent": {
+    "message": "已傳送",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEdited": {
+    "message": "已修改",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopy": {
+    "message": "複製",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsert": {
+    "message": "插入",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryDelete": {
+    "message": "刪除",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClear": {
+    "message": "清空",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopied": {
+    "message": "已複製",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInserted": {
+    "message": "已插入",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsertFailed": {
+    "message": "插入失敗",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopyFailed": {
+    "message": "複製失敗",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClearConfirm": {
+    "message": "清空目前 Gemini 帳號的提示詞歷史？",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryCancel": {
+    "message": "取消",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryStorageFailed": {
+    "message": "提示詞歷史儲存失敗，請檢查擴充功能儲存空間。",
+    "description": "Prompt History storage error (#923)"
+  }
 }

@@ -1583,6 +1583,71 @@
     "message": "在对话中选中文字时显示悬浮按钮，用于引用所选内容",
     "description": "引用回复功能提示"
   },
+  "enableWaveDromRendering": {
+    "message": "启用 WaveDrom 时序图渲染",
+    "description": "WaveDrom 渲染开关标签"
+  },
+  "enableWaveDromRenderingHint": {
+    "message": "自动将代码块中的 WaveJSON 渲染为可交互的时序波形图",
+    "description": "WaveDrom 渲染功能提示"
+  },
+  "wavedromDiagramButton": {
+    "message": "〜 图示",
+    "description": "切换到已渲染图示的按钮标签"
+  },
+  "wavedromCodeButton": {
+    "message": "</> 代码",
+    "description": "切换到 WaveJSON 源码的按钮标签"
+  },
+  "wavedromZoomIn": {
+    "message": "放大",
+    "description": "全屏工具栏：放大按钮标题"
+  },
+  "wavedromZoomOut": {
+    "message": "缩小",
+    "description": "全屏工具栏：缩小按钮标题"
+  },
+  "wavedromResetView": {
+    "message": "重置视图",
+    "description": "全屏工具栏：重置视图按钮标题"
+  },
+  "wavedromCloseFullscreen": {
+    "message": "关闭 (ESC)",
+    "description": "全屏工具栏：关闭按钮标题"
+  },
+  "wavedromFullscreenHint": {
+    "message": "滚动缩放 • 拖拽平移 • ESC 关闭",
+    "description": "全屏遮罩操作提示"
+  },
+  "enableEchartsRendering": {
+    "message": "启用 ECharts 图表渲染",
+    "description": "ECharts rendering toggle label"
+  },
+  "enableEchartsRenderingHint": {
+    "message": "自动将 ECharts 配置代码块渲染为交互式图表",
+    "description": "ECharts rendering feature hint"
+  },
+  "echartsDiagramButton": {
+    "message": "📊 图表",
+    "description": "Toggle button label to show the rendered chart"
+  },
+  "echartsCodeButton": {
+    "message": "</> 代码",
+    "description": "Toggle button label to show the ECharts option source"
+  },
+  "echartsFullscreenButton": {
+    "message": "全屏",
+    "description": "Button title to open an ECharts diagram in fullscreen"
+  },
+  "echartsCloseFullscreen": {
+    "message": "关闭（ESC）",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "echartsFullscreenHint": {
+    "message": "按 ESC 关闭",
+    "description": "Fullscreen overlay usage hint"
+  },
+
   "enableHighlights": {
     "message": "启用高亮",
     "description": "高亮功能开关标签"
@@ -2651,5 +2716,69 @@
   "diagnosticsCopyFailed": {
     "message": "无法访问剪贴板，请手动选择预览内容或下载 JSON。"
   },
-  "diagnosticsDownloadJson": { "message": "下载 JSON" }
+  "diagnosticsDownloadJson": { "message": "下载 JSON" },
+  "promptHistoryTitle": {
+    "message": "提示词历史",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEnabledHint": {
+    "message": "在此设备上按 Gemini 账号分别保存已发送和已更新的提示词。",
+    "description": "Prompt History setting hint (#923)"
+  },
+  "promptHistoryEmpty": {
+    "message": "暂无提示词历史",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistorySent": {
+    "message": "已发送",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEdited": {
+    "message": "已修改",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopy": {
+    "message": "复制",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsert": {
+    "message": "插入",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryDelete": {
+    "message": "删除",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClear": {
+    "message": "清空",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopied": {
+    "message": "已复制",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInserted": {
+    "message": "已插入",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsertFailed": {
+    "message": "插入失败",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopyFailed": {
+    "message": "复制失败",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClearConfirm": {
+    "message": "清空当前 Gemini 账号的提示词历史？",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryCancel": {
+    "message": "取消",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryStorageFailed": {
+    "message": "提示词历史保存失败，请检查扩展存储空间。",
+    "description": "Prompt History storage error (#923)"
+  }
 }

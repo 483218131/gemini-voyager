@@ -1591,6 +1591,71 @@
     "message": "会話でテキストを選択したときに、選択したテキストを引用するフローティングボタンを表示します",
     "description": "Quote reply feature hint"
   },
+  "enableWaveDromRendering": {
+    "message": "WaveDrom タイミング図のレンダリングを有効化",
+    "description": "WaveDrom レンダリングトグルラベル"
+  },
+  "enableWaveDromRenderingHint": {
+    "message": "コードブロック内の WaveJSON をインタラクティブなタイミング図として自動描画します",
+    "description": "WaveDrom 機能の説明"
+  },
+  "wavedromDiagramButton": {
+    "message": "〜 図",
+    "description": "描画された図に切り替えるボタンのラベル"
+  },
+  "wavedromCodeButton": {
+    "message": "</> コード",
+    "description": "WaveJSON ソースに切り替えるボタンのラベル"
+  },
+  "wavedromZoomIn": {
+    "message": "拡大",
+    "description": "全画面ツールバー：拡大ボタンのタイトル"
+  },
+  "wavedromZoomOut": {
+    "message": "縮小",
+    "description": "全画面ツールバー：縮小ボタンのタイトル"
+  },
+  "wavedromResetView": {
+    "message": "リセット",
+    "description": "全画面ツールバー：リセットボタンのタイトル"
+  },
+  "wavedromCloseFullscreen": {
+    "message": "閉じる (ESC)",
+    "description": "全画面ツールバー：閉じるボタンのタイトル"
+  },
+  "wavedromFullscreenHint": {
+    "message": "スクロールで拡大縮小 • ドラッグで移動 • ESC で閉じる",
+    "description": "全画面覆いの操作ヒント"
+  },
+  "enableEchartsRendering": {
+    "message": "ECharts レンダリングを有効にする",
+    "description": "ECharts rendering toggle label"
+  },
+  "enableEchartsRenderingHint": {
+    "message": "ECharts のオプションコードブロックをインタラクティブなチャートとして自動レンダリング",
+    "description": "ECharts rendering feature hint"
+  },
+  "echartsDiagramButton": {
+    "message": "📊 チャート",
+    "description": "Toggle button label to show the rendered chart"
+  },
+  "echartsCodeButton": {
+    "message": "</> コード",
+    "description": "Toggle button label to show the ECharts option source"
+  },
+  "echartsFullscreenButton": {
+    "message": "全画面",
+    "description": "Button title to open an ECharts diagram in fullscreen"
+  },
+  "echartsCloseFullscreen": {
+    "message": "閉じる（ESC）",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "echartsFullscreenHint": {
+    "message": "ESC キーで閉じる",
+    "description": "Fullscreen overlay usage hint"
+  },
+
   "enableHighlights": {
     "message": "ハイライトを有効化",
     "description": "Highlight feature toggle label"
@@ -2659,5 +2724,69 @@
   "diagnosticsCopyFailed": {
     "message": "クリップボードを使用できません。プレビューを手動で選択するか JSON をダウンロードしてください。"
   },
-  "diagnosticsDownloadJson": { "message": "JSON をダウンロード" }
+  "diagnosticsDownloadJson": { "message": "JSON をダウンロード" },
+  "promptHistoryTitle": {
+    "message": "プロンプト履歴",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEnabledHint": {
+    "message": "送信・更新したプロンプトを、このデバイスに Gemini アカウントごとに保存します。",
+    "description": "Prompt History setting hint (#923)"
+  },
+  "promptHistoryEmpty": {
+    "message": "プロンプト履歴はありません",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistorySent": {
+    "message": "送信",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEdited": {
+    "message": "編集",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopy": {
+    "message": "コピー",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsert": {
+    "message": "挿入",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryDelete": {
+    "message": "削除",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClear": {
+    "message": "クリア",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopied": {
+    "message": "コピーしました",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInserted": {
+    "message": "挿入しました",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsertFailed": {
+    "message": "挿入に失敗しました",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopyFailed": {
+    "message": "コピーに失敗しました",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClearConfirm": {
+    "message": "この Gemini アカウントのプロンプト履歴を消去しますか？",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryCancel": {
+    "message": "キャンセル",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryStorageFailed": {
+    "message": "プロンプト履歴を保存できませんでした。拡張機能のストレージを確認してください。",
+    "description": "Prompt History storage error (#923)"
+  }
 }

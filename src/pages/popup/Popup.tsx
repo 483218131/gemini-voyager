@@ -103,8 +103,10 @@ import {
   IconQwen,
 } from './components/WebsiteLogos';
 import WidthSlider from './components/WidthSlider';
+import { useEchartsPopupSettings } from './hooks/useEchartsPopupSettings';
 import { useFormulaCopyPopupSettings } from './hooks/useFormulaCopyPopupSettings';
 import { usePopupScrollRestoration } from './hooks/usePopupScrollRestoration';
+import { useWaveDromPopupSettings } from './hooks/useWaveDromPopupSettings';
 import {
   type SettingsSearchItem,
   getSettingsSearchMatches,
@@ -401,6 +403,10 @@ const POPUP_SETTINGS_SEARCH_ITEMS = [
     'hidePromptManager',
     'hidePromptManagerHint',
   ]),
+  popupSearchTarget('promptManager', 'promptHistoryEnabled', [
+    'promptHistoryTitle',
+    'promptHistoryEnabledHint',
+  ]),
   popupSearchTarget(
     'promptManager',
     'slashPromptEnabled',
@@ -449,6 +455,18 @@ const POPUP_SETTINGS_SEARCH_ITEMS = [
     'enableMermaidRendering',
     'enableMermaidRenderingHint',
   ]),
+  popupSearchTarget(
+    'general',
+    'enableWaveDromRendering',
+    ['enableWaveDromRendering', 'enableWaveDromRenderingHint'],
+    ['wavedrom wavejson timing diagram'],
+  ),
+  popupSearchTarget(
+    'general',
+    'enableEchartsRendering',
+    ['enableEchartsRendering', 'enableEchartsRenderingHint'],
+    ['echarts chart diagram'],
+  ),
   popupSearchTarget('general', 'enableQuoteReply', ['enableQuoteReply', 'enableQuoteReplyHint']),
   popupSearchTarget('general', 'enableHighlights', ['enableHighlights', 'enableHighlightsHint']),
   popupSearchTarget('general', 'showHighlightTimelineMarkers', [
@@ -762,6 +780,7 @@ interface SettingsUpdate {
   watermarkDownloadEnabled?: boolean;
   watermarkPreviewEnabled?: boolean;
   hidePromptManager?: boolean;
+  promptHistoryEnabled?: boolean;
   slashPromptEnabled?: boolean;
   promptInsertOnClickEnabled?: boolean;
   inputCollapseEnabled?: boolean;
@@ -937,6 +956,22 @@ function ParagraphSpacingControl({
 
 export default function Popup({ sourceTabId }: PopupProps = {}) {
   const { t, language } = useLanguage();
+  const setSyncStorage = useCallback(async (payload: Record<string, unknown>) => {
+    try {
+      await browser.storage.sync.set(payload);
+      return;
+    } catch {
+      // Fallback to chrome.* if polyfill is unavailable in this context.
+    }
+
+    await new Promise<void>((resolve) => {
+      try {
+        chrome.storage?.sync?.set(payload, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }, []);
   const [mode, setMode] = useState<ScrollMode>('flow');
   const [timelineStyle, setTimelineStyle] = useState<TimelineStyle>('dots');
   const [hideContainer, setHideContainer] = useState<boolean>(false);
@@ -966,6 +1001,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   const [watermarkDownloadEnabled, setWatermarkDownloadEnabled] = useState<boolean>(true);
   const [watermarkPreviewEnabled, setWatermarkPreviewEnabled] = useState<boolean>(true);
   const [hidePromptManager, setHidePromptManager] = useState<boolean>(false);
+  const [promptHistoryEnabled, setPromptHistoryEnabled] = useState<boolean>(false);
   const [slashPromptEnabled, setSlashPromptEnabled] = useState<boolean>(true);
   const [promptInsertOnClickEnabled, setPromptInsertOnClickEnabled] = useState<boolean>(false);
   const [promptMigrationStatus, setPromptMigrationStatus] = useState<{
@@ -980,6 +1016,16 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
   // badge on the floating ball instead of auto-popping the modal.
   const [changelogBadgeMode, setChangelogBadgeMode] = useState<boolean>(false);
   const [mermaidEnabled, setMermaidEnabled] = useState<boolean>(true);
+  const {
+    enabled: wavedromEnabled,
+    hydrateFromStorage: hydrateWavedromEnabled,
+    setEnabledFromUser: setWavedromEnabledFromUser,
+  } = useWaveDromPopupSettings(setSyncStorage);
+  const {
+    enabled: echartsEnabled,
+    hydrateFromStorage: hydrateEchartsEnabled,
+    setEnabledFromUser: setEchartsEnabledFromUser,
+  } = useEchartsPopupSettings(setSyncStorage);
   const [showMessageTimestamps, setShowMessageTimestamps] = useState<boolean>(false);
   const [quoteReplyEnabled, setQuoteReplyEnabled] = useState<boolean>(true);
 
@@ -1297,23 +1343,6 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
     };
   }, []);
 
-  const setSyncStorage = useCallback(async (payload: Record<string, unknown>) => {
-    try {
-      await browser.storage.sync.set(payload);
-      return;
-    } catch {
-      // Fallback to chrome.* if polyfill is unavailable in this context.
-    }
-
-    await new Promise<void>((resolve) => {
-      try {
-        chrome.storage?.sync?.set(payload, () => resolve());
-      } catch {
-        resolve();
-      }
-    });
-  }, []);
-
   const handleFormulaCopyEnabledChange = useCallback(
     (enabled: boolean) => {
       setFormulaCopyEnabledFromUser(enabled);
@@ -1368,6 +1397,8 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
       }
       if (typeof settings.hidePromptManager === 'boolean')
         payload.gvHidePromptManager = settings.hidePromptManager;
+      if (typeof settings.promptHistoryEnabled === 'boolean')
+        payload[StorageKeys.PROMPT_HISTORY_ENABLED] = settings.promptHistoryEnabled;
       if (typeof settings.slashPromptEnabled === 'boolean')
         payload[StorageKeys.SLASH_PROMPT_ENABLED] = settings.slashPromptEnabled;
       if (typeof settings.promptInsertOnClickEnabled === 'boolean')
@@ -1945,6 +1976,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
           [StorageKeys.WATERMARK_DOWNLOAD_ENABLED]: null,
           [StorageKeys.WATERMARK_PREVIEW_ENABLED]: null,
           gvHidePromptManager: false,
+          [StorageKeys.PROMPT_HISTORY_ENABLED]: false,
           [StorageKeys.SLASH_PROMPT_ENABLED]: true,
           [StorageKeys.PROMPT_INSERT_ON_CLICK]: false,
           gvInputCollapseEnabled: false,
@@ -1952,6 +1984,8 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
           [StorageKeys.INPUT_VIM_MODE]: false,
           [StorageKeys.TAB_TITLE_UPDATE_ENABLED]: false,
           gvMermaidEnabled: true,
+          [StorageKeys.WAVEDROM_ENABLED]: true,
+          [StorageKeys.ECHARTS_ENABLED]: true,
           gvQuoteReplyEnabled: true,
           [StorageKeys.HIGHLIGHT_ENABLED]: false,
           [StorageKeys.HIGHLIGHT_TIMELINE_MARKERS_ENABLED]: true,
@@ -2026,6 +2060,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
             setWatermarkPreviewEnabled(watermarkSettings.preview);
           }
           setHidePromptManager(!!res?.gvHidePromptManager);
+          setPromptHistoryEnabled(res?.[StorageKeys.PROMPT_HISTORY_ENABLED] === true);
           setSlashPromptEnabled(res?.[StorageKeys.SLASH_PROMPT_ENABLED] !== false);
           setPromptInsertOnClickEnabled(res?.[StorageKeys.PROMPT_INSERT_ON_CLICK] === true);
           setInputCollapseEnabled(res?.gvInputCollapseEnabled !== false);
@@ -2035,6 +2070,8 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
             void setSyncStorage({ [StorageKeys.TAB_TITLE_UPDATE_ENABLED]: false });
           }
           setMermaidEnabled(res?.gvMermaidEnabled !== false);
+          hydrateWavedromEnabled(res?.[StorageKeys.WAVEDROM_ENABLED]);
+          hydrateEchartsEnabled(res?.[StorageKeys.ECHARTS_ENABLED]);
           setQuoteReplyEnabled(res?.gvQuoteReplyEnabled !== false);
           setHighlightEnabled(res?.[StorageKeys.HIGHLIGHT_ENABLED] === true);
           setHighlightTimelineMarkersEnabled(
@@ -2157,7 +2194,7 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
         },
       );
     } catch {}
-  }, [hydrateFormulaCopySettings, setSyncStorage]);
+  }, [hydrateEchartsEnabled, hydrateFormulaCopySettings, hydrateWavedromEnabled, setSyncStorage]);
 
   // Validate and normalize URL
   const normalizeUrl = useCallback((url: string): string | null => {
@@ -3976,6 +4013,31 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
               )}
               {renderSetting(
                 'promptManager',
+                'promptHistoryEnabled',
+                <div className="group flex items-center justify-between">
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="prompt-history-enabled"
+                      className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
+                    >
+                      {t('promptHistoryTitle')}
+                    </Label>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {t('promptHistoryEnabledHint')}
+                    </p>
+                  </div>
+                  <Switch
+                    id="prompt-history-enabled"
+                    checked={promptHistoryEnabled}
+                    onChange={(event) => {
+                      setPromptHistoryEnabled(event.target.checked);
+                      apply({ promptHistoryEnabled: event.target.checked });
+                    }}
+                  />
+                </div>,
+              )}
+              {renderSetting(
+                'promptManager',
                 'slashPromptEnabled',
                 <div className="group flex items-center justify-between">
                   <div className="flex-1">
@@ -4232,6 +4294,54 @@ export default function Popup({ sourceTabId }: PopupProps = {}) {
                     onChange={(e) => {
                       setMermaidEnabled(e.target.checked);
                       apply({ mermaidEnabled: e.target.checked });
+                    }}
+                  />
+                </div>,
+              )}
+              {renderSetting(
+                'general',
+                'enableWaveDromRendering',
+                <div className="group flex items-center justify-between">
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="wavedrom-enabled"
+                      className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
+                    >
+                      {t('enableWaveDromRendering')}
+                    </Label>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {t('enableWaveDromRenderingHint')}
+                    </p>
+                  </div>
+                  <Switch
+                    id="wavedrom-enabled"
+                    checked={wavedromEnabled}
+                    onChange={(e) => {
+                      setWavedromEnabledFromUser(e.target.checked);
+                    }}
+                  />
+                </div>,
+              )}
+              {renderSetting(
+                'general',
+                'enableEchartsRendering',
+                <div className="group flex items-center justify-between">
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="echarts-enabled"
+                      className="group-hover:text-primary cursor-pointer text-sm font-medium transition-colors"
+                    >
+                      {t('enableEchartsRendering')}
+                    </Label>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {t('enableEchartsRenderingHint')}
+                    </p>
+                  </div>
+                  <Switch
+                    id="echarts-enabled"
+                    checked={echartsEnabled}
+                    onChange={(e) => {
+                      setEchartsEnabledFromUser(e.target.checked);
                     }}
                   />
                 </div>,

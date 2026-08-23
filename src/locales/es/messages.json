@@ -1594,6 +1594,71 @@
     "message": "Muestra un botón flotante para citar el texto seleccionado en las conversaciones",
     "description": "Quote reply feature hint"
   },
+  "enableWaveDromRendering": {
+    "message": "Habilitar la renderización de diagramas de tiempos de WaveDrom",
+    "description": "Etiqueta del interruptor de renderizado de WaveDrom"
+  },
+  "enableWaveDromRenderingHint": {
+    "message": "Renderiza automáticamente los bloques de código WaveJSON como diagramas de tiempos interactivos",
+    "description": "Descripción de la función WaveDrom"
+  },
+  "wavedromDiagramButton": {
+    "message": "〜 Diagrama",
+    "description": "Etiqueta del botón para mostrar el diagrama renderizado"
+  },
+  "wavedromCodeButton": {
+    "message": "</> Código",
+    "description": "Etiqueta del botón para mostrar el código fuente WaveJSON"
+  },
+  "wavedromZoomIn": {
+    "message": "Acercar",
+    "description": "Barra de herramientas de pantalla completa: título del botón de acercar"
+  },
+  "wavedromZoomOut": {
+    "message": "Alejar",
+    "description": "Barra de herramientas de pantalla completa: título del botón de alejar"
+  },
+  "wavedromResetView": {
+    "message": "Restablecer",
+    "description": "Barra de herramientas de pantalla completa: título del botón de restablecer"
+  },
+  "wavedromCloseFullscreen": {
+    "message": "Cerrar (ESC)",
+    "description": "Barra de herramientas de pantalla completa: título del botón de cerrar"
+  },
+  "wavedromFullscreenHint": {
+    "message": "Desplázate para hacer zoom • Arrastra para mover • ESC para cerrar",
+    "description": "Sugerencia de uso de la superposición de pantalla completa"
+  },
+  "enableEchartsRendering": {
+    "message": "Habilitar el renderizado de ECharts",
+    "description": "ECharts rendering toggle label"
+  },
+  "enableEchartsRenderingHint": {
+    "message": "Representar automáticamente los bloques de código de opciones de ECharts como gráficos interactivos",
+    "description": "ECharts rendering feature hint"
+  },
+  "echartsDiagramButton": {
+    "message": "📊 Gráfico",
+    "description": "Toggle button label to show the rendered chart"
+  },
+  "echartsCodeButton": {
+    "message": "</> Código",
+    "description": "Toggle button label to show the ECharts option source"
+  },
+  "echartsFullscreenButton": {
+    "message": "Pantalla completa",
+    "description": "Button title to open an ECharts diagram in fullscreen"
+  },
+  "echartsCloseFullscreen": {
+    "message": "Cerrar (ESC)",
+    "description": "Fullscreen toolbar: close button title"
+  },
+  "echartsFullscreenHint": {
+    "message": "Pulsa ESC para cerrar",
+    "description": "Fullscreen overlay usage hint"
+  },
+
   "enableHighlights": {
     "message": "Activar resaltados",
     "description": "Highlight feature toggle label"
@@ -2664,5 +2729,69 @@
   "diagnosticsCopyFailed": {
     "message": "El portapapeles no está disponible. Selecciona la vista previa o descarga el JSON."
   },
-  "diagnosticsDownloadJson": { "message": "Descargar JSON" }
+  "diagnosticsDownloadJson": { "message": "Descargar JSON" },
+  "promptHistoryTitle": {
+    "message": "Historial de indicaciones",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEnabledHint": {
+    "message": "Guarda en este dispositivo las indicaciones enviadas y actualizadas, separadas por cuenta de Gemini.",
+    "description": "Prompt History setting hint (#923)"
+  },
+  "promptHistoryEmpty": {
+    "message": "Sin historial todavía",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistorySent": {
+    "message": "Enviado",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryEdited": {
+    "message": "Editado",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopy": {
+    "message": "Copiar",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsert": {
+    "message": "Insertar",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryDelete": {
+    "message": "Eliminar",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClear": {
+    "message": "Vaciar",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopied": {
+    "message": "Copiado",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInserted": {
+    "message": "Insertado",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryInsertFailed": {
+    "message": "Error al insertar",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryCopyFailed": {
+    "message": "Error al copiar",
+    "description": "Prompt History panel text (#923)"
+  },
+  "promptHistoryClearConfirm": {
+    "message": "¿Vaciar el historial de indicaciones de esta cuenta de Gemini?",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryCancel": {
+    "message": "Cancelar",
+    "description": "Prompt History clear confirmation (#923)"
+  },
+  "promptHistoryStorageFailed": {
+    "message": "No se pudo guardar el historial. Revisa el almacenamiento de la extensión.",
+    "description": "Prompt History storage error (#923)"
+  }
 }

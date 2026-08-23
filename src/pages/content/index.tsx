@@ -27,6 +27,7 @@ import { startContextSync } from './contextSync';
 import { startDeepResearchExport } from './deepResearch/index';
 import DefaultModelManager from './defaultModel/modelLocker';
 import { startDraftSave } from './draftSave/index';
+import { startEcharts } from './echarts/index';
 import { startEdgeFinalVersionNotice } from './edgeFinalVersionNotice';
 import { startEditInputWidthAdjuster } from './editInputWidth/index';
 import { startExportButton } from './export/index';
@@ -55,6 +56,7 @@ import { createCustomSiteCoverageReconciler } from './prompt/customSiteCoverage'
 import { startPromptManager } from './prompt/index';
 import { slashPromptCoachmarkStep } from './prompt/slashPromptCoachmark';
 import { startSlashPromptFeature } from './prompt/slashPromptFeature';
+import { startPromptHistory } from './promptHistory/index';
 import { startQuoteReply } from './quoteReply/index';
 import { startRemoteAnnouncements } from './remoteAnnouncements/index';
 import { startResponseCompleteNotification } from './responseNotification/index';
@@ -74,6 +76,7 @@ import {
   startWatermarkRemover,
   stopWatermarkRemover,
 } from './watermarkRemover/index';
+import { startWaveDrom } from './wavedrom/index';
 
 // Suppress Vite's CSS preload errors in the Chrome extension content script context.
 // Dynamic imports (e.g., mermaid) trigger Vite's __vitePreload helper which tries to
@@ -370,12 +373,14 @@ async function initializeFeatures(): Promise<void> {
 
       // These modules only share the extension storage API and can hydrate in
       // parallel without changing their runtime ordering.
-      const [notificationResult, draftResult, gemsResult, usageResult] = await Promise.allSettled([
-        startResponseCompleteNotification(),
-        startDraftSave(),
-        startGemsSidebar(),
-        startUsageStatus(),
-      ]);
+      const [notificationResult, draftResult, gemsResult, usageResult, promptHistoryResult] =
+        await Promise.allSettled([
+          startResponseCompleteNotification(),
+          startDraftSave(),
+          startGemsSidebar(),
+          startUsageStatus(),
+          startPromptHistory(),
+        ]);
       if (notificationResult.status === 'fulfilled') {
         cleanupManager.registerCleanupFunction(
           notificationResult.value,
@@ -401,9 +406,20 @@ async function initializeFeatures(): Promise<void> {
         );
       }
 
-      const failedInitializer = [notificationResult, draftResult, gemsResult, usageResult].find(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
-      );
+      if (promptHistoryResult.status === 'fulfilled') {
+        cleanupManager.registerCleanupFunction(
+          promptHistoryResult.value,
+          CleanupPositions.CleanupPromptHistory,
+        );
+      }
+
+      const failedInitializer = [
+        notificationResult,
+        draftResult,
+        gemsResult,
+        usageResult,
+        promptHistoryResult,
+      ].find((result): result is PromiseRejectedResult => result.status === 'rejected');
       if (failedInitializer) throw failedInitializer.reason;
       await delay(LIGHT_FEATURE_INIT_DELAY);
 
@@ -449,6 +465,10 @@ async function initializeFeatures(): Promise<void> {
     if (location.hostname === 'gemini.google.com') {
       // Initialize Mermaid rendering (lightweight)
       startMermaid();
+      // Initialize WaveDrom rendering (lazy-loaded timing diagrams)
+      startWaveDrom();
+      // Initialize ECharts rendering (lazy-loaded charts)
+      startEcharts();
       // Initialize user message LaTeX rendering
       startUserLatex();
       await delay(LIGHT_FEATURE_INIT_DELAY);

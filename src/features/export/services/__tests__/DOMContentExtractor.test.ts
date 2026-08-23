@@ -1,8 +1,11 @@
 /**
  * DOMContentExtractor unit tests
  */
-import { describe, expect, it } from 'vitest';
+import { Marked, marked } from 'marked';
+import markedKatex from 'marked-katex-extension';
+import { describe, expect, it, vi } from 'vitest';
 
+import { provideEChartsDataUrl } from '@/pages/content/echarts/exportBridge';
 import { resolveExportAdapter } from '@/pages/content/export/adapter/platformAdapters';
 
 import { DOMContentExtractor } from '../DOMContentExtractor';
@@ -229,6 +232,55 @@ describe('DOMContentExtractor', () => {
     expect(extracted.html).toContain('total');
   });
 
+  it.each([
+    ['<span>First <strong>bold</strong> </span><span>Second.</span>', 'First **bold** Second.'],
+    ['<span>First <strong>bold</strong></span><span> Second.</span>', 'First **bold** Second.'],
+  ])('preserves whitespace between adjacent inline containers', (content, expected) => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div>${content}</div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.text).toBe(expected);
+  });
+
+  it('does not invent whitespace between adjacent inline containers', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div><span>Hello</span><span>, world.</span></div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.text).toBe('Hello, world.');
+  });
+
+  it('preserves a whitespace-only inline container between text containers', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div><span>First</span><span> </span><span>Second</span></div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.text).toBe('First Second');
+    expect(extracted.html).toContain('<span> </span>');
+  });
+
   it('exports ordinary prose rendered inside an open shadow root', () => {
     const assistant = document.createElement('div');
     assistant.innerHTML = `<message-content><div class="markdown"><shadow-answer></shadow-answer></div></message-content>`;
@@ -391,6 +443,107 @@ describe('DOMContentExtractor', () => {
     expect(extracted.text).toContain('```mermaid\nflowchart TD\nA --> B\n```');
   });
 
+  it('exports rendered WaveDrom SVG in HTML while preserving WaveJSON source in text', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-wavedrom-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">wavedrom</div>
+              <pre><code role="text">{"signal": [{"name":"clk","wave":"p..."}]}</code></pre>
+            </code-block>
+            <div class="gv-wavedrom-toggle">
+              <button class="active">Diagram</button>
+              <button>Code</button>
+            </div>
+            <div class="gv-wavedrom-diagram">
+              <svg viewBox="0 0 800 200" aria-label="Timing diagram">
+                <g><text>clk</text></g>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.hasCode).toBe(true);
+    expect(extracted.html).toContain('class="gv-export-wavedrom"');
+    expect(extracted.html).toContain('<svg viewBox="0 0 800 200"');
+    expect(extracted.html).not.toContain('<pre><code');
+    expect(extracted.html).not.toContain('gv-wavedrom-toggle');
+    expect(extracted.text).toContain(
+      '```wavedrom\n{"signal": [{"name":"clk","wave":"p..."}]}\n```',
+    );
+    expect(extracted.text).not.toContain('```code snippet');
+  });
+
+  it('falls back to WaveJSON source when a rendered WaveDrom SVG is unavailable', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-wavedrom-wrapper">
+            <code-block>
+              <div class="code-block-decoration">wavedrom</div>
+              <pre><code role="text">{"signal": [{"name":"clk","wave":"p..."}]}</code></pre>
+            </code-block>
+            <div class="gv-wavedrom-toggle"><button>Diagram</button></div>
+            <div class="gv-wavedrom-diagram"></div>
+          </div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.hasCode).toBe(true);
+    expect(extracted.html).toContain('<pre><code class="language-wavedrom">');
+    expect(extracted.html).not.toContain('class="gv-export-wavedrom"');
+    expect(extracted.text).toContain(
+      '```wavedrom\n{"signal": [{"name":"clk","wave":"p..."}]}\n```',
+    );
+  });
+
+  it('preserves WaveDrom skin styles and fenced source inside list items', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <ul>
+            <li>
+              Timing diagram
+              <div class="gv-wavedrom-wrapper">
+                <code-block style="display: none;">
+                  <div class="code-block-decoration">wavedrom</div>
+                  <pre><code role="text">{"signal": [{"name":"clk","wave":"p..."}]}</code></pre>
+                </code-block>
+                <div class="gv-wavedrom-toggle"><button>Diagram</button></div>
+                <div class="gv-wavedrom-diagram">
+                  <svg viewBox="0 0 800 200">
+                    <style>.s1{fill:#fff;stroke:#000}</style>
+                    <g class="s1"><text>clk</text></g>
+                  </svg>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.html).toContain('class="gv-export-wavedrom"');
+    expect(extracted.html).toContain('<style>.s1{fill:#fff;stroke:#000}</style>');
+    expect(extracted.html).not.toContain('gv-wavedrom-toggle');
+    expect(extracted.text).toContain(
+      '- Timing diagram\n  ```wavedrom\n  {"signal": [{"name":"clk","wave":"p..."}]}\n  ```',
+    );
+  });
+
   it('reaches a rendered Mermaid wrapper through an intervening container', () => {
     const assistant = document.createElement('div');
     assistant.innerHTML = `
@@ -452,6 +605,343 @@ describe('DOMContentExtractor', () => {
     expect(extracted.html).not.toContain('gv-mermaid-wrapper');
     expect(extracted.html).not.toContain('<pre><code');
     expect(extracted.text).toContain('- Diagram\n  ```mermaid\n  flowchart TD\n  A --> B\n  ```');
+  });
+
+  it('exports a rendered ECharts canvas as an image while preserving option source in text', () => {
+    const toDataURLSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,TESTDATA');
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div class="gv-echarts-wrapper">
+              <code-block style="display: none;">
+                <div class="code-block-decoration">echarts</div>
+                <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}</code></pre>
+              </code-block>
+              <div class="gv-echarts-toggle">
+                <button class="active">Diagram</button>
+                <button>Code</button>
+              </div>
+              <div class="gv-echarts-diagram">
+                <canvas width="800" height="400"></canvas>
+              </div>
+            </div>
+          </div>
+        </message-content>
+      `;
+      const canvas = assistant.querySelector('canvas')!;
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+        width: 400,
+        height: 200,
+        top: 0,
+        right: 400,
+        bottom: 200,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.hasCode).toBe(true);
+      expect(extracted.html).toContain('class="gv-export-echarts"');
+      expect(extracted.html).toContain('<img src="data:image/png;base64,TESTDATA"');
+      expect(extracted.html).toContain('alt="Chart"');
+      expect(extracted.html).toContain('width="400"');
+      expect(extracted.html).not.toContain('<pre><code');
+      expect(extracted.html).not.toContain('gv-echarts-toggle');
+      expect(extracted.text).toContain(
+        '```echarts\n{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}\n```',
+      );
+    } finally {
+      toDataURLSpy.mockRestore();
+    }
+  });
+
+  it('uses the live ECharts composited export instead of dropping stacked canvas layers', () => {
+    const canvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,FIRST_LAYER_ONLY');
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "zlevel": 2, "data": [1]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-diagram">
+              <canvas width="800" height="400"></canvas>
+              <canvas width="800" height="400"></canvas>
+            </div>
+          </div>
+        </div>
+      </message-content>
+    `;
+    const diagram = assistant.querySelector<HTMLElement>('.gv-echarts-diagram')!;
+    const firstCanvas = assistant.querySelector('canvas')!;
+    vi.spyOn(firstCanvas, 'getBoundingClientRect').mockReturnValue({
+      width: 400,
+      height: 200,
+      top: 0,
+      right: 400,
+      bottom: 200,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const getComposite = vi.fn(() => 'data:image/png;base64,ALL_LAYERS');
+    const stopProviding = provideEChartsDataUrl(diagram, getComposite);
+
+    try {
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(getComposite).toHaveBeenCalledTimes(1);
+      expect(canvasReadback).not.toHaveBeenCalled();
+      expect(extracted.html).toContain('src="data:image/png;base64,ALL_LAYERS"');
+      expect(extracted.html).toContain('width="400"');
+    } finally {
+      stopProviding();
+      canvasReadback.mockRestore();
+    }
+  });
+
+  it('exports the live chart while its diagram is moved into fullscreen', () => {
+    const canvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,FIRST_LAYER_ONLY');
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "data": [1]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-diagram"><canvas width="800" height="400"></canvas></div>
+          </div>
+        </div>
+      </message-content>
+    `;
+    const wrapper = assistant.querySelector<HTMLElement>('.gv-echarts-wrapper')!;
+    const diagram = assistant.querySelector<HTMLElement>('.gv-echarts-diagram')!;
+    const canvas = diagram.querySelector('canvas')!;
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      width: 400,
+      height: 200,
+      top: 0,
+      right: 400,
+      bottom: 200,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const fullscreen = document.createElement('div');
+    document.body.appendChild(fullscreen);
+    fullscreen.appendChild(diagram);
+    const getComposite = vi.fn(() => 'data:image/png;base64,FULLSCREEN');
+    const stopProviding = provideEChartsDataUrl(diagram, getComposite, wrapper);
+
+    try {
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(getComposite).toHaveBeenCalledTimes(1);
+      expect(canvasReadback).not.toHaveBeenCalled();
+      expect(extracted.html).toContain('src="data:image/png;base64,FULLSCREEN"');
+      expect(extracted.html).not.toContain('<pre><code');
+    } finally {
+      stopProviding();
+      fullscreen.remove();
+      canvasReadback.mockRestore();
+    }
+  });
+
+  it('uses the generated ECharts description as the exported image alt text', () => {
+    const canvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,ACCESSIBLE');
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block style="display: none;">
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "data": [1]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-diagram" aria-label="A pie chart showing Cats &amp; Dogs">
+              <canvas width="800" height="400"></canvas>
+            </div>
+          </div>
+        </div>
+      </message-content>
+    `;
+
+    try {
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.html).toContain('alt="A pie chart showing Cats &amp; Dogs"');
+    } finally {
+      canvasReadback.mockRestore();
+    }
+  });
+
+  it('snapshots the live ECharts canvas inside list items', () => {
+    const clonedCanvasReadback = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockImplementation(() => {
+        throw new Error('A cloned canvas has no rendered pixels');
+      });
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <ul>
+              <li>
+                <span>Chart</span>
+                <div class="gv-echarts-wrapper">
+                  <code-block style="display: none;">
+                    <div class="code-block-decoration">echarts</div>
+                    <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1}]}]}</code></pre>
+                  </code-block>
+                  <div class="gv-echarts-toggle"><button>Diagram</button></div>
+                  <div class="gv-echarts-diagram"><canvas width="800" height="400"></canvas></div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </message-content>
+      `;
+      const liveCanvas = assistant.querySelector('canvas')!;
+      const liveReadback = vi.fn(() => 'data:image/png;base64,LIVE');
+      Object.defineProperty(liveCanvas, 'toDataURL', { value: liveReadback });
+      vi.spyOn(liveCanvas, 'getBoundingClientRect').mockReturnValue({
+        width: 400,
+        height: 200,
+        top: 0,
+        right: 400,
+        bottom: 200,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(liveReadback).toHaveBeenCalledWith('image/png');
+      expect(extracted.html).toContain('class="gv-export-echarts"');
+      expect(extracted.html).toContain('src="data:image/png;base64,LIVE"');
+      expect(extracted.html).toContain('alt="Chart"');
+      expect(extracted.html).toContain('width="400"');
+      expect(extracted.html).not.toContain('gv-echarts-wrapper');
+      expect(extracted.text).toContain(
+        '- Chart\n  ```echarts\n  {"series": [{"type": "pie", "data": [{"value": 1}]}]}\n  ```',
+      );
+    } finally {
+      clonedCanvasReadback.mockRestore();
+    }
+  });
+
+  it('preserves the ECharts CSS width when exporting from code view', () => {
+    const toDataURLSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,HIDDEN');
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div class="gv-echarts-wrapper">
+              <code-block>
+                <div class="code-block-decoration">echarts</div>
+                <pre><code role="text">{"series": {"type": "pie", "data": [{"value": 1}]}}</code></pre>
+              </code-block>
+              <div class="gv-echarts-diagram" style="display: none;">
+                <canvas width="800" height="400" style="width: 400px; height: 200px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.html).toContain('src="data:image/png;base64,HIDDEN"');
+      expect(extracted.html).toContain('width="400"');
+    } finally {
+      toDataURLSpy.mockRestore();
+    }
+  });
+
+  it('falls back to option source when a rendered ECharts canvas is unavailable', () => {
+    const assistant = document.createElement('div');
+    assistant.innerHTML = `
+      <message-content>
+        <div class="markdown">
+          <div class="gv-echarts-wrapper">
+            <code-block>
+              <div class="code-block-decoration">echarts</div>
+              <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}</code></pre>
+            </code-block>
+            <div class="gv-echarts-toggle"><button>Diagram</button></div>
+            <div class="gv-echarts-diagram"></div>
+          </div>
+        </div>
+      </message-content>
+    `;
+
+    const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+    expect(extracted.hasCode).toBe(true);
+    expect(extracted.html).toContain('<pre><code class="language-echarts">');
+    expect(extracted.html).not.toContain('class="gv-export-echarts"');
+    expect(extracted.text).toContain(
+      '```echarts\n{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}\n```',
+    );
+  });
+
+  it('falls back to option source when the ECharts canvas is tainted', () => {
+    const toDataURLSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockImplementation(() => {
+        throw new Error('Tainted canvas');
+      });
+    try {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div class="gv-echarts-wrapper">
+              <code-block style="display: none;">
+                <div class="code-block-decoration">echarts</div>
+                <pre><code role="text">{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}</code></pre>
+              </code-block>
+              <div class="gv-echarts-diagram"><canvas width="800" height="400"></canvas></div>
+            </div>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.html).toContain('<pre><code class="language-echarts">');
+      expect(extracted.html).not.toContain('class="gv-export-echarts"');
+      expect(extracted.text).toContain(
+        '```echarts\n{"series": [{"type": "pie", "data": [{"value": 1, "name": "a"}]}]}\n```',
+      );
+    } finally {
+      toDataURLSpy.mockRestore();
+    }
   });
 
   it('preserves regular fenced code when list extraction handles block content', () => {
@@ -701,6 +1191,525 @@ describe('DOMContentExtractor', () => {
     expect(extracted.html).toMatch(/<li[^>]*>\s*Item 2/i);
     expect(extracted.html).not.toContain('sources-carousel-inline');
     expect(extracted.html).not.toContain('mat-icon');
+  });
+
+  describe('Gemini Notebook table exports', () => {
+    it('ends the table block before a following paragraph', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <p>前置段落</p>
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>案例</th></tr>
+                  <tr><td>最后一行表格内容</td></tr>
+                </tbody>
+              </table>
+            </table-block>
+            <p>通过这三个例题的对比可以看出……</p>
+          </div>
+        </message-content>
+      `;
+
+      const sourceRowCount = assistant.querySelectorAll('table tr').length;
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.text).toContain('| 最后一行表格内容 |\n\n通过这三个例题的对比可以看出……');
+
+      const rendered = document.createElement('div');
+      rendered.innerHTML = marked.parse(extracted.text) as string;
+      const renderedTable = rendered.querySelector('table');
+
+      expect(renderedTable?.querySelector('tbody')?.textContent).not.toContain(
+        '通过这三个例题的对比可以看出……',
+      );
+      expect(renderedTable?.nextElementSibling?.tagName).toBe('P');
+      expect(renderedTable?.querySelectorAll('tr')).toHaveLength(sourceRowCount);
+    });
+
+    it('preserves inline LaTeX and removes source chips from tables with a thead', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Case</th>
+                    <th>Statistic</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      Text before <span class="math-inline" data-math="X \\sim B(15, 0.9)">
+                        <span class="katex"><span class="katex-html"><span class="vlist">X∼B(15, 0.9)</span></span></span>
+                      </span> text after
+                      <sources-carousel-inline>
+                        <source-inline-chips>
+                          <source-inline-chip>
+                            <div class="source-inline-chip-container"><span>PDF</span></div>
+                          </source-inline-chip>
+                        </source-inline-chips>
+                      </sources-carousel-inline>
+                    </td>
+                    <td><span data-math="p = 0.9"><span class="katex">p=0.9</span></span></td>
+                    <td><em>Emphasis</em> and <code>inline code</code></td>
+                  </tr>
+                  <tr>
+                    <td>Multiple formulas</td>
+                    <td>
+                      <span class="math-inline" data-math="\\mu = 90">μ=90</span>
+                      and
+                      <span class="math-inline" data-math="\\sigma = 3">σ=3</span>
+                    </td>
+                    <td>
+                      Kept text
+                      <span>
+                        <sources-carousel-inline>
+                          <source-inline-chip><span>PDF+1</span></source-inline-chip>
+                        </sources-carousel-inline>
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.hasTables).toBe(true);
+      expect(extracted.hasFormulas).toBe(true);
+      expect(extracted.text).toBe(
+        [
+          '| Case | Statistic | Notes |',
+          '| --- | --- | --- |',
+          '| Text before $X \\sim B(15, 0.9)$ text after | $p = 0.9$ | *Emphasis* and `inline code` |',
+          '| Multiple formulas | $\\mu = 90$ and $\\sigma = 3$ | Kept text |',
+        ].join('\n'),
+      );
+      expect(extracted.text).not.toContain('PDF');
+      expect(extracted.text).not.toContain('PDF+1');
+      expect(extracted.html).toContain('data-math="X \\sim B(15, 0.9)"');
+      expect(extracted.html).toContain('class="katex"');
+      expect(extracted.html).toContain('class="vlist"');
+      expect(extracted.html).not.toContain('sources-carousel-inline');
+      expect(extracted.html).not.toContain('source-inline-chip');
+    });
+
+    it('uses the same inline serialization when a tbody first row is the header', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr>
+                    <th>
+                      Parameter <span class="math-inline" data-math="\\theta">θ</span>
+                      <source-inline-chip><span>PDF</span></source-inline-chip>
+                    </th>
+                    <th>Value</th>
+                  </tr>
+                  <tr>
+                    <td>
+                      Mean <span><span data-math="\\mu">μ</span></span>
+                      <span><source-inline-chip><span>PDF+1</span></source-inline-chip></span>
+                    </td>
+                    <td>
+                      <span class="math-inline" data-math="\\bar{x} = 356.5">x̄=356.5</span>
+                      and <span class="math-inline" data-math="s = 5">s=5</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.hasTables).toBe(true);
+      expect(extracted.hasFormulas).toBe(true);
+      expect(extracted.text).toBe(
+        [
+          '| Parameter $\\theta$ | Value |',
+          '| --- | --- |',
+          '| Mean $\\mu$ | $\\bar{x} = 356.5$ and $s = 5$ |',
+        ].join('\n'),
+      );
+      expect(extracted.text).not.toContain('PDF');
+      expect(extracted.text).not.toContain('PDF+1');
+      expect(extracted.html).toContain('data-math="\\bar{x} = 356.5"');
+      expect(extracted.html).not.toContain('source-inline-chip');
+    });
+
+    it('preserves whitespace between adjacent formatted nodes', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Assessment</th></tr>
+                  <tr><td><strong>high</strong> <em>risk</em></td></tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.text).toBe(['| Assessment |', '| --- |', '| **high** *risk* |'].join('\n'));
+    });
+
+    it.each([
+      ['First<strong> Second</strong>', 'First **Second**'],
+      ['<strong>First </strong>Second', '**First** Second'],
+      ['First<em> Second</em>', 'First *Second*'],
+      ['<code>First </code>Second', '`First` Second'],
+    ])(
+      'moves nested formatting boundary whitespace outside Markdown markers',
+      (content, expected) => {
+        const assistant = document.createElement('div');
+        assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Content</th></tr>
+                  <tr><td>${content}</td></tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+        const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+        expect(extracted.text).toBe(['| Content |', '| --- |', `| ${expected} |`].join('\n'));
+      },
+    );
+
+    it('serializes nested display tags in inline code as plain text', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <div>Run <code><strong>npm</strong><em> install</em></code>.</div>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.text).toBe('Run `npm install`.');
+      expect(extracted.html).toContain('Run <code>npm install</code>.');
+    });
+
+    it('serializes nested display tags in table inline code as plain text', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Code</th></tr>
+                  <tr>
+                    <td>
+                      <code><strong>npm</strong><em> install|test</em><source-inline-chip>PDF</source-inline-chip></code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+      const rendered = document.createElement('div');
+      rendered.innerHTML = marked.parse(extracted.text) as string;
+
+      expect(rendered.querySelectorAll('tbody tr:first-child td')).toHaveLength(1);
+      expect(rendered.querySelector('tbody tr:first-child code')?.textContent).toBe(
+        'npm install|test',
+      );
+      expect(extracted.text).not.toContain('PDF');
+    });
+
+    it.each([
+      ['a`b', '``a`b``'],
+      ['`edge`', '`` `edge` ``'],
+      ['a``b', '```a``b```'],
+    ])('round-trips backticks in inline code spans', (content, expectedMarkdown) => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Code</th></tr>
+                  <tr><td><code>${content}</code></td></tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+      expect(extracted.text).toContain(`| ${expectedMarkdown} |`);
+
+      const rendered = document.createElement('div');
+      rendered.innerHTML = marked.parse(extracted.text) as string;
+
+      expect(rendered.querySelector('tbody tr:first-child code')?.textContent).toBe(content);
+    });
+
+    it.each([
+      [String.raw`\|`, '<code>&#x5c;&#x7c;</code>'],
+      [String.raw`\\|`, '<code>&#x5c;&#x5c;&#x7c;</code>'],
+      ['*em*|x', '`*em*\\|x`'],
+      [
+        '[link](https://example.com)|**bold**~~gone~~',
+        '`[link](https://example.com)\\|**bold**~~gone~~`',
+      ],
+    ])(
+      'round-trips Markdown syntax and backslashes in table inline code spans',
+      (content, expectedMarkdown) => {
+        const assistant = document.createElement('div');
+        assistant.innerHTML = `
+          <message-content>
+            <div class="markdown">
+              <table-block>
+                <table>
+                  <tbody>
+                    <tr><th>Code</th></tr>
+                    <tr><td><code>${content}</code></td></tr>
+                  </tbody>
+                </table>
+              </table-block>
+            </div>
+          </message-content>
+        `;
+
+        const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+        expect(extracted.text).toContain(`| ${expectedMarkdown} |`);
+
+        const rendered = document.createElement('div');
+        rendered.innerHTML = marked.parse(extracted.text) as string;
+
+        expect(rendered.querySelectorAll('tbody tr:first-child td')).toHaveLength(1);
+        expect(rendered.querySelector('tbody tr:first-child code')?.textContent).toBe(content);
+      },
+    );
+
+    it.each(['a  |  b', 'a\t|\tb', 'a\n|\nb'])(
+      'round-trips collapsible whitespace in table inline code',
+      (content) => {
+        const assistant = document.createElement('div');
+        assistant.innerHTML = `
+          <message-content>
+            <div class="markdown">
+              <table-block>
+                <table>
+                  <tbody>
+                    <tr><th>Code</th></tr>
+                    <tr><td><code>${content}</code></td></tr>
+                  </tbody>
+                </table>
+              </table-block>
+            </div>
+          </message-content>
+        `;
+
+        const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+        const rendered = document.createElement('div');
+        rendered.innerHTML = marked.parse(extracted.text) as string;
+
+        expect(extracted.text).toContain('<code>');
+        expect(rendered.querySelectorAll('tbody tr:first-child td')).toHaveLength(1);
+        expect(rendered.querySelector('tbody tr:first-child code')?.textContent).toBe(content);
+      },
+    );
+
+    it('escapes table delimiters in formulas, text, and inline code', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Formula</th><th>Text</th><th>Code</th></tr>
+                  <tr>
+                    <td><span class="math-inline" data-math="P(A|B)">P(A|B)</span></td>
+                    <td>left | right</td>
+                    <td><code>a|b</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.text).toContain('| $P(A\\|B)$ | left \\| right | `a\\|b` |');
+
+      const rendered = document.createElement('div');
+      rendered.innerHTML = marked.parse(extracted.text) as string;
+      const cells = rendered.querySelectorAll('tbody tr:first-child td');
+      expect(cells).toHaveLength(3);
+      expect(Array.from(cells, (cell) => cell.textContent)).toEqual([
+        '$P(A|B)$',
+        'left | right',
+        'a|b',
+      ]);
+
+      const katexParser = new Marked(
+        markedKatex({
+          throwOnError: false,
+          output: 'html',
+          trust: true,
+          strict: false,
+        }),
+      );
+      const katexRendered = document.createElement('div');
+      katexRendered.innerHTML = katexParser.parse(extracted.text) as string;
+
+      const formulaCell = katexRendered.querySelector('tbody tr:first-child td:first-child');
+      expect(formulaCell?.querySelector('.katex')).not.toBeNull();
+      expect(formulaCell?.querySelector('.katex-error')).toBeNull();
+      expect(formulaCell?.querySelector('.katex-html')?.textContent).toContain('P(A');
+    });
+
+    it('preserves LaTeX vertical-bar commands through Markdown table rendering', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Norm</th></tr>
+                  <tr>
+                    <td><span class="math-inline" data-math="\\|x\\|">‖x‖</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+      const parser = new Marked(
+        markedKatex({
+          throwOnError: false,
+          output: 'html',
+          trust: true,
+          strict: false,
+        }),
+      );
+      const rendered = document.createElement('div');
+      rendered.innerHTML = parser.parse(extracted.text) as string;
+
+      expect(rendered.querySelector('.katex-html')?.textContent).toBe('∥x∥');
+      expect(rendered.querySelector('.katex-html .newline')).toBeNull();
+    });
+
+    it('preserves consecutive LaTeX vertical-bar commands in Markdown tables', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Bars</th></tr>
+                  <tr>
+                    <td><span class="math-inline" data-math="\\|\\|">‖‖</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+      const parser = new Marked(
+        markedKatex({
+          throwOnError: false,
+          output: 'html',
+          trust: true,
+          strict: false,
+        }),
+      );
+      const rendered = document.createElement('div');
+      rendered.innerHTML = parser.parse(extracted.text) as string;
+
+      expect(extracted.text).toContain('$\\Vert{}\\Vert{}$');
+      expect(rendered.querySelector('.katex-html')?.textContent).toBe('∥∥');
+    });
+
+    it('recursively serializes formulas and filters sources inside formatting tags', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <table-block>
+              <table>
+                <tbody>
+                  <tr><th>Strong</th><th>Emphasis</th><th>Code</th></tr>
+                  <tr>
+                    <td>
+                      <strong>
+                        <span class="math-inline" data-math="\\theta">θ</span>
+                        <source-inline-chip><span>PDF</span></source-inline-chip>
+                      </strong>
+                    </td>
+                    <td>
+                      <em>
+                        value <span data-math="\\alpha">α</span>
+                        <source-inline-chip><span>PDF+1</span></source-inline-chip>
+                      </em>
+                    </td>
+                    <td><code>x<source-inline-chip><span>PDF</span></source-inline-chip></code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </table-block>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.hasFormulas).toBe(true);
+      expect(extracted.text).toContain('| **$\\theta$** | *value $\\alpha$* | `x` |');
+      expect(extracted.text).not.toContain('PDF');
+      expect(extracted.text).not.toContain('PDF+1');
+    });
   });
 
   it('preserves Gemini KaTeX radical image nodes nested in lists', () => {
