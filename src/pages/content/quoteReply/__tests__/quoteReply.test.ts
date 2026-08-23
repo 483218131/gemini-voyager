@@ -95,7 +95,9 @@ describe('quote reply', () => {
 
     document.body.innerHTML = `
       <main>
-        <p id="source">Hello world</p>
+        <div class="conversation-container">
+          <model-response><message-content><p id="source">Hello world</p></message-content></model-response>
+        </div>
       </main>
       <div id="input-container">
         <rich-textarea>
@@ -166,6 +168,67 @@ describe('quote reply', () => {
     triggerQuoteReply();
 
     expect(expandInputCollapseIfNeeded).toHaveBeenCalledTimes(1);
+
+    cleanup();
+  });
+
+  it('does not show Quote Reply for Gemini new-chat greeting text', () => {
+    document.querySelector('main')!.innerHTML = '<h1>Your move, Ivaris!</h1>';
+    const greeting = document.querySelector('h1');
+    if (!(greeting?.firstChild instanceof Text)) {
+      throw new Error('Expected greeting text node.');
+    }
+
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(greeting);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    const cleanup = startQuoteReply({ highlightEnabled: false });
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    vi.runAllTimers();
+
+    expect(document.querySelector('.gv-quote-btn')).toBeNull();
+
+    cleanup();
+  });
+
+  it.each([
+    ['message to greeting', 'source', 'greeting'],
+    ['greeting to message', 'greeting', 'source'],
+  ])('does not show Quote Reply for a selection spanning %s', (_direction, anchorId, focusId) => {
+    document
+      .querySelector('main')!
+      .insertAdjacentHTML('afterbegin', '<h1 id="greeting">Your move, Ivaris!</h1>');
+    const anchorNode = document.getElementById(anchorId)?.firstChild;
+    const focusNode = document.getElementById(focusId)?.firstChild;
+    const greetingNode = document.getElementById('greeting')?.firstChild;
+    const sourceNode = document.getElementById('source')?.firstChild;
+    if (!(anchorNode instanceof Text) || !(focusNode instanceof Text)) {
+      throw new Error('Expected selection boundary text nodes.');
+    }
+    if (!(greetingNode instanceof Text) || !(sourceNode instanceof Text)) {
+      throw new Error('Expected ordered range boundary text nodes.');
+    }
+
+    const range = document.createRange();
+    range.setStart(greetingNode, 0);
+    range.setEnd(sourceNode, sourceNode.length);
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      anchorNode,
+      focusNode,
+      rangeCount: 1,
+      isCollapsed: false,
+      toString: () => range.toString(),
+      getRangeAt: () => range,
+    } as unknown as Selection);
+
+    const cleanup = startQuoteReply({ highlightEnabled: false });
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    vi.runAllTimers();
+
+    expect(document.querySelector('.gv-quote-btn')).toBeNull();
 
     cleanup();
   });
