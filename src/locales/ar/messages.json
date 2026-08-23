@@ -1993,24 +1993,16 @@
     "description": "Title of the notice about Gemini's native media watermark switch"
   },
   "watermarkNotice_body": {
-    "message": "أضافت Google إعدادًا رسميًا يزيل العلامة المائية الظاهرة في زاوية الصور والفيديوهات والمقاطع الصوتية المُنشأة. بعد إيقافها لم تعد هناك حاجة لإزالة العلامة المائية عبر Voyager.",
+    "message": "أضافت Google إعدادًا رسميًا يزيل العلامة المائية الظاهرة عن كل ما ينشئه Gemini من صور وفيديوهات وموسيقى. بعد إيقافها لم تعد هناك حاجة لإزالة العلامة المائية عبر Voyager.",
     "description": "Body text explaining Gemini's native watermark switch"
   },
-  "watermarkNotice_step1": {
-    "message": "افتح الإعدادات (رمز الترس أسفل اليسار)",
-    "description": "Step 1 of turning off Gemini's media watermark"
-  },
-  "watermarkNotice_step2": {
-    "message": "اختر Media watermark",
-    "description": "Step 2 of turning off Gemini's media watermark"
-  },
-  "watermarkNotice_step3": {
-    "message": "حدد Off",
-    "description": "Step 3 of turning off Gemini's media watermark"
-  },
   "watermarkNotice_detected": {
-    "message": "لاحظ Voyager أن صورك الأخيرة تصل بالفعل بدون علامة مائية.",
+    "message": "صورك الأخيرة تصل بالفعل بدون علامة مائية",
     "description": "Shown when Voyager has observed several watermark-free images in a row"
+  },
+  "watermarkNotice_path": {
+    "message": "الإعدادات ← Media watermark ← Off",
+    "description": "Breadcrumb of where Gemini's media-watermark switch lives"
   },
   "watermarkNotice_caveat": {
     "message": "ملاحظة: تبقى علامة SynthID غير المرئية وبيانات C2PA في كل الأحوال. يجري طرح الإعداد تدريجيًا، وحسابات العمل والدراسة لا تحصل عليه.",

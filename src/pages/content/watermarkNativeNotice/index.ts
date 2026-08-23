@@ -108,37 +108,39 @@ function removeExistingNotice(): void {
   cleanupActiveNotice = null;
 }
 
-function buildStepList(lang: AppLanguage): HTMLOListElement {
-  const list = document.createElement('ol');
-  list.className = `${NOTICE_CLASS}__steps`;
+/**
+ * The screenshot already carries numbered markers, so repeating the three
+ * steps as prose would say the same thing twice. This renders the path as a
+ * single breadcrumb line instead, with each hop as its own chip.
+ */
+function buildPathTrail(lang: AppLanguage): HTMLParagraphElement {
+  const trail = document.createElement('p');
+  trail.className = `${NOTICE_CLASS}__trail`;
 
-  const stepKeys: TranslationKey[] = [
-    'watermarkNotice_step1',
-    'watermarkNotice_step2',
-    'watermarkNotice_step3',
-  ];
+  const raw = t('watermarkNotice_path', lang);
+  // Locales use the arrow that matches their direction; split on either.
+  const hops = raw
+    .split(/\s*[→←]\s*/)
+    .map((hop) => hop.trim())
+    .filter(Boolean);
 
-  stepKeys.forEach((key, index) => {
-    const item = document.createElement('li');
-    item.className = `${NOTICE_CLASS}__step`;
-
-    // The badge number mirrors the numbered markers drawn on the screenshot
-    // above, so the text and the image read as one instruction.
-    const badge = document.createElement('span');
-    badge.className = `${NOTICE_CLASS}__step-badge`;
-    badge.textContent = String(index + 1);
-    badge.setAttribute('aria-hidden', 'true');
-
-    const text = document.createElement('span');
-    text.className = `${NOTICE_CLASS}__step-text`;
-    text.textContent = t(key, lang);
-
-    item.appendChild(badge);
-    item.appendChild(text);
-    list.appendChild(item);
+  hops.forEach((hop, index) => {
+    if (index > 0) {
+      const sep = document.createElement('span');
+      sep.className = `${NOTICE_CLASS}__trail-sep`;
+      sep.setAttribute('aria-hidden', 'true');
+      trail.appendChild(sep);
+    }
+    const chip = document.createElement('span');
+    chip.className = `${NOTICE_CLASS}__trail-hop`;
+    // The last hop is the value the user must land on, so it reads as the
+    // destination rather than another waypoint.
+    if (index === hops.length - 1) chip.classList.add(`${NOTICE_CLASS}__trail-hop--target`);
+    chip.textContent = hop;
+    trail.appendChild(chip);
   });
 
-  return list;
+  return trail;
 }
 
 function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
@@ -168,8 +170,42 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
   closeBtn.setAttribute('aria-label', t('watermarkNotice_keepCta', lang));
   closeBtn.textContent = '✕';
 
-  header.appendChild(title);
+  const heading = document.createElement('div');
+  heading.className = `${NOTICE_CLASS}__heading`;
+  heading.appendChild(title);
+
+  // The clean-image observation is supporting evidence for the title, not a
+  // paragraph of its own — it rides along as a pill under the headline.
+  if (detectedClean) {
+    const detected = document.createElement('span');
+    detected.className = `${NOTICE_CLASS}__detected`;
+    detected.textContent = t('watermarkNotice_detected', lang);
+    heading.appendChild(detected);
+  }
+
+  header.appendChild(heading);
   header.appendChild(closeBtn);
+
+  // Hero: the screenshot is the instruction, so it runs edge to edge directly
+  // under the headline instead of sitting inside the prose.
+  const stepsImageUrl = getRuntimeUrl(STEPS_IMAGE_PATH);
+  let hero: HTMLElement | null = null;
+  if (stepsImageUrl) {
+    hero = document.createElement('figure');
+    hero.className = `${NOTICE_CLASS}__hero`;
+
+    const figure = document.createElement('img');
+    figure.className = `${NOTICE_CLASS}__image`;
+    figure.src = stepsImageUrl;
+    figure.alt = t('watermarkNotice_imageAlt', lang);
+    figure.loading = 'lazy';
+    hero.appendChild(figure);
+
+    const caption = document.createElement('figcaption');
+    caption.className = `${NOTICE_CLASS}__hero-caption`;
+    caption.appendChild(buildPathTrail(lang));
+    hero.appendChild(caption);
+  }
 
   const body = document.createElement('div');
   body.className = `${NOTICE_CLASS}__body`;
@@ -179,32 +215,20 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
   bodyText.textContent = t('watermarkNotice_body', lang);
   body.appendChild(bodyText);
 
-  const stepsImageUrl = getRuntimeUrl(STEPS_IMAGE_PATH);
-  if (stepsImageUrl) {
-    const figure = document.createElement('img');
-    figure.className = `${NOTICE_CLASS}__image`;
-    figure.src = stepsImageUrl;
-    figure.alt = t('watermarkNotice_imageAlt', lang);
-    figure.loading = 'lazy';
-    body.appendChild(figure);
-  }
+  // No hero means no numbered screenshot to lean on, so the path has to carry
+  // the instruction by itself.
+  if (!hero) body.appendChild(buildPathTrail(lang));
 
-  body.appendChild(buildStepList(lang));
-
-  if (detectedClean) {
-    const detected = document.createElement('p');
-    detected.className = `${NOTICE_CLASS}__detected`;
-    detected.textContent = t('watermarkNotice_detected', lang);
-    body.appendChild(detected);
-  }
+  const actions = document.createElement('div');
+  actions.className = `${NOTICE_CLASS}__actions`;
 
   const caveat = document.createElement('p');
   caveat.className = `${NOTICE_CLASS}__caveat`;
   caveat.textContent = t('watermarkNotice_caveat', lang);
-  body.appendChild(caveat);
+  actions.appendChild(caveat);
 
-  const actions = document.createElement('div');
-  actions.className = `${NOTICE_CLASS}__actions`;
+  const buttonRow = document.createElement('div');
+  buttonRow.className = `${NOTICE_CLASS}__buttons`;
 
   const keepBtn = document.createElement('button');
   keepBtn.type = 'button';
@@ -216,10 +240,12 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
   disableBtn.className = `${NOTICE_CLASS}__btn ${NOTICE_CLASS}__btn--primary`;
   disableBtn.textContent = t('watermarkNotice_disableCta', lang);
 
-  actions.appendChild(keepBtn);
-  actions.appendChild(disableBtn);
+  buttonRow.appendChild(keepBtn);
+  buttonRow.appendChild(disableBtn);
+  actions.appendChild(buttonRow);
 
   dialog.appendChild(header);
+  if (hero) dialog.appendChild(hero);
   dialog.appendChild(body);
   dialog.appendChild(actions);
   overlay.appendChild(dialog);

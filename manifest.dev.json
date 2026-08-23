@@ -11,6 +11,8 @@
     {
       "resources": [
         "contentStyle.css",
+        "changelog-activity-view.png",
+        "watermark-native-steps.png",
         "dev-icon-128.png",
         "dev-icon-32.png",
         "icon-32.png",

@@ -71,6 +71,7 @@
       "resources": [
         "contentStyle.css",
         "changelog-activity-view.png",
+        "watermark-native-steps.png",
         "icon-128.png",
         "icon-32.png",
         "katex-config.js",

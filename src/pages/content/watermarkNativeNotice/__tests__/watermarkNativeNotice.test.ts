@@ -177,7 +177,11 @@ describe('startWatermarkNativeNotice', () => {
 
     const dialog = document.querySelector('.gv-wm-notice');
     expect(dialog?.textContent).toContain('Gemini 现在自带关水印的开关');
-    expect(dialog?.querySelectorAll('.gv-wm-notice__step')).toHaveLength(3);
+    // The path renders as a breadcrumb: Settings → Media watermark → Off.
+    const hops = dialog?.querySelectorAll('.gv-wm-notice__trail-hop');
+    expect(hops).toHaveLength(3);
+    expect(hops?.[hops.length - 1].textContent).toBe('Off');
+    expect(hops?.[hops.length - 1].classList).toContain('gv-wm-notice__trail-hop--target');
     // The clean-image hint only appears once the streak has been observed.
     expect(dialog?.querySelector('.gv-wm-notice__detected')).toBeNull();
   });
