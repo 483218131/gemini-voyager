@@ -39,7 +39,9 @@ Do not use this route to validate native messaging. A temporary extension cannot
 ## 3. Native route: Swift or app integration
 
 1. Run `bun run build:safari` first so the Xcode resources are current.
-2. Build the tracked Xcode project with Apple Development signing. Allow Xcode to refresh the local development profile and register the current Mac when needed:
+2. Build the tracked Xcode project with Apple Development signing. Allow Xcode to refresh the local development profile and register the current Mac when needed.
+
+   **Use the two paths below verbatim.** Never coin a task-specific derived-data name (`safari-ui-fix-derived`, `safari-voyager-name-release-derived`, …): each one strands 500MB–1GB that nothing ever deletes, and they once accumulated to 6.8GB. `bun run clean:build` reclaims them while keeping the SPM package cache.
 
    ```sh
    xcodebuild \

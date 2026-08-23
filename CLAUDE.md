@@ -41,6 +41,7 @@ Project-wide rules (always in effect):
 7. **Default push target**: when asked to push without explicit branch/PR instructions, push a fast-forward update to `origin/main`. Never force-push unless explicitly requested.
 8. **Regression notes are required context.** Before implementing a non-trivial feature or bug fix, skim `.github/docs/REGRESSION_NOTES.md` for related traps. After fixing a non-obvious bug that future maintainers could plausibly repeat, proactively suggest adding a short entry with the protecting test or verification command.
 9. **Do not force-refresh Gemini's SPA for feature navigation.** For Gemini content-script navigation, prefer native in-app links first and History API / router events as the fallback. Do not introduce `location.assign`, `location.href`, or `location.reload` for normal conversation/session navigation unless the user explicitly accepts a full page reload. Preserve `/u/<index>/...` account scope when constructing routes.
+10. **Never invent a new Xcode `-derivedDataPath`.** Every local or ad-hoc `xcodebuild` run reuses `.build/safari-native-test-derived` plus `-clonedSourcePackagesDirPath .build/sparkle-source-packages`; only CI may use `.build/ci-xcode-derived`. Task-flavored names (`safari-ui-fix-derived`, `safari-voyager-name-release-derived`, …) each strand 500MB–1GB and once piled up to 6.8GB. Run `bun run clean:build` to reclaim them — it keeps the SPM package cache so the next build does not re-download Sparkle.
 
 ## Verification (run before declaring done)
 
