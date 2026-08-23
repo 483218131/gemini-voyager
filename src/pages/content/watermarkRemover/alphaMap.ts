@@ -35,3 +35,43 @@ export function calculateAlphaMap(bgCaptureImageData: ImageData): Float32Array {
 
   return alphaMap;
 }
+
+/**
+ * Downsample an alpha map by averaging every source pixel covered by one target pixel.
+ * This matches OpenCV INTER_AREA for integer-ratio shrinking, which the upstream V2
+ * implementation uses when deriving the current 48px profile from the 96px capture.
+ */
+export function downsampleAlphaMapWithAreaAverage(
+  alphaMap: Float32Array,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+): Float32Array {
+  if (
+    alphaMap.length !== sourceWidth * sourceHeight ||
+    sourceWidth % targetWidth !== 0 ||
+    sourceHeight % targetHeight !== 0
+  ) {
+    throw new Error('Alpha map dimensions must support integer-ratio area downsampling');
+  }
+
+  const scaleX = sourceWidth / targetWidth;
+  const scaleY = sourceHeight / targetHeight;
+  const sampleCount = scaleX * scaleY;
+  const downsampled = new Float32Array(targetWidth * targetHeight);
+
+  for (let targetY = 0; targetY < targetHeight; targetY++) {
+    for (let targetX = 0; targetX < targetWidth; targetX++) {
+      let sum = 0;
+      for (let sourceY = targetY * scaleY; sourceY < (targetY + 1) * scaleY; sourceY++) {
+        for (let sourceX = targetX * scaleX; sourceX < (targetX + 1) * scaleX; sourceX++) {
+          sum += alphaMap[sourceY * sourceWidth + sourceX];
+        }
+      }
+      downsampled[targetY * targetWidth + targetX] = sum / sampleCount;
+    }
+  }
+
+  return downsampled;
+}

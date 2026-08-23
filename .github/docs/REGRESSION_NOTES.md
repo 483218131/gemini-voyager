@@ -172,6 +172,38 @@ Commit:
 
 `fix(watermark): add difficult-match fallback`
 
+## Full-size images may carry the downscaled V2 watermark
+
+Symptom:
+
+New Gemini 2816x1536 downloads retained a 48px watermark 96px from the right
+and bottom edges even though Voyager already supported that watermark on
+preview-sized images.
+
+Root cause:
+
+`getWatermarkConfigOptions` offered the downscaled 48px May 2026 V2 preset only
+when an image failed the legacy large-image size check. Full-size downloads
+therefore tried only the historical 96px anchor and the full-size 96px V2
+anchor, so the actual watermark region was never inspected.
+
+Fix:
+
+Offer the existing downscaled 48px V2 preset for large images as an additional
+candidate. Preserve the historical anchor first and rely on the existing
+signal and removal-safety checks to choose whether any candidate is applied.
+Derive its alpha map by averaging each 2x2 block of the native 96px V2 capture,
+matching the upstream OpenCV `INTER_AREA` shrink instead of relying on the
+browser's implementation-dependent Canvas smoothing.
+
+Regression test:
+
+`src/pages/content/watermarkRemover/__tests__/watermarkEngine.test.ts`
+(`offers old, full-size, and downscaled May 2026 anchors for 2816x1536 outputs`)
+pins the reported 48px anchor at `(2672, 1392)`, while
+`area-downsamples the 96px V2 capture before using it as a 48px alpha map`
+protects the alpha profile derivation.
+
 ## Full-size V2 removal needs gradient-backed transition evidence
 
 Symptom:

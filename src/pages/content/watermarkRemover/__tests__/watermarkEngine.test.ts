@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { removeWatermark } from '../blendModes';
 import {
@@ -13,6 +13,7 @@ import {
 import {
   type WatermarkAnchorOption,
   type WatermarkConfig,
+  WatermarkEngine,
   calculateWatermarkPosition,
   chooseDifficultWatermarkAnchorOption,
   chooseWatermarkAnchorOption,
@@ -523,7 +524,7 @@ describe('watermarkEngine config detection', () => {
     });
   });
 
-  it('offers old and May 2026 anchors for full-size 2816x1536 outputs', () => {
+  it('offers old, full-size, and downscaled May 2026 anchors for 2816x1536 outputs', () => {
     const options = getWatermarkConfigOptions(2816, 1536);
 
     expect(options).toEqual([
@@ -538,6 +539,12 @@ describe('watermarkEngine config detection', () => {
         marginBottom: 192,
         alphaVariant: '20260520',
       },
+      {
+        logoSize: 48,
+        marginRight: 96,
+        marginBottom: 96,
+        alphaVariant: '20260520',
+      },
     ]);
     expect(calculateWatermarkPosition(2816, 1536, options[1])).toEqual({
       x: 2528,
@@ -545,6 +552,61 @@ describe('watermarkEngine config detection', () => {
       width: 96,
       height: 96,
     });
+    expect(calculateWatermarkPosition(2816, 1536, options[2])).toEqual({
+      x: 2672,
+      y: 1392,
+      width: 48,
+      height: 48,
+    });
+  });
+
+  it('area-downsamples the 96px V2 capture before using it as a 48px alpha map', async () => {
+    const bgCapture = document.createElement('img');
+    const drawImage = vi.fn();
+    const getImageData = vi.fn((_x: number, _y: number, width: number, height: number) => {
+      expect(width).toBe(96);
+      expect(height).toBe(96);
+
+      const data = new Uint8ClampedArray(width * height * 4);
+      const sourceValues = [0, 64, 128, 255];
+      const sourceIndexes = [0, 1, width, width + 1];
+      sourceIndexes.forEach((pixelIndex, index) => {
+        const value = sourceValues[index];
+        const dataIndex = pixelIndex * 4;
+        data[dataIndex] = value;
+        data[dataIndex + 1] = value;
+        data[dataIndex + 2] = value;
+        data[dataIndex + 3] = 255;
+      });
+
+      return { data, width, height } as ImageData;
+    });
+    const context = {
+      drawImage,
+      getImageData,
+      imageSmoothingEnabled: false,
+      imageSmoothingQuality: 'low',
+    } as unknown as CanvasRenderingContext2D;
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => context);
+
+    try {
+      const engine = new WatermarkEngine({
+        bg36_20260520: bgCapture,
+        bg48: bgCapture,
+        bg96: bgCapture,
+        bg96_20260520: bgCapture,
+      });
+      const alphaMap = await engine.getAlphaMap('48-20260520');
+
+      expect(drawImage).toHaveBeenCalledWith(bgCapture, 0, 0, 96, 96);
+      expect(alphaMap).toHaveLength(48 * 48);
+      expect(alphaMap[0]).toBeCloseTo((0 + 64 + 128 + 255) / (4 * 255));
+      expect(alphaMap[1]).toBe(0);
+    } finally {
+      getContext.mockRestore();
+    }
   });
 
   it('offers old and May 2026 anchors for half-size 16:9 preview images', () => {

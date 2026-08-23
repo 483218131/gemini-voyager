@@ -9,7 +9,7 @@
  *
  * Coordinates watermark detection, alpha map calculation, and removal operations.
  */
-import { calculateAlphaMap } from './alphaMap';
+import { calculateAlphaMap, downsampleAlphaMapWithAreaAverage } from './alphaMap';
 import BG_36_20260520_IMPORT from './assets/bg_36_20260520.png';
 // Import watermark background capture images - Vite will bundle these
 import BG_48_IMPORT from './assets/bg_48.png';
@@ -138,7 +138,7 @@ export function getWatermarkConfigOptions(
   const isLarge =
     imageWidth > LEGACY_LARGE_IMAGE_MIN_EDGE && imageHeight > LEGACY_LARGE_IMAGE_MIN_EDGE;
   const currentConfigs = isLarge
-    ? [V2_LARGE_WATERMARK_CONFIG]
+    ? [V2_LARGE_WATERMARK_CONFIG, V2_DOWNSCALED_LARGE_WATERMARK_CONFIG]
     : [createV2SmallWatermarkConfig(imageWidth, imageHeight), V2_DOWNSCALED_LARGE_WATERMARK_CONFIG];
 
   return [legacyConfig, ...currentConfigs].filter(
@@ -691,22 +691,37 @@ export class WatermarkEngine {
             ? this.bgCaptures.bg48
             : this.bgCaptures.bg96;
 
+    // The current 48px profile is derived from the native 96px V2 capture. Reading
+    // the capture at 48px delegates interpolation to Canvas, whose filters do not
+    // match the upstream INTER_AREA profile and can leave a visible star outline.
+    const shouldAreaDownsampleV2 = size === '48-20260520';
+    const captureSize = shouldAreaDownsampleV2 ? V2_LARGE_WATERMARK_CONFIG.logoSize : logoSize;
+
     // Create temporary canvas to extract ImageData
     const canvas = document.createElement('canvas');
-    canvas.width = logoSize;
-    canvas.height = logoSize;
+    canvas.width = captureSize;
+    canvas.height = captureSize;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       throw new Error('Failed to get canvas 2d context');
     }
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(bgImage, 0, 0, logoSize, logoSize);
+    ctx.drawImage(bgImage, 0, 0, captureSize, captureSize);
 
-    const imageData = ctx.getImageData(0, 0, logoSize, logoSize);
+    const imageData = ctx.getImageData(0, 0, captureSize, captureSize);
 
     // Calculate alpha map
-    const alphaMap = calculateAlphaMap(imageData);
+    const sourceAlphaMap = calculateAlphaMap(imageData);
+    const alphaMap = shouldAreaDownsampleV2
+      ? downsampleAlphaMapWithAreaAverage(
+          sourceAlphaMap,
+          captureSize,
+          captureSize,
+          logoSize,
+          logoSize,
+        )
+      : sourceAlphaMap;
 
     // Cache result
     this.alphaMaps[size] = alphaMap;
