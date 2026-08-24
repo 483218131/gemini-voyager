@@ -88,7 +88,7 @@ async function markNoticeShown(): Promise<void> {
   await setLocalStorage({ [StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]: true });
 }
 
-async function disableWatermarkRemoval(): Promise<void> {
+async function disableWatermarkRemoval(): Promise<boolean> {
   // Only the two current keys are written. The legacy single key is left
   // untouched on purpose: resolveWatermarkSettings gives the new keys
   // precedence, so this is enough to turn both paths off without rewriting
@@ -98,8 +98,9 @@ async function disableWatermarkRemoval(): Promise<void> {
       [StorageKeys.WATERMARK_DOWNLOAD_ENABLED]: false,
       [StorageKeys.WATERMARK_PREVIEW_ENABLED]: false,
     });
+    return true;
   } catch {
-    // Non-critical: the popup toggle remains available.
+    return false;
   }
 }
 
@@ -143,7 +144,7 @@ function buildPathTrail(lang: AppLanguage): HTMLParagraphElement {
   return trail;
 }
 
-function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
+function mountNotice(lang: AppLanguage, detectedClean: boolean, onSettled: () => void): void {
   if (document.querySelector(`.${NOTICE_CLASS}`)) return;
 
   const overlay = document.createElement('div');
@@ -153,7 +154,6 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
   const dialog = document.createElement('div');
   dialog.className = `${NOTICE_CLASS}__dialog`;
   dialog.setAttribute('role', 'dialog');
-  dialog.setAttribute('aria-modal', 'true');
   dialog.setAttribute('aria-labelledby', 'gv-wm-notice-title');
 
   const header = document.createElement('div');
@@ -240,8 +240,8 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
   disableBtn.className = `${NOTICE_CLASS}__btn ${NOTICE_CLASS}__btn--primary`;
   disableBtn.textContent = t('watermarkNotice_disableCta', lang);
 
-  buttonRow.appendChild(keepBtn);
   buttonRow.appendChild(disableBtn);
+  buttonRow.appendChild(keepBtn);
   actions.appendChild(buttonRow);
 
   dialog.appendChild(header);
@@ -258,17 +258,23 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
       clearTimeout(doneTimer);
       doneTimer = null;
     }
-    document.removeEventListener('keydown', onKeyDown);
+    dialog.removeEventListener('keydown', onKeyDown);
     removeExistingNotice();
   }
 
   function close(): void {
     void markNoticeShown();
     teardown();
+    onSettled();
   }
 
   function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') close();
+    if (event.key !== 'Escape') return;
+    // This is a non-modal helper. Only consume Escape while focus is inside
+    // the card, otherwise Gemini should remain in control of its own menus.
+    event.preventDefault();
+    event.stopPropagation();
+    close();
   }
 
   closeBtn.addEventListener('click', close);
@@ -277,7 +283,19 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
   disableBtn.addEventListener('click', () => {
     disableBtn.disabled = true;
     keepBtn.disabled = true;
-    void disableWatermarkRemoval().then(() => {
+    actions.querySelector(`.${NOTICE_CLASS}__error`)?.remove();
+    void disableWatermarkRemoval().then((disabled) => {
+      if (!disabled) {
+        disableBtn.disabled = false;
+        keepBtn.disabled = false;
+        const error = document.createElement('p');
+        error.className = `${NOTICE_CLASS}__error`;
+        error.setAttribute('role', 'alert');
+        error.textContent = t('watermarkNotice_error', lang);
+        actions.insertBefore(error, buttonRow);
+        return;
+      }
+
       void markNoticeShown();
       // Confirm in place rather than closing instantly — the user just changed
       // a setting and should see where it can be undone.
@@ -287,34 +305,45 @@ function mountNotice(lang: AppLanguage, detectedClean: boolean): void {
       done.setAttribute('role', 'status');
       done.textContent = t('watermarkNotice_done', lang);
       actions.appendChild(done);
-      doneTimer = window.setTimeout(teardown, DONE_AUTOCLOSE_MS);
+      doneTimer = window.setTimeout(() => {
+        teardown();
+        onSettled();
+      }, DONE_AUTOCLOSE_MS);
     });
   });
 
-  // Clicking the backdrop deliberately does not dismiss: this notice ships
-  // once and explains a change that silently makes a feature obsolete, so it
-  // asks for an explicit choice (close, keep, or disable).
-  document.addEventListener('keydown', onKeyDown);
+  // The surrounding layer is click-through, so the user can keep this guide
+  // visible while opening Gemini's settings. Escape is scoped to the card for
+  // the same reason: interacting with Gemini must not dismiss the notice.
+  dialog.addEventListener('keydown', onKeyDown);
 
   cleanupActiveNotice = () => {
     teardown();
   };
 }
 
-async function scheduleNotice(delayMs: number, currentRunId: number): Promise<void> {
+async function scheduleNotice(
+  delayMs: number,
+  currentRunId: number,
+  onSettled: () => void,
+): Promise<void> {
   const localDefaults = {
     [StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]: false,
     [StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]: 0,
   };
   const stored = await getLocalStorage(localDefaults);
   if (currentRunId !== runId) return;
-  if (stored[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN] === true) return;
+  if (stored[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN] === true) {
+    onSettled();
+    return;
+  }
 
   let settings;
   try {
     const record = await chrome.storage?.sync?.get([...WATERMARK_STORAGE_KEYS]);
     settings = resolveWatermarkSettings(record ?? null);
   } catch {
+    onSettled();
     return;
   }
   if (currentRunId !== runId) return;
@@ -323,7 +352,10 @@ async function scheduleNotice(delayMs: number, currentRunId: number): Promise<vo
     alreadyShown: stored[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN] === true,
     removalActive: settings.download || settings.preview,
   });
-  if (!shouldShow) return;
+  if (!shouldShow) {
+    onSettled();
+    return;
+  }
 
   const detectedClean = hasCleanImageStreak(stored[StorageKeys.WATERMARK_CLEAN_IMAGE_STREAK]);
   const lang = await getCurrentLanguage();
@@ -333,20 +365,48 @@ async function scheduleNotice(delayMs: number, currentRunId: number): Promise<vo
     if (currentRunId !== runId) return;
     const latest = await getLocalStorage(localDefaults);
     if (currentRunId !== runId) return;
-    if (latest[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN] === true) return;
-    mountNotice(lang, detectedClean);
+    if (latest[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN] === true) {
+      onSettled();
+      return;
+    }
+    mountNotice(lang, detectedClean, onSettled);
   }, delayMs);
+}
+
+export interface WatermarkNativeNoticeOptions {
+  delayMs?: number;
+  onSettled?: () => void;
 }
 
 /**
  * Start the one-time native-watermark notice. Returns a cleanup function.
  */
 export function startWatermarkNativeNotice(
-  delayMs: number = WATERMARK_NATIVE_NOTICE_DELAY_MS,
+  options: number | WatermarkNativeNoticeOptions = {},
 ): () => void {
+  const { delayMs, onSettled } =
+    typeof options === 'number'
+      ? { delayMs: options, onSettled: undefined }
+      : {
+          delayMs: options.delayMs ?? WATERMARK_NATIVE_NOTICE_DELAY_MS,
+          onSettled: options.onSettled,
+        };
+  let settled = false;
+  const settleOnce = () => {
+    if (settled) return;
+    settled = true;
+    onSettled?.();
+  };
+
   // Safari never ran watermark removal, so there is nothing to retire there.
-  if (isSafari()) return () => {};
-  if (started) return () => {};
+  if (isSafari()) {
+    settleOnce();
+    return () => {};
+  }
+  if (started) {
+    settleOnce();
+    return () => {};
+  }
   started = true;
   const currentRunId = runId + 1;
   runId = currentRunId;
@@ -356,10 +416,10 @@ export function startWatermarkNativeNotice(
   (window as unknown as Record<string, unknown>).__gvWatermarkNotice = async () => {
     const lang = await getCurrentLanguage();
     removeExistingNotice();
-    mountNotice(lang, true);
+    mountNotice(lang, true, () => {});
   };
 
-  void scheduleNotice(delayMs, currentRunId);
+  void scheduleNotice(delayMs, currentRunId, settleOnce);
 
   return () => {
     started = false;

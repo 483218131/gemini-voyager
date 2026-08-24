@@ -2057,15 +2057,15 @@
     "description": "Visual effect rain option"
   },
   "watermarkNotice_title": {
-    "message": "Gemini に透かしを消す設定が追加されました",
+    "message": "Geminiで表示上の透かしを消せるようになりました",
     "description": "Title of the notice about Gemini's native media watermark switch"
   },
   "watermarkNotice_body": {
-    "message": "Gemini が生成した画像・動画・音楽に表示される透かしを、Google 公式の設定でオフにできるようになりました。オフにすれば Voyager の透かし除去は不要です。",
+    "message": "Geminiに表示上の透かしを消す公式設定が追加されました。アカウントに「Media watermark」がある場合は「Off」にしてGemini公式の機能を使い、Voyagerの透かし除去をオフにすることをおすすめします。Gemini公式の機能のほうが安定しており、Voyagerのほかの機能には影響しません。",
     "description": "Body text explaining Gemini's native watermark switch"
   },
   "watermarkNotice_detected": {
-    "message": "最近の画像には透かしがありません",
+    "message": "最近の画像には表示上の透かしがありません",
     "description": "Shown when Voyager has observed several watermark-free images in a row"
   },
   "watermarkNotice_path": {
@@ -2073,20 +2073,24 @@
     "description": "Breadcrumb of where Gemini's media-watermark switch lives"
   },
   "watermarkNotice_caveat": {
-    "message": "注意：どちらの設定でも、目に見えない SynthID と C2PA メタデータは残ります。この設定は順次提供中で、職場や学校のアカウントでは利用できません。",
+    "message": "「Media watermark」が見つからない場合は、まだ提供されていないためVoyagerの透かし除去を引き続き使えます。どちらを使ってもSynthIDとC2PAメタデータは残ります。",
     "description": "Caveats about SynthID, gradual rollout and account restrictions"
   },
   "watermarkNotice_disableCta": {
-    "message": "オフにしたので Voyager の除去を停止",
+    "message": "Offに設定済み、Voyagerの透かし除去をオフ",
     "description": "Primary button: disable Voyager's watermark removal"
   },
   "watermarkNotice_keepCta": {
-    "message": "Voyager の除去を続ける",
+    "message": "設定がないためVoyagerを使い続ける",
     "description": "Secondary button: keep Voyager's watermark removal on"
   },
   "watermarkNotice_done": {
-    "message": "Voyager の透かし除去を停止しました。拡張機能のポップアップからいつでも再開できます。",
+    "message": "Voyagerの透かし除去をオフにしました。ほかの機能はそのまま使えます。",
     "description": "Confirmation shown after Voyager's watermark removal is disabled"
+  },
+  "watermarkNotice_error": {
+    "message": "設定を更新できませんでした。もう一度お試しください。",
+    "description": "Error shown when Voyager cannot disable watermark removal"
   },
   "watermarkNotice_imageAlt": {
     "message": "Media watermark を Off に設定した Gemini の設定画面",

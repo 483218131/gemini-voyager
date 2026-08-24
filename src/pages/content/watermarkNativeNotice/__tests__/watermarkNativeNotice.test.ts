@@ -175,8 +175,11 @@ describe('startWatermarkNativeNotice', () => {
 
     await vi.advanceTimersByTimeAsync(1000);
 
-    const dialog = document.querySelector('.gv-wm-notice');
-    expect(dialog?.textContent).toContain('Gemini 现在自带关水印的开关');
+    const notice = document.querySelector('.gv-wm-notice');
+    const dialog = notice?.querySelector('.gv-wm-notice__dialog');
+    expect(notice?.textContent).toContain('Gemini 现在可以关闭可见水印');
+    expect(dialog?.getAttribute('role')).toBe('dialog');
+    expect(dialog?.hasAttribute('aria-modal')).toBe(false);
     // The path renders as a breadcrumb: Settings → Media watermark → Off.
     const hops = dialog?.querySelectorAll('.gv-wm-notice__trail-hop');
     expect(hops).toHaveLength(3);
@@ -184,6 +187,24 @@ describe('startWatermarkNativeNotice', () => {
     expect(hops?.[hops.length - 1].classList).toContain('gv-wm-notice__trail-hop--target');
     // The clean-image hint only appears once the streak has been observed.
     expect(dialog?.querySelector('.gv-wm-notice__detected')).toBeNull();
+  });
+
+  it('only handles Escape while focus is inside the non-modal card', async () => {
+    mockLocalStorage({});
+    mockSyncStorage({});
+
+    cleanup = startWatermarkNativeNotice(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.querySelector('.gv-wm-notice')).not.toBeNull();
+
+    const closeBtn = document.querySelector<HTMLButtonElement>('.gv-wm-notice__close');
+    closeBtn?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flush();
+
+    expect(document.querySelector('.gv-wm-notice')).toBeNull();
   });
 
   it('adds the detected hint after a clean-image streak', async () => {
@@ -198,17 +219,19 @@ describe('startWatermarkNativeNotice', () => {
   });
 
   it('stays away when the user already turned removal off', async () => {
+    const onSettled = vi.fn();
     mockLocalStorage({});
     mockSyncStorage({
       [StorageKeys.WATERMARK_DOWNLOAD_ENABLED]: false,
       [StorageKeys.WATERMARK_PREVIEW_ENABLED]: false,
     });
 
-    cleanup = startWatermarkNativeNotice(0);
+    cleanup = startWatermarkNativeNotice({ delayMs: 0, onSettled });
     await flush();
     await vi.advanceTimersByTimeAsync(10);
 
     expect(document.querySelector('.gv-wm-notice')).toBeNull();
+    expect(onSettled).toHaveBeenCalledOnce();
   });
 
   it('stays away after it has been shown once', async () => {
@@ -245,7 +268,7 @@ describe('startWatermarkNativeNotice', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     const disableBtn = document.querySelector<HTMLButtonElement>('.gv-wm-notice__btn--primary');
-    expect(disableBtn?.textContent).toBe('我已关闭，停用 Voyager 去水印');
+    expect(disableBtn?.textContent).toBe('已设为 Off，关闭 Voyager 去水印');
     disableBtn?.click();
     await flush();
 
@@ -257,13 +280,40 @@ describe('startWatermarkNativeNotice', () => {
     expect(document.querySelector('.gv-wm-notice__done')).not.toBeNull();
   });
 
+  it('keeps the notice open and retryable when disabling storage fails', async () => {
+    const localState: StorageState = {};
+    const syncState: StorageState = {};
+    const onSettled = vi.fn();
+    mockLocalStorage(localState);
+    mockSyncStorage(syncState);
+    (chrome.storage.sync.set as unknown as MockFn).mockRejectedValue(new Error('write failed'));
+
+    cleanup = startWatermarkNativeNotice({ delayMs: 0, onSettled });
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+
+    document.querySelector<HTMLButtonElement>('.gv-wm-notice__btn--primary')?.click();
+    await flush();
+
+    expect(localState[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]).toBeUndefined();
+    expect(document.querySelector('.gv-wm-notice')).not.toBeNull();
+    expect(document.querySelector('.gv-wm-notice__error')?.textContent).toBe(
+      '未能更新设置，请重试。',
+    );
+    expect(document.querySelector<HTMLButtonElement>('.gv-wm-notice__btn--primary')?.disabled).toBe(
+      false,
+    );
+    expect(onSettled).not.toHaveBeenCalled();
+  });
+
   it('marks the notice seen when dismissed without changing settings', async () => {
     const localState: StorageState = {};
     const syncState: StorageState = {};
+    const onSettled = vi.fn();
     mockLocalStorage(localState);
     mockSyncStorage(syncState);
 
-    cleanup = startWatermarkNativeNotice(0);
+    cleanup = startWatermarkNativeNotice({ delayMs: 0, onSettled });
     await flush();
     await vi.advanceTimersByTimeAsync(0);
 
@@ -273,5 +323,6 @@ describe('startWatermarkNativeNotice', () => {
     expect(localState[StorageKeys.WATERMARK_NATIVE_NOTICE_SHOWN]).toBe(true);
     expect(syncState[StorageKeys.WATERMARK_DOWNLOAD_ENABLED]).toBeUndefined();
     expect(document.querySelector('.gv-wm-notice')).toBeNull();
+    expect(onSettled).toHaveBeenCalledOnce();
   });
 });

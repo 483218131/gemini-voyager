@@ -14192,40 +14192,40 @@ code-block .gv-code-block-toggle svg {
   /* Matches the screenshot's own cream background so the hero reads as one
      surface instead of a pasted-in rectangle. */
   --gv-wmn-hero-bg: #fbf6e6;
-  --gv-wmn-chip-bg: #eceff3;
   --gv-wmn-accent: #5f8f55;
   --gv-wmn-accent-hover: #527c49;
-  --gv-wmn-accent-soft: rgba(95, 143, 85, 0.12);
   --gv-wmn-on-accent: #ffffff;
+  --gv-wmn-error: #b42318;
 
   position: fixed;
   inset: 0;
   z-index: 2147483647;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(4px);
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 72px 20px 20px;
+  /* The layer only positions the helper card. Everything outside the card
+     stays interactive so the user can follow the guide in Gemini. */
+  pointer-events: none;
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
   animation: gv-fade-in 0.2s ease-out;
 }
 
 .gv-wm-notice__dialog {
-  /* 100% is the overlay's content box, so the 20px padding is already
-     subtracted — 92vw would overflow a 375px viewport by 10px. As a flex item
-     the default min-width:auto would still let the hero image's intrinsic
-     772px push the dialog past the viewport, hence min-width:0. */
-  width: min(100%, 520px);
+  width: min(100%, 390px);
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  max-height: min(86vh, 680px);
+  max-height: min(calc(100vh - 92px), 620px);
+  max-height: min(calc(100dvh - 92px), 620px);
   overflow: auto;
+  pointer-events: auto;
   border: 1px solid var(--gv-wmn-border);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--gv-wmn-surface);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 16px 40px rgba(15, 23, 42, 0.14),
+    0 2px 8px rgba(15, 23, 42, 0.06);
   animation: gv-slide-up 0.3s ease-out;
 }
 
@@ -14235,7 +14235,7 @@ code-block .gv-code-block-toggle svg {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 22px 22px 16px;
+  padding: 15px 16px 12px;
 }
 
 .gv-wm-notice__heading {
@@ -14244,29 +14244,27 @@ code-block .gv-code-block-toggle svg {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .gv-wm-notice__title {
   margin: 0;
   color: var(--gv-wmn-title);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
-/* Evidence for the headline, not a paragraph of its own. */
+/* Supporting evidence stays on the same typographic plane as the title. */
 .gv-wm-notice__detected {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--gv-wmn-accent-soft);
-  color: var(--gv-wmn-accent);
+  color: var(--gv-wmn-muted);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.5;
 }
 
@@ -14276,19 +14274,19 @@ code-block .gv-code-block-toggle svg {
   height: 6px;
   flex: 0 0 6px;
   border-radius: 50%;
-  background: currentcolor;
+  background: var(--gv-wmn-accent);
 }
 
 .gv-wm-notice__close {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--gv-wmn-muted);
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   transition: background-color 0.2s;
 }
@@ -14298,8 +14296,8 @@ code-block .gv-code-block-toggle svg {
   color: var(--gv-wmn-title);
 }
 
-/* Hero: the annotated screenshot IS the instruction, so it runs the full
-   width of the dialog with no frame competing against it. */
+/* The annotated screenshot stays in the existing card, but at helper scale
+   rather than taking over the page like a modal illustration. */
 .gv-wm-notice__hero {
   margin: 0;
   background: var(--gv-wmn-hero-bg);
@@ -14314,7 +14312,7 @@ code-block .gv-code-block-toggle svg {
 }
 
 .gv-wm-notice__hero-caption {
-  padding: 10px 22px 12px;
+  padding: 8px 16px 10px;
 }
 
 /* Breadcrumb replaces the old numbered list — the markers drawn on the
@@ -14324,23 +14322,20 @@ code-block .gv-code-block-toggle svg {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
+  gap: 5px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
 .gv-wm-notice__trail-hop {
-  padding: 2px 9px;
-  border-radius: 7px;
-  background: var(--gv-wmn-chip-bg);
   color: var(--gv-wmn-text);
   font-weight: 500;
   white-space: nowrap;
 }
 
 .gv-wm-notice__trail-hop--target {
-  background: var(--gv-wmn-accent);
-  color: var(--gv-wmn-on-accent);
+  color: var(--gv-wmn-accent);
+  font-weight: 600;
 }
 
 .gv-wm-notice__trail-sep {
@@ -14355,43 +14350,46 @@ code-block .gv-code-block-toggle svg {
 }
 
 .gv-wm-notice__body {
-  padding: 16px 22px 0;
+  padding: 12px 16px 0;
   color: var(--gv-wmn-text);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13.5px;
+  line-height: 1.55;
 }
 
 .gv-wm-notice__lead {
   margin: 0;
+  text-wrap: pretty;
 }
 
 .gv-wm-notice__actions {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 22px 20px;
+  gap: 12px;
+  padding: 12px 16px 15px;
 }
 
 .gv-wm-notice__caveat {
   margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--gv-wmn-divider);
   color: var(--gv-wmn-muted);
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .gv-wm-notice__buttons {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
 }
 
 .gv-wm-notice__btn {
-  min-height: 36px;
+  min-height: 38px;
   border: 1px solid transparent;
-  border-radius: 20px;
-  padding: 0 18px;
+  border-radius: 10px;
+  padding: 8px 14px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -14407,9 +14405,11 @@ code-block .gv-code-block-toggle svg {
 }
 
 .gv-wm-notice__btn--secondary {
-  border-color: var(--gv-wmn-border);
-  background: var(--gv-wmn-surface);
-  color: var(--gv-wmn-text);
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--gv-wmn-muted);
+  font-size: 12.5px;
 }
 
 .gv-wm-notice__btn--secondary:hover:not(:disabled) {
@@ -14417,6 +14417,7 @@ code-block .gv-code-block-toggle svg {
 }
 
 .gv-wm-notice__btn--primary {
+  min-height: 42px;
   background: var(--gv-wmn-accent);
   color: var(--gv-wmn-on-accent);
 }
@@ -14429,6 +14430,14 @@ code-block .gv-code-block-toggle svg {
   margin: 0;
   color: var(--gv-wmn-accent);
   font-size: 13.5px;
+  font-weight: 500;
+  text-align: end;
+}
+
+.gv-wm-notice__error {
+  margin: 0;
+  color: var(--gv-wmn-error);
+  font-size: 12.5px;
   font-weight: 500;
   text-align: end;
 }
@@ -14448,12 +14457,11 @@ body.dark-theme .gv-wm-notice,
   /* Hero keeps the screenshot's cream in dark mode too — a dark frame around a
      light screenshot reads as a pasted rectangle, while matching it lets the
      shot sit there like a photograph. */
-  --gv-wmn-chip-bg: #2e3033;
   --gv-wmn-accent: #a7c080;
   --gv-wmn-accent-hover: #b6cc93;
-  --gv-wmn-accent-soft: rgba(167, 192, 128, 0.16);
   /* Sage on dark is light enough that white label text loses contrast. */
   --gv-wmn-on-accent: #1b2418;
+  --gv-wmn-error: #ffb4ab;
 }
 
 html.dark .gv-wm-notice__dialog,
@@ -14464,25 +14472,21 @@ body.dark-theme .gv-wm-notice__dialog,
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
 }
 
-/* Narrow viewports: stack full-width buttons, primary on top. column-reverse
-   keeps the DOM order (secondary first) so tab order still reaches the safe
-   choice first. */
+/* Narrow viewports keep the helper at the top, where it does not cover
+   Gemini's bottom settings affordance. */
 @media (max-width: 460px) {
   .gv-wm-notice {
     padding: 12px;
   }
 
-  .gv-wm-notice__buttons {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-
-  .gv-wm-notice__btn {
-    width: 100%;
+  .gv-wm-notice__dialog {
+    width: min(100%, 360px);
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
   }
 }
 
-body.gv-rtl .gv-wm-notice__buttons {
+body.gv-rtl .gv-wm-notice {
   justify-content: flex-start;
 }
 

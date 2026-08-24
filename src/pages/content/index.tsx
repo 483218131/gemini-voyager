@@ -51,6 +51,7 @@ import { startMarkdownPatcher } from './markdownPatcher/index';
 import { startMermaid } from './mermaid/index';
 import { startBrandTheme } from './platformTheme';
 import { registerBuiltinNativeHandlers } from './pluginNativeRegistration';
+import { createPostChangelogFlow } from './postChangelogFlow';
 import { startPreventAutoScroll } from './preventAutoScroll/index';
 import { createCustomSiteCoverageReconciler } from './prompt/customSiteCoverage';
 import { startPromptManager } from './prompt/index';
@@ -362,10 +363,6 @@ async function initializeFeatures(): Promise<void> {
         () => stopWatermarkRemover(),
         CleanupPositions.StopWatermarkRemover,
       );
-      cleanupManager.registerCleanupFunction(
-        startWatermarkNativeNotice(),
-        CleanupPositions.CleanupWatermarkNativeNotice,
-      );
       startDeepResearchExport();
       startContextSync();
       startGemsHider();
@@ -442,11 +439,19 @@ async function initializeFeatures(): Promise<void> {
         );
       }
 
-      // Introduce new feature coachmarks once the changelog is out of the way;
-      // if the changelog doesn't show (already read / badge mode), still try.
-      void startChangelog({ onClosed: showOnboardingCoachmarksWhenChangelogIsIdle }).then(() => {
-        window.setTimeout(showOnboardingCoachmarksWhenChangelogIsIdle, 1200);
+      // Release-time interruptions are intentionally sequential: changelog,
+      // native-watermark notice, then any eligible feature coachmarks.
+      const postChangelogFlow = createPostChangelogFlow({
+        hasOpenChangelog: () => Boolean(document.querySelector('.gv-changelog-overlay')),
+        startWatermarkNotice: (onSettled) => {
+          cleanupManager.registerCleanupFunction(
+            startWatermarkNativeNotice({ onSettled }),
+            CleanupPositions.CleanupWatermarkNativeNotice,
+          );
+        },
+        startCoachmarks: showOnboardingCoachmarksWhenChangelogIsIdle,
       });
+      void startChangelog({ onClosed: postChangelogFlow.start }).then(postChangelogFlow.start);
     }
 
     if (

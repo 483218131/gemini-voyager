@@ -2065,15 +2065,15 @@
     "description": "Visual effect rain option"
   },
   "watermarkNotice_title": {
-    "message": "Gemini peut maintenant masquer le filigrane",
+    "message": "Gemini peut maintenant masquer le filigrane visible",
     "description": "Title of the notice about Gemini's native media watermark switch"
   },
   "watermarkNotice_body": {
-    "message": "Google a ajouté un réglage officiel qui supprime le filigrane visible de ce que Gemini génère : images, vidéos et musique. Une fois désactivé, la suppression de filigrane de Voyager devient inutile.",
+    "message": "Gemini propose maintenant un réglage officiel pour masquer le filigrane visible. Si votre compte dispose de Media watermark, réglez-le sur Off, utilisez l'option intégrée de Gemini, puis désactivez la suppression des filigranes de Voyager. L'option officielle est plus fiable et n'affecte pas les autres fonctions de Voyager.",
     "description": "Body text explaining Gemini's native watermark switch"
   },
   "watermarkNotice_detected": {
-    "message": "Vos images récentes arrivent déjà sans filigrane",
+    "message": "Vos images récentes n'ont plus de filigrane visible",
     "description": "Shown when Voyager has observed several watermark-free images in a row"
   },
   "watermarkNotice_path": {
@@ -2081,20 +2081,24 @@
     "description": "Breadcrumb of where Gemini's media-watermark switch lives"
   },
   "watermarkNotice_caveat": {
-    "message": "À noter : le marquage invisible SynthID et les métadonnées C2PA restent dans tous les cas. Le réglage arrive progressivement et n'est pas proposé aux comptes professionnels ou scolaires.",
+    "message": "Vous ne trouvez pas Media watermark ? Son déploiement est toujours en cours, vous pouvez donc continuer à utiliser la suppression des filigranes de Voyager. SynthID et les métadonnées C2PA restent présents dans les deux cas.",
     "description": "Caveats about SynthID, gradual rollout and account restrictions"
   },
   "watermarkNotice_disableCta": {
-    "message": "C'est fait — désactiver la suppression de Voyager",
+    "message": "Réglé sur Off, désactiver Voyager",
     "description": "Primary button: disable Voyager's watermark removal"
   },
   "watermarkNotice_keepCta": {
-    "message": "Garder la suppression de Voyager",
+    "message": "Réglage absent, continuer avec Voyager",
     "description": "Secondary button: keep Voyager's watermark removal on"
   },
   "watermarkNotice_done": {
-    "message": "La suppression de filigrane de Voyager est désactivée. Vous pouvez la réactiver depuis la fenêtre de l'extension.",
+    "message": "La suppression des filigranes de Voyager est désactivée. Les autres fonctions restent actives.",
     "description": "Confirmation shown after Voyager's watermark removal is disabled"
+  },
+  "watermarkNotice_error": {
+    "message": "Impossible de mettre à jour le réglage. Réessayez.",
+    "description": "Error shown when Voyager cannot disable watermark removal"
   },
   "watermarkNotice_imageAlt": {
     "message": "Paramètres Gemini avec Media watermark réglé sur Off",
