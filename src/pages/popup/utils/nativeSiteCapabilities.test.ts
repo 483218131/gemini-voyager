@@ -36,7 +36,6 @@ describe('native popup site capabilities', () => {
       'sidebarWidth',
       'visualEffect',
       'formulaCopy',
-      'promptManager',
     ] as const) {
       expect(isNativePopupSectionAvailable('aistudio', sectionId)).toBe(true);
       expect(isNativePopupSettingAvailable('aistudio', sectionId, 'any-setting')).toBe(true);
@@ -65,6 +64,15 @@ describe('native popup site capabilities', () => {
     expect(isNativePopupSettingAvailable('aistudio', 'folder', 'enableForkFeature')).toBe(false);
     expect(isNativePopupSettingAvailable('aistudio', 'inputCollapse', 'enterSend')).toBe(true);
     expect(isNativePopupSettingAvailable('aistudio', 'inputCollapse', 'inputVimMode')).toBe(false);
+    expect(isNativePopupSettingAvailable('aistudio', 'promptManager', 'hidePromptManager')).toBe(
+      true,
+    );
+    expect(isNativePopupSettingAvailable('aistudio', 'promptManager', 'slashPromptEnabled')).toBe(
+      true,
+    );
+    expect(isNativePopupSettingAvailable('aistudio', 'promptManager', 'promptHistoryEnabled')).toBe(
+      false,
+    );
     expect(
       isNativePopupSettingAvailable('aistudio', 'general', 'remoteAnnouncementNotification'),
     ).toBe(true);

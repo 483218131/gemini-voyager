@@ -43,7 +43,13 @@ const AI_STUDIO_CAPABILITIES = {
   visualEffect: true,
   formulaCopy: true,
   inputCollapse: ['enterSend'],
-  promptManager: true,
+  promptManager: [
+    'hidePromptManager',
+    'slashPromptEnabled',
+    'promptInsertOnClick',
+    'promptDataMigration',
+    'customWebsites',
+  ],
   general: ['remoteAnnouncementNotification', 'changelogBadgeMode'],
 } as const satisfies Partial<Record<NativePopupSectionId, SectionCapability>>;
 
