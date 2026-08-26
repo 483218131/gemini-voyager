@@ -26,6 +26,90 @@ Regression test:
 Commit:
 ```
 
+## Route indexes are not durable account identities
+
+Symptom:
+
+Prompt History could show one Google account's prompts after another account
+reused the same Gemini `/u/<index>` route.
+
+Root cause:
+
+Prompt History persisted the route index directly, and the shared account
+resolver also preferred a stale route alias when it observed a new email on
+that route.
+
+Fix:
+
+Resolve Prompt History storage through `AccountIsolationService`, require an
+explicit stable scope for every write, and let an observed email override a
+route alias owned by a different email.
+
+Regression test:
+
+`src/core/services/__tests__/AccountIsolationService.test.ts` (`does not reuse
+a route alias after that route switches to another email`) and
+`src/pages/content/promptHistory/__tests__/promptHistory.test.ts` (`keeps
+captures separate when the same route switches to another account`).
+
+Commit:
+
+`77789de8 fix(prompt-history): isolate captures by stable account`
+
+## Rendered code previews must tear down when their source stops matching
+
+Symptom:
+
+A WaveDrom block could keep showing and exporting its old diagram after the
+source became invalid or its language label changed to ordinary JSON.
+
+Root cause:
+
+The renderer returned early on invalid or newly ineligible source without
+unwrapping the previously rendered block.
+
+Fix:
+
+Share one per-wrapper teardown path between runtime disable, parse failure, and
+language/content reclassification. Restore the native code block and copy
+control and clear the render markers.
+
+Regression test:
+
+`src/pages/content/wavedrom/__tests__/wavedrom.test.ts` (`restores the source
+block when explicit WaveDrom becomes invalid` and `restores the source block
+when a rendered generic block gets a specific label`).
+
+Commit:
+
+`1a713efa fix(wavedrom): tear down stale rendered previews`
+
+## Safari support must not be inferred from historical guards
+
+Symptom:
+
+Safari users with Voyager watermark removal still enabled never saw the
+one-time notice for Gemini's official watermark switch.
+
+Root cause:
+
+The notice retained an obsolete Safari early return even though Safari
+watermark removal has been supported since v1.6.0.
+
+Fix:
+
+Run the same eligibility check on Safari and document current Safari support in
+the content-script rules and public feature reference.
+
+Regression test:
+
+`src/pages/content/watermarkNativeNotice/__tests__/watermarkNativeNotice.test.ts`
+(`shows on Safari when its watermark-removal setting is still active`).
+
+Commit:
+
+`79f3cf7f fix(watermark): show native notice on Safari`
+
 ## ChatGPT virtual shells must be repositioned after height reconciliation
 
 Symptom:
