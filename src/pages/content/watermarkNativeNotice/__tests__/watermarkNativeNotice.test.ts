@@ -245,7 +245,7 @@ describe('startWatermarkNativeNotice', () => {
     expect(document.querySelector('.gv-wm-notice')).toBeNull();
   });
 
-  it('does nothing on Safari, which never ran watermark removal', async () => {
+  it('shows on Safari when its watermark-removal setting is still active', async () => {
     vi.mocked(isSafari).mockReturnValue(true);
     mockLocalStorage({});
     mockSyncStorage({});
@@ -254,7 +254,7 @@ describe('startWatermarkNativeNotice', () => {
     await flush();
     await vi.advanceTimersByTimeAsync(10);
 
-    expect(document.querySelector('.gv-wm-notice')).toBeNull();
+    expect(document.querySelector('.gv-wm-notice')).not.toBeNull();
   });
 
   it('turns both removal paths off when the user confirms', async () => {

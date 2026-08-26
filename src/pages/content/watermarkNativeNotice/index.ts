@@ -1,5 +1,4 @@
 import { StorageKeys } from '@/core/types/common';
-import { isSafari } from '@/core/utils/browser';
 import { WATERMARK_STORAGE_KEYS, resolveWatermarkSettings } from '@/core/utils/watermarkSettings';
 import { getCurrentLanguage } from '@/utils/i18n';
 import type { AppLanguage } from '@/utils/language';
@@ -398,11 +397,6 @@ export function startWatermarkNativeNotice(
     onSettled?.();
   };
 
-  // Safari never ran watermark removal, so there is nothing to retire there.
-  if (isSafari()) {
-    settleOnce();
-    return () => {};
-  }
   if (started) {
     settleOnce();
     return () => {};

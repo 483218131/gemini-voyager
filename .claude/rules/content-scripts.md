@@ -17,7 +17,10 @@ globs: ["src/pages/content/**", "public/contentStyle.css"]
 ## DOM Injection
 - Each content script sub-module in `src/pages/content/` is self-contained
 - Bridge between Gemini UI and Extension — Gemini DOM structure may change without notice
-- Safari has limitations: cloud sync, watermark removal, image export are disabled. Check `isSafari()` guards.
+- Safari has platform-specific manifest and native-bridge paths, but cloud sync,
+  watermark removal, and image export are supported. Do not add an `isSafari()`
+  skip from historical assumptions; verify the current Safari implementation
+  and its browser-specific tests first.
 - Extension context can be invalidated after update/reload. Use `isExtensionContextInvalidatedError()`.
 
 ## Material Symbols Icons

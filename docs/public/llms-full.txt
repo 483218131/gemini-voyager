@@ -163,7 +163,7 @@ Fix Gemini's occasional Markdown rendering issues where code blocks, lists, or f
 
 ### Image Refinement (Watermark Removal)
 
-Lossless watermark removal from Gemini-generated images. Removes the "Made with Google" watermark while preserving full image quality. Not available on Safari.
+Lossless watermark removal from Gemini-generated images. Removes the "Made with Google" watermark while preserving full image quality.
 
 ### Sidebar Auto-hide
 
