@@ -2804,7 +2804,11 @@ export class AIStudioFolderManager {
           border: 2px solid transparent;
         `;
         const iconName = isSubfolder ? 'subdirectory_arrow_right' : 'folder';
-        folderItem.innerHTML = `<span class="google-symbols" style="font-size: 16px; color: #8ab4f8;">${iconName}</span>${folder.name}`;
+        const icon = document.createElement('span');
+        icon.className = 'google-symbols';
+        icon.style.cssText = 'font-size: 16px; color: #8ab4f8;';
+        icon.textContent = iconName;
+        folderItem.append(icon, document.createTextNode(folder.name));
 
         // Bind drop events
         folderItem.addEventListener('dragenter', (e) => {

@@ -12,6 +12,127 @@ let initializedMermaidTheme: MermaidTheme | null = null;
 
 const MERMAID_LIGHT_EXPORT_TEMPLATE_CLASS = 'gv-mermaid-light-export';
 const MERMAID_LIGHT_THEME_DIRECTIVE = '%%{init: {"theme":"default"}}%%';
+const MERMAID_FORBIDDEN_TAGS = [
+  'a',
+  'audio',
+  'base',
+  'button',
+  'embed',
+  'form',
+  'iframe',
+  'image',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'object',
+  'script',
+  'source',
+  'video',
+];
+const MERMAID_FORBIDDEN_ATTRIBUTES = [
+  'action',
+  'download',
+  'formaction',
+  'href',
+  'poster',
+  'src',
+  'srcdoc',
+  'srcset',
+  'target',
+  'xlink:href',
+];
+
+function decodeCssEscapes(value: string): string {
+  return value.replace(/\\([0-9a-f]{1,6}\s?|.)/gi, (_match, escaped: string) => {
+    const hex = escaped.trim();
+    if (/^[0-9a-f]{1,6}$/i.test(hex)) {
+      const codePoint = Number.parseInt(hex, 16);
+      return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : '';
+    }
+    return escaped;
+  });
+}
+
+function containsUnsafeMermaidCss(value: string): boolean {
+  const normalized = decodeCssEscapes(value)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .toLowerCase();
+  return (
+    /(?:^|[;{])\s*position\s*:\s*(?:fixed|sticky)/.test(normalized) ||
+    /(?:^|[;{])\s*(?:inset(?:-[a-z]+)?|z-index)\s*:/.test(normalized) ||
+    /@import|(?:expression|behavior|-moz-binding)\s*[:(]/.test(normalized) ||
+    /url\s*\(\s*(?!["']?#)/.test(normalized)
+  );
+}
+
+async function sanitizeMermaidSvg(svg: string): Promise<string> {
+  const DOMPurifyModule = await import('dompurify');
+  const DOMPurify = DOMPurifyModule.default ?? DOMPurifyModule;
+  const sanitized = DOMPurify.sanitize(svg, {
+    FORBID_ATTR: MERMAID_FORBIDDEN_ATTRIBUTES,
+    FORBID_TAGS: MERMAID_FORBIDDEN_TAGS,
+    KEEP_CONTENT: true,
+    USE_PROFILES: { html: true, svg: true, svgFilters: true },
+  });
+  const template = document.createElement('template');
+  template.innerHTML = sanitized;
+
+  template.content.querySelectorAll('style').forEach((style) => {
+    if (containsUnsafeMermaidCss(style.textContent ?? '')) style.remove();
+  });
+  template.content.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
+    const value = element.getAttribute('style') ?? '';
+    if (containsUnsafeMermaidCss(value)) element.removeAttribute('style');
+  });
+  template.content.querySelectorAll('*').forEach((element) => {
+    for (const attribute of Array.from(element.attributes)) {
+      if (/^on/i.test(attribute.name)) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+      if (
+        /^(?:fill|stroke|filter|clip-path|mask|marker-start|marker-mid|marker-end)$/i.test(
+          attribute.name,
+        ) &&
+        /url\s*\(\s*(?!["']?#)/i.test(attribute.value)
+      ) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  });
+
+  return template.innerHTML;
+}
+
+function createMermaidErrorCard(errorMessage: string): HTMLElement {
+  const card = document.createElement('div');
+  card.style.cssText =
+    'padding: 24px; text-align: center; color: var(--gemini-on-surface-variant, #666);';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size: 32px; margin-bottom: 12px;';
+  icon.textContent = '⚠️';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-weight: 500; margin-bottom: 8px;';
+  title.textContent = 'Mermaid Syntax Error';
+
+  const details = document.createElement('div');
+  details.style.cssText =
+    'font-size: 12px; opacity: 0.7; font-family: monospace; max-width: 400px; margin: 0 auto; word-break: break-word;';
+  details.textContent = errorMessage;
+
+  const hint = document.createElement('div');
+  hint.style.cssText = 'margin-top: 12px; font-size: 13px;';
+  hint.append('Click ');
+  const codeLabel = document.createElement('b');
+  codeLabel.textContent = '"</> Code"';
+  hint.append(codeLabel, ' to view source');
+
+  card.append(icon, title, details, hint);
+  return card;
+}
 
 /**
  * Reset internal loader state. Only for testing.
@@ -93,7 +214,7 @@ const initMermaid = async (): Promise<boolean> => {
   mermaid.initialize({
     startOnLoad: false,
     theme: theme === 'dark' ? 'dark' : 'default',
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     fontFamily: 'Google Sans, Roboto, sans-serif',
     logLevel: 5, // 5 = fatal, only log fatal errors (v9.x uses numbers)
   });
@@ -225,11 +346,14 @@ const createStyles = () => {
     }
     
     .gv-mermaid-diagram {
+      position: relative;
       padding: 16px;
       text-align: center;
-      overflow-x: auto;
+      overflow: auto;
       min-height: 100px;
       cursor: zoom-in;
+      contain: paint;
+      isolation: isolate;
     }
     
     .gv-mermaid-diagram svg {
@@ -609,6 +733,7 @@ const renderMermaid = async (codeBlock: HTMLElement, code: string) => {
     const uniqueId = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
     let svg: string;
     let renderedDiagram = false;
+    let renderErrorMessage: string | null = null;
 
     try {
       // v9.x render returns string directly, v10.x returns {svg: string}
@@ -631,15 +756,8 @@ const renderMermaid = async (codeBlock: HTMLElement, code: string) => {
 
       // Create a friendly error message
       const errorMsg = renderError instanceof Error ? renderError.message : 'Unknown error';
-      const shortError = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
-      svg = `
-                <div style="padding: 24px; text-align: center; color: var(--gemini-on-surface-variant, #666);">
-                    <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
-                    <div style="font-weight: 500; margin-bottom: 8px;">Mermaid Syntax Error</div>
-                    <div style="font-size: 12px; opacity: 0.7; font-family: monospace; max-width: 400px; margin: 0 auto; word-break: break-word;">${shortError}</div>
-                    <div style="margin-top: 12px; font-size: 13px;">Click <b>"&lt;/&gt; Code"</b> to view source</div>
-                </div>
-            `;
+      renderErrorMessage = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
+      svg = '';
     }
 
     let lightExportSvg: string | null = null;
@@ -742,7 +860,7 @@ const renderMermaid = async (codeBlock: HTMLElement, code: string) => {
     if (lightExportSvg) {
       const lightExport = existingLightExport ?? document.createElement('template');
       lightExport.className = MERMAID_LIGHT_EXPORT_TEMPLATE_CLASS;
-      lightExport.innerHTML = lightExportSvg;
+      lightExport.innerHTML = await sanitizeMermaidSvg(lightExportSvg);
       if (!existingLightExport) wrapper.appendChild(lightExport);
     } else {
       existingLightExport?.remove();
@@ -754,8 +872,11 @@ const renderMermaid = async (codeBlock: HTMLElement, code: string) => {
       return;
     }
 
-    // Insert the successfully rendered SVG
-    diagramContainer.innerHTML = svg;
+    if (renderErrorMessage !== null) {
+      diagramContainer.replaceChildren(createMermaidErrorCard(renderErrorMessage));
+    } else {
+      diagramContainer.innerHTML = await sanitizeMermaidSvg(svg);
+    }
 
     codeBlock.dataset.mermaidCode = normalizedCode;
     codeBlock.dataset.mermaidProcessing = 'false';

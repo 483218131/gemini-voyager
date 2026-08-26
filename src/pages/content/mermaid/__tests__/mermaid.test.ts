@@ -52,6 +52,15 @@ describe('Mermaid dynamic loading', () => {
       const second = await loadMermaid();
       expect(second).toBe(first);
     });
+
+    it('initializes Mermaid in strict mode for untrusted model output', async () => {
+      await _initMermaidForTest();
+
+      const mermaid = await loadMermaid();
+      expect(mermaid?.initialize).toHaveBeenCalledWith(
+        expect.objectContaining({ securityLevel: 'strict' }),
+      );
+    });
   });
 
   describe('resolveMermaidTheme', () => {
@@ -264,6 +273,64 @@ B --> C`;
       const wrapper = await renderDiagram();
 
       expect(wrapper?.dataset.gvMermaidTheme).toBe('light');
+    });
+
+    it('renders Mermaid error messages as text instead of live markup', async () => {
+      const host = document.createElement('code-block');
+      const code = document.createElement('code');
+      host.appendChild(code);
+      document.body.appendChild(host);
+
+      const mermaid = await loadMermaid();
+      (mermaid?.render as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('No diagram type detected for text: <b id="gv-proof">proof</b>'),
+      );
+
+      await _renderMermaidForTest(code, 'not a diagram');
+
+      const diagram = document.querySelector<HTMLElement>('.gv-mermaid-diagram');
+      expect(diagram?.querySelector('#gv-proof')).toBeNull();
+      expect(diagram?.textContent).toContain('<b id="gv-proof">proof</b>');
+    });
+
+    it('sanitizes links, remote media, handlers, and escaping CSS from rendered diagrams', async () => {
+      const host = document.createElement('code-block');
+      const code = document.createElement('code');
+      host.appendChild(code);
+      document.body.appendChild(host);
+
+      const mermaid = await loadMermaid();
+      (mermaid?.render as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        svg: `<svg viewBox="0 0 100 50">
+          <style>.node{position:fixed;inset:0;z-index:99}</style>
+          <foreignObject><a href="https://example.invalid/phish">Verify</a><img src="https://example.invalid/pixel"></foreignObject>
+          <g onload="alert(1)"><text>Safe label</text></g>
+        </svg>`,
+      });
+
+      await _renderMermaidForTest(code, 'flowchart TD\nA --> B\nB --> C');
+
+      const diagram = document.querySelector<HTMLElement>('.gv-mermaid-diagram');
+      expect(diagram?.querySelector('a, img, script, iframe, form, input')).toBeNull();
+      expect(diagram?.innerHTML).not.toContain('example.invalid');
+      expect(diagram?.innerHTML).not.toContain('position:fixed');
+      expect(diagram?.innerHTML).not.toContain('onload');
+      expect(diagram?.textContent).toContain('Safe label');
+    });
+  });
+
+  describe('Firefox Mermaid compatibility', () => {
+    it('parses representative model output with Mermaid 9.2.2 in strict mode', async () => {
+      const mermaidLegacy = (await import('mermaid-legacy')).default;
+      mermaidLegacy.initialize({ startOnLoad: false, securityLevel: 'strict' });
+
+      const source = normalizeMermaidCode(`sequenceDiagram
+        participant 用户
+        participant 系统
+        用户->>系统: SSH 登录并检查日志
+        系统-->>用户: 服务恢复正常`);
+
+      expect(mermaidLegacy.parse(source)).toBe(true);
     });
   });
 

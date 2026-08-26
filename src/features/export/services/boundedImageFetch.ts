@@ -1,4 +1,7 @@
-import { fetchImageViaExtensionRuntime } from '@/core/utils/runtimeImageFetch';
+import {
+  fetchImageViaExtensionRuntime,
+  parseAllowedRuntimeImageUrl,
+} from '@/core/utils/runtimeImageFetch';
 
 export const MAX_EXPORT_IMAGE_COUNT = 40;
 export const MAX_EXPORT_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -6,14 +9,6 @@ export const MAX_EXPORT_IMAGE_TOTAL_BYTES = 40 * 1024 * 1024;
 export const EXPORT_IMAGE_FETCH_CONCURRENCY = 3;
 
 const FETCH_TIMEOUT_MS = 10_000;
-const TRUSTED_RUNTIME_HOST_SUFFIXES = [
-  '.openai.com',
-  '.oaistatic.com',
-  '.oaiusercontent.com',
-  '.googleusercontent.com',
-  '.ggpht.com',
-];
-
 export interface ImageFetchBudget {
   remainingBytes: number;
 }
@@ -41,12 +36,7 @@ function reserveBudget(
 }
 
 function isTrustedRuntimeUrl(url: URL): boolean {
-  return (
-    url.origin === location.origin ||
-    TRUSTED_RUNTIME_HOST_SUFFIXES.some(
-      (suffix) => url.hostname === suffix.slice(1) || url.hostname.endsWith(suffix),
-    )
-  );
+  return parseAllowedRuntimeImageUrl(url.href, location.href) !== null;
 }
 
 function awaitWithTimeout<T>(

@@ -5,6 +5,7 @@ import {
   type AccountPlatform,
   type AccountScope,
   accountIsolationService,
+  buildScopedStorageKey,
   detectAccountPlatformFromUrl,
   extractRouteUserIdFromUrl,
 } from '@/core/services/AccountIsolationService';
@@ -35,6 +36,13 @@ import { customWebsiteOriginPatterns } from '@/core/utils/customWebsites';
 import { getNativeOpenConversationUrl } from '@/core/utils/nativeOpenConversation';
 import { hasNotificationsPermission } from '@/core/utils/notificationsPermission';
 import { getPromptNameConflictIds } from '@/core/utils/promptName';
+import {
+  MAX_RUNTIME_IMAGE_BYTES,
+  RUNTIME_IMAGE_ALLOWED_HOSTS,
+  RUNTIME_IMAGE_HOST_SUFFIXES,
+  isAllowedRuntimeImageBody,
+  parseAllowedRuntimeImageUrl,
+} from '@/core/utils/runtimeImageFetch';
 import {
   SAFARI_CLIPBOARD_IMAGE_COPY_REQUEST,
   SAFARI_NATIVE_APP_ID,
@@ -84,7 +92,10 @@ import { getTranslation } from '@/utils/i18n';
 import type { TranslationKey } from '@/utils/translations';
 
 import { resolveOptionalHighlightSetting } from './highlightOptionalSetting';
-import { isHandledBackgroundRuntimeMessage } from './runtimeMessageRouting';
+import {
+  isAllowedSyncContentSender,
+  isHandledBackgroundRuntimeMessage,
+} from './runtimeMessageRouting';
 import { injectWatermarkInterceptorIntoOpenTabs } from './watermarkOpenTabs';
 
 const CUSTOM_CONTENT_SCRIPT_ID = 'gv-custom-content-script';
@@ -564,6 +575,81 @@ async function resolveAccountScopeForMessage(
     pageUrl: sender.tab?.url ?? null,
   });
   return toSyncAccountScope(resolved);
+}
+
+function parseStoredFolderData(value: unknown): FolderData | null {
+  let parsed = value;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return null;
+  const data = parsed as Record<string, unknown>;
+  if (
+    !Array.isArray(data.folders) ||
+    !data.folderContents ||
+    typeof data.folderContents !== 'object'
+  ) {
+    return null;
+  }
+  if (!Object.values(data.folderContents).every((contents) => Array.isArray(contents))) return null;
+  return parsed as FolderData;
+}
+
+function isPromptItemArray(value: unknown): value is PromptItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => {
+      if (!item || typeof item !== 'object') return false;
+      const prompt = item as Record<string, unknown>;
+      return (
+        typeof prompt.id === 'string' &&
+        typeof prompt.text === 'string' &&
+        Array.isArray(prompt.tags) &&
+        prompt.tags.every((tag) => typeof tag === 'string') &&
+        typeof prompt.createdAt === 'number' &&
+        Number.isFinite(prompt.createdAt) &&
+        (prompt.updatedAt === undefined ||
+          (typeof prompt.updatedAt === 'number' && Number.isFinite(prompt.updatedAt))) &&
+        (prompt.name === undefined || typeof prompt.name === 'string')
+      );
+    })
+  );
+}
+
+async function loadAuthoritativeSyncPayload(
+  platform: AccountPlatform,
+  accountScope: SyncAccountScope | null,
+): Promise<{ folders: FolderData; prompts: PromptItem[] }> {
+  const baseFolderStorageKey =
+    platform === 'aistudio' ? StorageKeys.FOLDER_DATA_AISTUDIO : StorageKeys.FOLDER_DATA;
+  const folderStorageKey = accountScope
+    ? buildScopedStorageKey(baseFolderStorageKey, accountScope.accountKey)
+    : baseFolderStorageKey;
+  const stored = await chrome.storage.local.get([folderStorageKey, StorageKeys.PROMPT_ITEMS]);
+  const folders = parseStoredFolderData(stored[folderStorageKey]);
+  if (!folders) {
+    throw new Error('Local folder data is unavailable or invalid');
+  }
+
+  const rawPrompts = stored[StorageKeys.PROMPT_ITEMS];
+  if (rawPrompts !== undefined && !isPromptItemArray(rawPrompts)) {
+    throw new Error('Local prompt data is invalid');
+  }
+  return { folders, prompts: rawPrompts ?? [] };
+}
+
+function isTrustedSyncMessageSender(
+  sender: chrome.runtime.MessageSender,
+  platform: AccountPlatform,
+): boolean {
+  return (
+    isTrustedExtensionPageSender(sender) ||
+    (sender.id === chrome.runtime.id && isAllowedSyncContentSender(sender.tab?.url, platform))
+  );
 }
 
 function matchesRouteScope(url: string, routeUserId: string | null): boolean {
@@ -1658,7 +1744,8 @@ type RuntimeImageMessage = {
 };
 
 type RuntimeImageSender = {
-  tab?: { id?: number };
+  id?: string;
+  tab?: { id?: number; url?: string };
 };
 
 function isRuntimeImageMessage(message: unknown): message is RuntimeImageMessage {
@@ -1667,18 +1754,76 @@ function isRuntimeImageMessage(message: unknown): message is RuntimeImageMessage
   return type === 'gv.fetchImage' || type === 'gv.fetchImageViaPage';
 }
 
+function normalizeRuntimeImageContentType(value: string | null | undefined): string {
+  return value?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+}
+
+async function readBoundedRuntimeImageResponse(
+  response: Response,
+  requestedUrl: string,
+  senderPageUrl: string,
+): Promise<{ contentType: string; base64: string } | null> {
+  const finalUrl = response.url || requestedUrl;
+  if (!parseAllowedRuntimeImageUrl(finalUrl, senderPageUrl)) return null;
+
+  const contentType = normalizeRuntimeImageContentType(response.headers.get('Content-Type'));
+  if (!contentType.startsWith('image/')) return null;
+
+  const declaredLength = Number(response.headers.get('Content-Length') || '0');
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > 0 &&
+    !isAllowedRuntimeImageBody(contentType, declaredLength)
+  ) {
+    return null;
+  }
+
+  if (!response.body) {
+    const blob = await response.blob();
+    if (!isAllowedRuntimeImageBody(contentType, blob.size)) return null;
+    return { contentType, base64: arrayBufferToBase64(await blob.arrayBuffer()) };
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_RUNTIME_IMAGE_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  if (!isAllowedRuntimeImageBody(contentType, totalBytes)) return null;
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { contentType, base64: arrayBufferToBase64(bytes.buffer) };
+}
+
 async function handleRuntimeImageMessage(
   message: RuntimeImageMessage,
   sender: RuntimeImageSender,
 ): Promise<Record<string, unknown>> {
-  const url = String(message.url || '');
-  if (!/^https?:\/\//i.test(url)) {
-    return { ok: false, error: 'invalid_url' };
+  const tabId = sender.tab?.id;
+  const senderPageUrl = sender.tab?.url;
+  if (sender.id !== chrome.runtime.id || !tabId || !senderPageUrl) {
+    return { ok: false, error: 'untrusted_sender' };
   }
 
+  const parsedUrl = parseAllowedRuntimeImageUrl(String(message.url || ''), senderPageUrl);
+  if (!parsedUrl) return { ok: false, error: 'url_not_allowed' };
+  const url = parsedUrl.href;
+
   if (message.type === 'gv.fetchImageViaPage') {
-    const tabId = sender.tab?.id;
-    if (!tabId) return { ok: false, error: 'invalid' };
     if (!chrome.scripting?.executeScript) {
       return { ok: false, error: 'scripting_api_unavailable' };
     }
@@ -1687,20 +1832,76 @@ async function handleRuntimeImageMessage(
       const results = await chrome.scripting.executeScript({
         target: { tabId },
         world: 'MAIN' as chrome.scripting.ExecutionWorld,
-        func: async (imageUrl: string) => {
+        func: async (
+          imageUrl: string,
+          senderOrigin: string,
+          allowedHosts: readonly string[],
+          allowedHostSuffixes: readonly string[],
+          maxBytes: number,
+        ) => {
+          const isAllowedFinalUrl = (rawUrl: string): boolean => {
+            try {
+              const parsed = new URL(rawUrl);
+              if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return false;
+              const hostname = parsed.hostname.toLowerCase();
+              return (
+                parsed.origin === senderOrigin ||
+                allowedHosts.includes(hostname) ||
+                allowedHostSuffixes.some((suffix) => hostname.endsWith(suffix))
+              );
+            } catch {
+              return false;
+            }
+          };
+
           const safeFetch = async (credentials: RequestCredentials) => {
             try {
               const response = await fetch(imageUrl, { credentials });
-              return response.ok ? await response.blob() : null;
+              return response.ok ? response : null;
             } catch {
               return null;
             }
           };
 
-          const blob = (await safeFetch('include')) || (await safeFetch('omit'));
-          if (!blob) return null;
+          const response = (await safeFetch('include')) || (await safeFetch('omit'));
+          if (!response || !isAllowedFinalUrl(response.url || imageUrl)) return null;
 
-          return await new Promise<{ contentType: string; base64: string } | null>((resolve) => {
+          const contentType =
+            response.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+          if (!contentType.startsWith('image/')) return null;
+          const declaredLength = Number(response.headers.get('Content-Length') || '0');
+          if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return null;
+
+          let blob: Blob;
+          if (!response.body) {
+            blob = await response.blob();
+            if (blob.size <= 0 || blob.size > maxBytes) return null;
+          } else {
+            const streamReader = response.body.getReader();
+            const chunks: ArrayBuffer[] = [];
+            let totalBytes = 0;
+            while (true) {
+              const { done, value } = await streamReader.read();
+              if (done) break;
+              if (!value) continue;
+              totalBytes += value.byteLength;
+              if (totalBytes > maxBytes) {
+                await streamReader.cancel();
+                return null;
+              }
+              const chunk = new Uint8Array(value.byteLength);
+              chunk.set(value);
+              chunks.push(chunk.buffer);
+            }
+            if (totalBytes <= 0) return null;
+            blob = new Blob(chunks, { type: contentType });
+          }
+
+          return await new Promise<{
+            contentType: string;
+            base64: string;
+            finalUrl: string;
+          } | null>((resolve) => {
             const reader = new FileReader();
             reader.onload = () => {
               const dataUrl = String(reader.result || '');
@@ -1709,8 +1910,9 @@ async function handleRuntimeImageMessage(
                 commaIndex < 0
                   ? null
                   : {
-                      contentType: blob.type || 'application/octet-stream',
+                      contentType,
                       base64: dataUrl.substring(commaIndex + 1),
+                      finalUrl: response.url || imageUrl,
                     },
               );
             };
@@ -1718,17 +1920,33 @@ async function handleRuntimeImageMessage(
             reader.readAsDataURL(blob);
           });
         },
-        args: [url],
+        args: [
+          url,
+          new URL(senderPageUrl).origin,
+          RUNTIME_IMAGE_ALLOWED_HOSTS,
+          RUNTIME_IMAGE_HOST_SUFFIXES,
+          MAX_RUNTIME_IMAGE_BYTES,
+        ],
       });
-      const result = results?.[0]?.result as { contentType: string; base64: string } | null;
-      return result?.base64
-        ? {
-            ok: true,
-            contentType: result.contentType,
-            base64: result.base64,
-            data: `data:${result.contentType};base64,${result.base64}`,
-          }
-        : { ok: false, error: 'page_fetch_failed' };
+      const result = results?.[0]?.result as {
+        contentType: string;
+        base64: string;
+        finalUrl: string;
+      } | null;
+      const estimatedBytes = result?.base64 ? Math.floor((result.base64.length * 3) / 4) : 0;
+      if (
+        !result?.base64 ||
+        !parseAllowedRuntimeImageUrl(result.finalUrl, senderPageUrl) ||
+        !isAllowedRuntimeImageBody(result.contentType, estimatedBytes)
+      ) {
+        return { ok: false, error: 'page_fetch_failed' };
+      }
+      return {
+        ok: true,
+        contentType: result.contentType,
+        base64: result.base64,
+        data: `data:${result.contentType};base64,${result.base64}`,
+      };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
@@ -1746,14 +1964,13 @@ async function handleRuntimeImageMessage(
   if (!response?.ok) {
     return { ok: false, error: response ? `HTTP ${response.status}` : 'fetch_failed' };
   }
-  const blob = await response.blob();
-  const base64 = arrayBufferToBase64(await blob.arrayBuffer());
-  const contentType = blob.type || 'image/png';
+  const result = await readBoundedRuntimeImageResponse(response, url, senderPageUrl);
+  if (!result) return { ok: false, error: 'unexpected_content' };
   return {
     ok: true,
-    data: `data:${contentType};base64,${base64}`,
-    contentType,
-    base64,
+    data: `data:${result.contentType};base64,${result.base64}`,
+    contentType: result.contentType,
+    base64: result.base64,
   };
 }
 
@@ -1798,13 +2015,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (message?.type === 'gv.generatedUi.captureVisibleTab') {
         const windowId = sender.tab?.windowId;
-        if (typeof windowId !== 'number' || !chrome.tabs?.captureVisibleTab) {
+        const senderTabId = sender.tab?.id;
+        if (
+          typeof windowId !== 'number' ||
+          typeof senderTabId !== 'number' ||
+          !chrome.tabs?.captureVisibleTab
+        ) {
           sendResponse({ ok: false, error: 'capture_unavailable' });
           return;
         }
 
         try {
+          const [activeTab] = await chrome.tabs.query({ active: true, windowId });
+          if (activeTab?.id !== senderTabId) {
+            sendResponse({ ok: false, error: 'sender_not_active' });
+            return;
+          }
+
           const dataUrl = await captureVisibleTab(windowId);
+          const [activeTabAfterCapture] = await chrome.tabs.query({ active: true, windowId });
+          if (activeTabAfterCapture?.id !== senderTabId) {
+            sendResponse({ ok: false, error: 'sender_not_active' });
+            return;
+          }
           sendResponse({ ok: true, dataUrl });
         } catch (error) {
           sendResponse({
@@ -2215,8 +2448,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
           case 'gv.sync.upload': {
             const {
-              folders,
-              prompts,
               interactive,
               platform: rawPlatform,
               accountScope: rawScope,
@@ -2224,8 +2455,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               highlightAccountScope: rawHighlightScope,
               includeHighlights,
             } = message.payload as {
-              folders: FolderData;
-              prompts: PromptItem[];
               interactive?: boolean;
               platform?: 'gemini' | 'aistudio';
               accountScope?: unknown;
@@ -2234,6 +2463,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               includeHighlights?: boolean;
             };
             const platform = rawPlatform || 'gemini';
+            if (!isTrustedSyncMessageSender(sender, platform)) {
+              sendResponse({ ok: false, error: 'untrusted_sender' });
+              return;
+            }
             const syncHighlights = await isHighlightCloudSyncRequested(
               platform,
               includeHighlights === true,
@@ -2243,6 +2476,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               platform,
               isSyncAccountScope(rawScope) ? rawScope : undefined,
             );
+            const { folders, prompts } = await loadAuthoritativeSyncPayload(platform, accountScope);
             const timelineHierarchyAccountScope =
               platform === 'gemini' && isSyncAccountScope(rawTimelineHierarchyScope)
                 ? rawTimelineHierarchyScope

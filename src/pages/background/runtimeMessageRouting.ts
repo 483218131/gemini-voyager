@@ -1,9 +1,32 @@
+import type { SyncPlatform } from '@/core/types/sync';
 import {
   CHATGPT_HANDOFF_CANCEL_EXPIRY_MESSAGE,
   CHATGPT_HANDOFF_GET_TAB_ID_MESSAGE,
   CHATGPT_HANDOFF_SCHEDULE_EXPIRY_MESSAGE,
 } from '@/features/plugins/builtin/chatgptTemporaryHandoff/storage';
 import { PLUGIN_CONTENT_SCRIPT_SYNC_MESSAGE } from '@/features/plugins/runtime/messages';
+
+function parseHttpsUrl(rawUrl: string | undefined): URL | null {
+  if (!rawUrl) return null;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function isAllowedSyncContentSender(
+  senderPageUrl: string | undefined,
+  platform: SyncPlatform,
+): boolean {
+  const parsed = parseHttpsUrl(senderPageUrl);
+  if (!parsed) return false;
+  return platform === 'aistudio'
+    ? parsed.hostname === 'aistudio.google.com' || parsed.hostname === 'aistudio.google.cn'
+    : parsed.hostname === 'gemini.google.com' || parsed.hostname === 'business.gemini.google';
+}
 
 const HANDLED_BACKGROUND_MESSAGE_TYPES = new Set([
   'gv.fetchImage',
