@@ -38,7 +38,9 @@ Root cause:
 The post-render CSS guard rejected Mermaid's built-in tooltip `z-index` and
 removed the entire generated `<style>` block. DOMPurify also correctly removed
 Mermaid's HTML-label `foreignObject`, so flowcharts configured for HTML labels
-lost their text.
+lost their text. The guard was introduced by direct `main` commit `109a6698`
+(`fix(security): harden privileged runtime and Mermaid sinks`) and shipped in
+v1.8.0; it did not come from a pull request.
 
 Fix:
 
@@ -51,8 +53,10 @@ Regression test:
 
 `src/pages/content/mermaid/__tests__/mermaid.test.ts` verifies strict-mode SVG
 labels, normal Mermaid tooltip/theme CSS, visible sanitized labels, formatting,
-and entity decoding. The production Chrome build was also reloaded against a
-real Gemini flowchart to verify colored nodes and readable labels.
+and entity decoding. Any Mermaid sanitizer change must run these tests and a
+real rendered flowchart check; testing only a synthetic malicious `<style>` is
+not enough. The production Chrome build was also reloaded against a real Gemini
+flowchart to verify colored nodes and readable labels.
 
 Commit:
 
