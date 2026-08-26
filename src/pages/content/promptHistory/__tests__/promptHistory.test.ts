@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StorageKeys } from '@/core/types/common';
+import { hashString } from '@/core/utils/hash';
 
 import { buildInstructionBlock } from '../../folderProject/instructionBlock';
 import { addPromptHistory, getPromptHistory } from '../storage';
@@ -17,6 +18,10 @@ let syncStore: Record<string, unknown> = {};
 let storageListeners: StorageListener[] = [];
 let cleanup: (() => void) | null = null;
 let uuidCounter = 0;
+const PRIMARY_EMAIL = 'primary@example.com';
+const SECONDARY_EMAIL = 'secondary@example.com';
+const PRIMARY_ACCOUNT_SCOPE = `email:${hashString(PRIMARY_EMAIL)}`;
+const SECONDARY_ACCOUNT_SCOPE = `email:${hashString(SECONDARY_EMAIL)}`;
 
 function storageResult(keys: unknown, source: Record<string, unknown>): Record<string, unknown> {
   if (keys === null) return { ...source };
@@ -44,16 +49,20 @@ function setupStorage(enabled: boolean, ctrlEnter = false): void {
   storageListeners = [];
   (chrome.runtime as unknown as { lastError: null }).lastError = null;
   (chrome.storage as unknown as Record<string, unknown>).local = {
-    get: vi.fn((keys: unknown, callback: (result: Record<string, unknown>) => void) => {
-      callback(storageResult(keys, localStore));
+    get: vi.fn((keys: unknown, callback?: (result: Record<string, unknown>) => void) => {
+      const result = storageResult(keys, localStore);
+      callback?.(result);
+      return Promise.resolve(result);
     }),
     set: vi.fn((items: Record<string, unknown>, callback?: () => void) => {
       Object.assign(localStore, items);
       callback?.();
+      return Promise.resolve();
     }),
     remove: vi.fn((keys: string | string[], callback?: () => void) => {
       (Array.isArray(keys) ? keys : [keys]).forEach((key) => delete localStore[key]);
       callback?.();
+      return Promise.resolve();
     }),
   };
   (chrome.storage as unknown as Record<string, unknown>).sync = {
@@ -71,6 +80,15 @@ function setupStorage(enabled: boolean, ctrlEnter = false): void {
       storageListeners = storageListeners.filter((candidate) => candidate !== listener);
     }),
   };
+}
+
+function setCurrentAccountEmail(email: string): void {
+  let account = document.querySelector<HTMLElement>('[data-email]');
+  if (!account) {
+    account = document.createElement('button');
+    document.body.appendChild(account);
+  }
+  account.dataset.email = email;
 }
 
 function emitStorageChange(
@@ -109,6 +127,7 @@ describe('Prompt History capture and lifecycle', () => {
     vi.resetModules();
     document.body.replaceChildren();
     window.history.replaceState({}, '', '/u/0/app/test');
+    setCurrentAccountEmail(PRIMARY_EMAIL);
     uuidCounter = 0;
     vi.spyOn(crypto, 'randomUUID').mockImplementation(
       () => `00000000-0000-4000-8000-${String(++uuidCounter).padStart(12, '0')}`,
@@ -141,10 +160,9 @@ describe('Prompt History capture and lifecycle', () => {
     icon.click();
 
     await vi.waitFor(async () => {
-      expect((await getPromptHistory('u:0')).map((item) => item.content).sort()).toEqual([
-        'icon send',
-        'localized send',
-      ]);
+      expect(
+        (await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).map((item) => item.content).sort(),
+      ).toEqual(['icon send', 'localized send']);
     });
   });
 
@@ -164,10 +182,9 @@ describe('Prompt History capture and lifecycle', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
     await vi.waitFor(async () => {
-      expect((await getPromptHistory('u:0')).map((item) => item.content).sort()).toEqual([
-        'ctrl enter',
-        'plain enter',
-      ]);
+      expect(
+        (await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).map((item) => item.content).sort(),
+      ).toEqual(['ctrl enter', 'plain enter']);
     });
   });
 
@@ -185,10 +202,9 @@ describe('Prompt History capture and lifecycle', () => {
     injected.button.click();
 
     await vi.waitFor(async () => {
-      expect((await getPromptHistory('u:0')).map((item) => item.content).sort()).toEqual([
-        'Injected first\n\nInjected second',
-        'Plain first\n\nPlain second',
-      ]);
+      expect(
+        (await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).map((item) => item.content).sort(),
+      ).toEqual(['Injected first\n\nInjected second', 'Plain first\n\nPlain second']);
     });
   });
 
@@ -202,7 +218,7 @@ describe('Prompt History capture and lifecycle', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
     await vi.waitFor(async () => {
-      const items = await getPromptHistory('u:0');
+      const items = await getPromptHistory(PRIMARY_ACCOUNT_SCOPE);
       expect(items.map((item) => item.content)).toEqual(['one physical send']);
     });
   });
@@ -218,7 +234,7 @@ describe('Prompt History capture and lifecycle', () => {
     );
 
     await vi.waitFor(async () => {
-      expect((await getPromptHistory('u:0')).map((item) => item.content)).toEqual([
+      expect((await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).map((item) => item.content)).toEqual([
         'send with ctrl',
       ]);
     });
@@ -244,7 +260,7 @@ describe('Prompt History capture and lifecycle', () => {
     updateButton.click();
 
     await vi.waitFor(async () => {
-      const items = await getPromptHistory('u:0');
+      const items = await getPromptHistory(PRIMARY_ACCOUNT_SCOPE);
       expect(items).toHaveLength(1);
       expect(items[0]).toMatchObject({ content: 'updated prompt text', type: 'edited' });
     });
@@ -270,6 +286,29 @@ describe('Prompt History capture and lifecycle', () => {
     expect(document.querySelector('.gv-ph-trigger')).not.toBeNull();
   });
 
+  it('keeps captures separate when the same route switches to another account', async () => {
+    await start();
+    const { input, button } = createMainComposer('Send message');
+    input.textContent = 'primary prompt';
+    button.click();
+    await vi.waitFor(async () => {
+      expect(await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).toHaveLength(1);
+    });
+
+    setCurrentAccountEmail(SECONDARY_EMAIL);
+    input.textContent = 'secondary prompt';
+    button.click();
+
+    await vi.waitFor(async () => {
+      expect((await getPromptHistory(SECONDARY_ACCOUNT_SCOPE)).map((item) => item.content)).toEqual(
+        ['secondary prompt'],
+      );
+    });
+    expect((await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).map((item) => item.content)).toEqual([
+      'primary prompt',
+    ]);
+  });
+
   it('shows a visible alert when extension storage rejects a capture', async () => {
     await start();
     vi.mocked(chrome.storage.local.set).mockImplementation((_items, callback) => {
@@ -290,7 +329,7 @@ describe('Prompt History capture and lifecycle', () => {
 
   it('updates reused notice accessibility semantics from success to error', async () => {
     await start();
-    await addPromptHistory('copy me', 'sent', '/u/0/app/test');
+    await addPromptHistory('copy me', 'sent', '/u/0/app/test', PRIMARY_ACCOUNT_SCOPE);
     document.querySelector<HTMLButtonElement>('.gv-ph-trigger')?.click();
     await vi.waitFor(() => expect(document.querySelectorAll('.gv-ph-item')).toHaveLength(1));
 
@@ -313,8 +352,8 @@ describe('Prompt History capture and lifecycle', () => {
 
   it('requires confirmation and clears only the current account', async () => {
     await start();
-    await addPromptHistory('account zero', 'sent', '/u/0/app/test');
-    await addPromptHistory('account one', 'sent', '/u/1/app/test');
+    await addPromptHistory('account zero', 'sent', '/u/0/app/test', PRIMARY_ACCOUNT_SCOPE);
+    await addPromptHistory('account one', 'sent', '/u/1/app/test', SECONDARY_ACCOUNT_SCOPE);
 
     const trigger = document.querySelector<HTMLButtonElement>('.gv-ph-trigger');
     trigger?.click();
@@ -322,8 +361,8 @@ describe('Prompt History capture and lifecycle', () => {
     const clearButton = document.querySelector<HTMLButtonElement>('.gv-ph-header .gv-ph-action');
     clearButton?.click();
 
-    expect(document.querySelector('.gv-ph-confirm')).not.toBeNull();
-    expect(await getPromptHistory('u:0')).toHaveLength(1);
+    await vi.waitFor(() => expect(document.querySelector('.gv-ph-confirm')).not.toBeNull());
+    expect(await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).toHaveLength(1);
     const cancel = document.querySelector<HTMLButtonElement>('.gv-ph-confirm button:last-child');
     expect(document.activeElement).toBe(cancel);
     cancel?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
@@ -331,8 +370,10 @@ describe('Prompt History capture and lifecycle', () => {
     expect(document.activeElement).toBe(confirm);
     confirm?.click();
 
-    await vi.waitFor(async () => expect(await getPromptHistory('u:0')).toHaveLength(0));
-    expect(await getPromptHistory('u:1')).toHaveLength(1);
+    await vi.waitFor(async () =>
+      expect(await getPromptHistory(PRIMARY_ACCOUNT_SCOPE)).toHaveLength(0),
+    );
+    expect(await getPromptHistory(SECONDARY_ACCOUNT_SCOPE)).toHaveLength(1);
   });
 
   it('exposes localized dialog relationships and moves focus into the panel', async () => {

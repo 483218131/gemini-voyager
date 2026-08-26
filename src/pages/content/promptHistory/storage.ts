@@ -3,7 +3,8 @@
  *
  * Every occurrence has its own storage key. Independent keys keep concurrent
  * captures from different tabs from overwriting each other, while the account
- * prefix keeps Gemini's /u/<index> profiles isolated.
+ * prefix keeps Gemini account identities isolated. Callers should pass the
+ * stable account key resolved by AccountIsolationService.
  */
 import { StorageKeys } from '@/core/types/common';
 
@@ -128,6 +129,7 @@ function historyRootPrefix(): string {
   return `${StorageKeys.PROMPT_HISTORY_ITEMS}${HISTORY_KEY_SEPARATOR}`;
 }
 
+/** Legacy route-only scope retained for backward-compatible direct callers. */
 export function getPromptHistoryAccountScope(pathname: string): string {
   const accountIndex = pathname.match(/^\/u\/(\d+)(?:\/|$)/)?.[1] ?? DEFAULT_ACCOUNT_INDEX;
   return `u:${accountIndex}`;
@@ -175,7 +177,7 @@ export async function addPromptHistory(
   content: string,
   type: PromptHistoryType,
   path: string,
-  accountScope = getPromptHistoryAccountScope(path),
+  accountScope: string,
 ): Promise<void> {
   const trimmed = content.trim();
   if (!trimmed) return;

@@ -5,6 +5,10 @@
  * Gemini can clear or swallow it. The feature is opt-in and keeps all runtime
  * listeners removable so it can be disabled and re-enabled without a reload.
  */
+import {
+  accountIsolationService,
+  detectAccountContextFromDocument,
+} from '@/core/services/AccountIsolationService';
 import { LoggerService } from '@/core/services/LoggerService';
 import { StorageKeys } from '@/core/types/common';
 import { isExtensionContextInvalidatedError } from '@/core/utils/extensionContext';
@@ -26,7 +30,6 @@ import {
   addPromptHistory,
   clearPromptHistory,
   getPromptHistory,
-  getPromptHistoryAccountScope,
   isPromptHistoryStorageKeyForAccount,
   removePromptHistoryItem,
 } from './storage';
@@ -68,8 +71,35 @@ function getConversationPath(): string {
   return window.location.pathname;
 }
 
-function getCurrentAccountScope(): string {
-  return getPromptHistoryAccountScope(getConversationPath());
+interface ResolvedPromptHistoryScope {
+  accountScope: string;
+  identity: string;
+}
+
+function getCurrentAccountIdentity(): {
+  pageUrl: string;
+  routeUserId: string | null;
+  email: string | null;
+  identity: string;
+} {
+  const pageUrl = window.location.href;
+  const context = detectAccountContextFromDocument(pageUrl, document);
+  return {
+    pageUrl,
+    routeUserId: context.routeUserId,
+    email: context.email,
+    identity: `${context.routeUserId ?? ''}\u0000${context.email ?? ''}`,
+  };
+}
+
+async function resolveCurrentAccountScope(): Promise<ResolvedPromptHistoryScope> {
+  const context = getCurrentAccountIdentity();
+  const scope = await accountIsolationService.resolveAccountScope({
+    pageUrl: context.pageUrl,
+    routeUserId: context.routeUserId,
+    email: context.email,
+  });
+  return { accountScope: scope.accountKey, identity: context.identity };
 }
 
 function createEl<K extends keyof HTMLElementTagNameMap>(
@@ -154,25 +184,28 @@ function capturePrompt(input: HTMLElement, type = promptTypeForInput(input)): vo
   const content = stripInstructionBlockPreservingWhitespace(readInputText(input)).trim();
   if (!content) return;
   const path = getConversationPath();
-  const accountScope = getPromptHistoryAccountScope(path);
-  const fingerprint = `${accountScope}\u0000${path}\u0000${type}\u0000${content}`;
-  const now = Date.now();
-  const previousCapture = recentCaptures.get(fingerprint);
-  if (
-    previousCapture !== undefined &&
-    now - previousCapture >= 0 &&
-    now - previousCapture < CAPTURE_DEDUPLICATION_WINDOW_MS
-  ) {
-    return;
-  }
-  recentCaptures.set(fingerprint, now);
-  for (const [key, timestamp] of recentCaptures) {
-    if (now - timestamp >= CAPTURE_DEDUPLICATION_WINDOW_MS) recentCaptures.delete(key);
-  }
-  void addPromptHistory(content, type, path, accountScope).catch((error) => {
-    if (recentCaptures.get(fingerprint) === now) recentCaptures.delete(fingerprint);
-    reportStorageError(error);
-  });
+  void resolveCurrentAccountScope()
+    .then(({ accountScope }) => {
+      const fingerprint = `${accountScope}\u0000${path}\u0000${type}\u0000${content}`;
+      const now = Date.now();
+      const previousCapture = recentCaptures.get(fingerprint);
+      if (
+        previousCapture !== undefined &&
+        now - previousCapture >= 0 &&
+        now - previousCapture < CAPTURE_DEDUPLICATION_WINDOW_MS
+      ) {
+        return;
+      }
+      recentCaptures.set(fingerprint, now);
+      for (const [key, timestamp] of recentCaptures) {
+        if (now - timestamp >= CAPTURE_DEDUPLICATION_WINDOW_MS) recentCaptures.delete(key);
+      }
+      return addPromptHistory(content, type, path, accountScope).catch((error) => {
+        if (recentCaptures.get(fingerprint) === now) recentCaptures.delete(fingerprint);
+        throw error;
+      });
+    })
+    .catch(reportStorageError);
 }
 
 function startCaptureListeners(): void {
@@ -339,11 +372,19 @@ function renderHistoryList(): void {
   const list = listEl;
   if (!list) return;
   const revision = ++renderRevision;
-  const accountScope = getCurrentAccountScope();
   list.setAttribute('aria-busy', 'true');
-  void getPromptHistory(accountScope)
-    .then((items) => {
-      if (revision !== renderRevision || accountScope !== getCurrentAccountScope()) return;
+  void resolveCurrentAccountScope()
+    .then(async ({ accountScope, identity }) => ({
+      accountScope,
+      identity,
+      items: await getPromptHistory(accountScope),
+    }))
+    .then(({ identity, items }) => {
+      if (revision !== renderRevision) return;
+      if (identity !== getCurrentAccountIdentity().identity) {
+        if (panelOpen) renderHistoryList();
+        return;
+      }
       renderHistoryItems(items);
     })
     .catch(reportStorageError)
@@ -375,9 +416,10 @@ function togglePanel(): void {
   else openPanel();
 }
 
-function showClearConfirmation(anchor: HTMLButtonElement): void {
+async function showClearConfirmation(anchor: HTMLButtonElement): Promise<void> {
   if (document.body.querySelector('.gv-pm-confirm')) return;
-  const accountScope = getCurrentAccountScope();
+  const { accountScope, identity } = await resolveCurrentAccountScope();
+  if (!panelOpen || identity !== getCurrentAccountIdentity().identity) return;
   const confirm = createEl('div', `gv-pm-confirm ${CONFIRM_CLASS}`);
   confirm.setAttribute('role', 'alertdialog');
   confirm.setAttribute('aria-modal', 'true');
@@ -449,7 +491,7 @@ function showClearConfirmation(anchor: HTMLButtonElement): void {
     void clearPromptHistory(accountScope)
       .then(() => {
         cleanupConfirm(false);
-        if (accountScope === getCurrentAccountScope()) renderHistoryList();
+        renderHistoryList();
       })
       .catch((error) => {
         yes.disabled = false;
@@ -488,7 +530,9 @@ function setupPanel(): void {
   const clearButton = createEl('button', 'gv-ph-action');
   clearButton.type = 'button';
   clearButton.textContent = getTranslationSync('promptHistoryClear');
-  clearButton.addEventListener('click', () => showClearConfirmation(clearButton));
+  clearButton.addEventListener('click', () => {
+    void showClearConfirmation(clearButton).catch(reportStorageError);
+  });
   header.append(title, clearButton);
 
   listEl = createEl('div', 'gv-ph-list');
@@ -559,12 +603,9 @@ function startUrlWatcher(): void {
   stopRouteWatcher = watchRouteChanges(() => {
     const nextPath = getConversationPath();
     if (nextPath === currentPath) return;
-    const previousScope = getPromptHistoryAccountScope(currentPath);
-    const nextScope = getPromptHistoryAccountScope(nextPath);
     currentPath = nextPath;
     renderRevision++;
-    if (previousScope !== nextScope) closePanel(false);
-    else if (panelOpen) renderHistoryList();
+    closePanel(false);
   });
 }
 
@@ -619,12 +660,16 @@ function setupStorageListener(): void {
       return;
     }
     if (areaName !== 'local' || !panelOpen) return;
-    const accountScope = getCurrentAccountScope();
-    if (
-      Object.keys(changes).some((key) => isPromptHistoryStorageKeyForAccount(key, accountScope))
-    ) {
-      renderHistoryList();
-    }
+    void resolveCurrentAccountScope()
+      .then(({ accountScope, identity }) => {
+        if (!panelOpen || identity !== getCurrentAccountIdentity().identity) return;
+        if (
+          Object.keys(changes).some((key) => isPromptHistoryStorageKeyForAccount(key, accountScope))
+        ) {
+          renderHistoryList();
+        }
+      })
+      .catch(reportStorageError);
   };
   try {
     chrome.storage?.onChanged?.addListener(storageListener);

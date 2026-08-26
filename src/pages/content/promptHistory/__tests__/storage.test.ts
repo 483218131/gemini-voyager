@@ -14,6 +14,8 @@ import {
 } from '../storage';
 
 let localStore: Record<string, unknown> = {};
+const ACCOUNT_ZERO_SCOPE = 'email:account-zero';
+const ACCOUNT_ONE_SCOPE = 'email:account-one';
 
 function setRuntimeError(message: string | null): void {
   (chrome.runtime as unknown as { lastError: { message: string } | null }).lastError = message
@@ -58,40 +60,42 @@ describe('promptHistory storage', () => {
 
   it('stores and reads newest-first under independent account-scoped item keys', async () => {
     vi.spyOn(Date, 'now').mockReturnValueOnce(100).mockReturnValueOnce(200);
-    await addPromptHistory('first', 'sent', '/u/1/app/abc');
-    await addPromptHistory('second', 'edited', '/u/1/app/abc');
+    await addPromptHistory('first', 'sent', '/u/1/app/abc', ACCOUNT_ONE_SCOPE);
+    await addPromptHistory('second', 'edited', '/u/1/app/abc', ACCOUNT_ONE_SCOPE);
 
-    const items = await getPromptHistory('u:1');
+    const items = await getPromptHistory(ACCOUNT_ONE_SCOPE);
     expect(items.map((item) => item.content)).toEqual(['second', 'first']);
     expect(Object.keys(localStore)).toHaveLength(2);
     expect(
-      Object.keys(localStore).every((key) => key.startsWith('gvPromptHistoryItems:u:1:')),
+      Object.keys(localStore).every((key) =>
+        key.startsWith(`gvPromptHistoryItems:${ACCOUNT_ONE_SCOPE}:`),
+      ),
     ).toBe(true);
   });
 
   it('keeps reads, removal, and clear isolated to the active Gemini account', async () => {
-    await addPromptHistory('account zero', 'sent', '/u/0/app/abc');
-    await addPromptHistory('account one', 'sent', '/u/1/app/abc');
+    await addPromptHistory('account zero', 'sent', '/u/0/app/abc', ACCOUNT_ZERO_SCOPE);
+    await addPromptHistory('account one', 'sent', '/u/1/app/abc', ACCOUNT_ONE_SCOPE);
 
-    const zero = await getPromptHistory('u:0');
-    const one = await getPromptHistory('u:1');
+    const zero = await getPromptHistory(ACCOUNT_ZERO_SCOPE);
+    const one = await getPromptHistory(ACCOUNT_ONE_SCOPE);
     expect(zero.map((item) => item.content)).toEqual(['account zero']);
     expect(one.map((item) => item.content)).toEqual(['account one']);
 
     await removePromptHistoryItem(zero[0].id, zero[0].accountScope);
-    expect(await getPromptHistory('u:0')).toEqual([]);
-    expect(await getPromptHistory('u:1')).toHaveLength(1);
+    expect(await getPromptHistory(ACCOUNT_ZERO_SCOPE)).toEqual([]);
+    expect(await getPromptHistory(ACCOUNT_ONE_SCOPE)).toHaveLength(1);
 
-    await clearPromptHistory('u:1');
-    expect(await getPromptHistory('u:1')).toEqual([]);
+    await clearPromptHistory(ACCOUNT_ONE_SCOPE);
+    expect(await getPromptHistory(ACCOUNT_ONE_SCOPE)).toEqual([]);
   });
 
   it('deduplicates identical occurrences but keeps sent and edited types distinct', async () => {
-    await addPromptHistory('same', 'sent', '/u/0/app/abc');
-    await addPromptHistory('same', 'sent', '/u/0/app/abc');
-    await addPromptHistory('same', 'edited', '/u/0/app/abc');
+    await addPromptHistory('same', 'sent', '/u/0/app/abc', ACCOUNT_ZERO_SCOPE);
+    await addPromptHistory('same', 'sent', '/u/0/app/abc', ACCOUNT_ZERO_SCOPE);
+    await addPromptHistory('same', 'edited', '/u/0/app/abc', ACCOUNT_ZERO_SCOPE);
 
-    const items = await getPromptHistory('u:0');
+    const items = await getPromptHistory(ACCOUNT_ZERO_SCOPE);
     expect(items).toHaveLength(2);
     expect(new Set(items.map((item) => item.type))).toEqual(new Set(['sent', 'edited']));
   });
@@ -107,17 +111,16 @@ describe('promptHistory storage', () => {
       },
     );
 
-    const first = addPromptHistory('from tab one', 'sent', '/u/0/app/one');
-    const second = addPromptHistory('from tab two', 'sent', '/u/0/app/two');
+    const first = addPromptHistory('from tab one', 'sent', '/u/0/app/one', ACCOUNT_ZERO_SCOPE);
+    const second = addPromptHistory('from tab two', 'sent', '/u/0/app/two', ACCOUNT_ZERO_SCOPE);
     await vi.waitFor(() => expect(pendingSets).toHaveLength(2));
 
     pendingSets.splice(0).forEach((complete) => complete());
     await Promise.all([first, second]);
 
-    expect((await getPromptHistory('u:0')).map((item) => item.content).sort()).toEqual([
-      'from tab one',
-      'from tab two',
-    ]);
+    expect((await getPromptHistory(ACCOUNT_ZERO_SCOPE)).map((item) => item.content).sort()).toEqual(
+      ['from tab one', 'from tab two'],
+    );
   });
 
   it('does not resolve a save before its storage callback completes', async () => {
@@ -131,7 +134,12 @@ describe('promptHistory storage', () => {
       },
     );
     const settled = vi.fn();
-    const save = addPromptHistory('wait for storage', 'sent', '/u/0/app/abc').then(settled);
+    const save = addPromptHistory(
+      'wait for storage',
+      'sent',
+      '/u/0/app/abc',
+      ACCOUNT_ZERO_SCOPE,
+    ).then(settled);
     await vi.waitFor(() => expect(pendingSet.complete).toBeTypeOf('function'));
     expect(settled).not.toHaveBeenCalled();
 
@@ -159,22 +167,22 @@ describe('promptHistory storage', () => {
       callback?.();
       setRuntimeError(null);
     });
-    await expect(addPromptHistory('cannot save', 'sent', '/u/0/app/abc')).rejects.toThrow(
-      'quota exceeded',
-    );
+    await expect(
+      addPromptHistory('cannot save', 'sent', '/u/0/app/abc', ACCOUNT_ZERO_SCOPE),
+    ).rejects.toThrow('quota exceeded');
   });
 
   it('bounds history by item count', async () => {
     for (let index = 0; index < MAX_ITEMS + 5; index++) {
-      await addPromptHistory(`prompt ${index}`, 'sent', `/u/0/app/${index}`);
+      await addPromptHistory(`prompt ${index}`, 'sent', `/u/0/app/${index}`, ACCOUNT_ZERO_SCOPE);
     }
-    expect(await getPromptHistory('u:0')).toHaveLength(MAX_ITEMS);
+    expect(await getPromptHistory(ACCOUNT_ZERO_SCOPE)).toHaveLength(MAX_ITEMS);
   });
 
   it('bounds total encoded prompt-history bytes', async () => {
     const chunk = 'x'.repeat(50_000);
     for (let index = 0; index < 60; index++) {
-      await addPromptHistory(`${index}${chunk}`, 'sent', `/u/0/app/${index}`);
+      await addPromptHistory(`${index}${chunk}`, 'sent', `/u/0/app/${index}`, ACCOUNT_ZERO_SCOPE);
     }
     const historyEntries = Object.entries(localStore).filter(([key]) =>
       key.startsWith(`${StorageKeys.PROMPT_HISTORY_ITEMS}:`),
@@ -187,11 +195,15 @@ describe('promptHistory storage', () => {
 
   it('ignores the unshipped legacy global array instead of migrating it', async () => {
     localStore[StorageKeys.PROMPT_HISTORY_ITEMS] = [{ content: 'legacy global prompt' }];
-    await addPromptHistory('scoped', 'sent', '/u/2/app/abc');
+    await addPromptHistory('scoped', 'sent', '/u/2/app/abc', ACCOUNT_ZERO_SCOPE);
 
-    expect((await getPromptHistory('u:2')).map((item) => item.content)).toEqual(['scoped']);
+    expect((await getPromptHistory(ACCOUNT_ZERO_SCOPE)).map((item) => item.content)).toEqual([
+      'scoped',
+    ]);
     expect(
-      Object.keys(localStore).some((key) => key.startsWith(getPromptHistoryStoragePrefix('u:2'))),
+      Object.keys(localStore).some((key) =>
+        key.startsWith(getPromptHistoryStoragePrefix(ACCOUNT_ZERO_SCOPE)),
+      ),
     ).toBe(true);
   });
 });

@@ -118,6 +118,30 @@ describe('AccountIsolationService', () => {
     expect(withRouteOnly.accountKey).toBe(withEmail.accountKey);
   });
 
+  it('does not reuse a route alias after that route switches to another email', async () => {
+    const service = new AccountIsolationService();
+    const firstAccount = await service.resolveAccountScope({
+      pageUrl: 'https://gemini.google.com/u/0/app',
+      routeUserId: '0',
+      email: 'first@example.com',
+    });
+    const secondAccount = await service.resolveAccountScope({
+      pageUrl: 'https://gemini.google.com/u/0/app',
+      routeUserId: '0',
+      email: 'second@example.com',
+    });
+    const firstAccountAgain = await service.resolveAccountScope({
+      pageUrl: 'https://gemini.google.com/u/0/app',
+      routeUserId: '0',
+      email: 'first@example.com',
+    });
+
+    expect(secondAccount.accountKey).not.toBe(firstAccount.accountKey);
+    expect(secondAccount.accountId).not.toBe(firstAccount.accountId);
+    expect(firstAccountAgain.accountKey).toBe(firstAccount.accountKey);
+    expect(firstAccountAgain.accountId).toBe(firstAccount.accountId);
+  });
+
   it('does not rewrite the profile map when an identical scope is resolved again', async () => {
     const service = new AccountIsolationService();
     const hints = {

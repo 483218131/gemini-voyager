@@ -349,11 +349,18 @@ export class AccountIsolationService {
 
         const keyFromEmail = emailHash ? map.emailAliases[emailHash] : null;
         const keyFromRoute = routeUserId ? map.routeAliases[routeUserId] : null;
+        const routeProfile = keyFromRoute ? map.profiles[keyFromRoute] : null;
+        const routeCanBelongToEmail = Boolean(
+          routeProfile && (!routeProfile.emailHash || routeProfile.emailHash === emailHash),
+        );
 
-        const accountKey =
-          keyFromEmail ??
-          keyFromRoute ??
-          (emailHash ? `email:${emailHash}` : routeUserId ? `route:${routeUserId}` : 'default');
+        // A `/u/<index>` slot is only a session-local hint: after sign-out or
+        // account switching, the same route can represent a different email.
+        // Keep the route-only fallback, but never let a stale route alias
+        // override an observed, different account identity.
+        const accountKey = emailHash
+          ? (keyFromEmail ?? (routeCanBelongToEmail ? keyFromRoute : null) ?? `email:${emailHash}`)
+          : (keyFromRoute ?? (routeUserId ? `route:${routeUserId}` : 'default'));
 
         const existing = map.profiles[accountKey];
         const routeAliasChanged = routeUserId
