@@ -172,6 +172,22 @@ describe('quote reply', () => {
     cleanup();
   });
 
+  it('styles sent quote blocks even when the Quote Reply action is disabled', () => {
+    document
+      .querySelector('main')!
+      .insertAdjacentHTML(
+        'afterbegin',
+        '<div class="query-text"><p class="query-text-line">&gt; Existing quote</p><p class="query-text-line">Follow-up</p></div>',
+      );
+
+    const cleanup = startQuoteReply({ quoteEnabled: false });
+
+    expect(document.querySelector('blockquote.gv-rendered-quote')).not.toBeNull();
+    expect(document.querySelector('.gv-rendered-quote-marker')?.textContent).toBe('> ');
+
+    cleanup();
+  });
+
   it('does not show Quote Reply for Gemini new-chat greeting text', () => {
     document.querySelector('main')!.innerHTML = '<h1>Your move, Ivaris!</h1>';
     const greeting = document.querySelector('h1');

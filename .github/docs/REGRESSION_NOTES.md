@@ -26,6 +26,41 @@ Regression test:
 Commit:
 ```
 
+## Rendered Quote Reply blocks must preserve their raw markers
+
+Symptom:
+
+Quote Reply could leave raw `>` lines ungrouped in the live composer even when
+sent quotes were styled. Styling a sent user message could also remove its
+markers from export, timeline summaries, or cleanup, and user LaTeX rendering
+could later erase the visual treatment.
+
+Root cause:
+
+Gemini uses separate DOM shapes for the editable Quill composer and sent user
+messages. The displayed user-message DOM is also shared by several features:
+the LaTeX renderer rebuilds matching paragraph contents, while export and
+timeline code still read the original text from those same paragraphs.
+
+Fix:
+
+Classify consecutive composer paragraphs with CSS classes only so caret, IME,
+and submitted Markdown remain native. Group sent quoted paragraphs in a
+semantic blockquote, hide each marker without deleting it, reapply decoration
+after relevant DOM changes, and restore the original structure during teardown.
+
+Regression test:
+
+`src/pages/content/quoteReply/__tests__/renderedQuotes.test.ts` verifies raw-text
+preservation, composer grouping and live edits, idempotence, late messages,
+renderer repaint, teardown, and browser-neutral logical CSS. The Quote Reply
+integration suite verifies that rendering remains active when its insertion
+action is disabled.
+
+Commit:
+
+`fix(quote-reply): render quoted context as a block`
+
 ## Route indexes are not durable account identities
 
 Symptom:

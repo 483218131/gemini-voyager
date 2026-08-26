@@ -16,6 +16,7 @@ import { getTranslationSync } from '../../../utils/i18n';
 import { findChatInput } from '../chatInput/index';
 import { HighlightManager } from '../highlight';
 import { expandInputCollapseIfNeeded } from '../inputCollapse/index';
+import { startRenderedQuoteStyling } from './renderedQuotes';
 
 // ============================================================================
 // Constants
@@ -439,6 +440,7 @@ interface QuoteReplyOptions {
 
 export function startQuoteReply(options: QuoteReplyOptions = {}) {
   injectStyles();
+  const stopRenderedQuoteStyling = startRenderedQuoteStyling();
 
   const quoteEnabled = options.quoteEnabled !== false;
   let highlightEnabled = options.highlightEnabled !== false;
@@ -1181,6 +1183,7 @@ export function startQuoteReply(options: QuoteReplyOptions = {}) {
 
   // Cleanup
   return () => {
+    stopRenderedQuoteStyling();
     hideButton();
     if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
     document.removeEventListener('mouseup', onMouseUp);
