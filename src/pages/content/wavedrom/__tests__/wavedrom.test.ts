@@ -567,6 +567,40 @@ describe('processCodeBlocks language labels', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(document.querySelector('.gv-wavedrom-wrapper')).toBeNull();
   });
+
+  it('restores the source block when explicit WaveDrom becomes invalid', async () => {
+    const codeEl = makeCodeBlock('wavedrom', WAVEJSON);
+    const codeBlockHost = codeEl.closest<HTMLElement>('code-block')!;
+    processCodeBlocks();
+    await vi.waitFor(() => {
+      expect(document.querySelector('.gv-wavedrom-wrapper')).not.toBeNull();
+    });
+
+    codeEl.textContent = '{ invalid WaveJSON';
+    processCodeBlocks();
+
+    await vi.waitFor(() => {
+      expect(document.querySelector('.gv-wavedrom-wrapper')).toBeNull();
+    });
+    expect(codeBlockHost.style.display).toBe('');
+    expect(codeEl.dataset.wavedromCode).toBeUndefined();
+  });
+
+  it('restores the source block when a rendered generic block gets a specific label', async () => {
+    const codeEl = makeCodeBlock('代码段', WAVEJSON);
+    const codeBlockHost = codeEl.closest<HTMLElement>('code-block')!;
+    processCodeBlocks();
+    await vi.waitFor(() => {
+      expect(document.querySelector('.gv-wavedrom-wrapper')).not.toBeNull();
+    });
+
+    codeBlockHost.querySelector('.code-block-decoration > span')!.textContent = 'json';
+    processCodeBlocks();
+
+    expect(document.querySelector('.gv-wavedrom-wrapper')).toBeNull();
+    expect(codeBlockHost.style.display).toBe('');
+    expect(codeEl.dataset.wavedromCode).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

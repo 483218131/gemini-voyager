@@ -769,6 +769,42 @@ const restoreNativeCopyButton = (nativeCopyElement: HTMLElement): boolean => {
   return true;
 };
 
+function teardownWaveDromWrapper(wrapper: HTMLElement): void {
+  closeActiveModal?.();
+  const codeBlockHost = wrapper.querySelector<HTMLElement>(':scope > code-block');
+  if (!codeBlockHost) {
+    wrapper.remove();
+    return;
+  }
+
+  const nativeCopyBtn =
+    wrapper.querySelector<HTMLElement>('.gv-wavedrom-toggle .buttons') ??
+    wrapper.querySelector<HTMLElement>('.gv-wavedrom-toggle .copy-button');
+  if (nativeCopyBtn && !restoreNativeCopyButton(nativeCopyBtn)) {
+    // A wrapper can survive an extension hot reload while the module-level
+    // WeakMap cannot. Preserve the control even when its old sibling position
+    // is no longer knowable.
+    (codeBlockHost.querySelector('.code-block-decoration') ?? codeBlockHost).appendChild(
+      nativeCopyBtn,
+    );
+  }
+
+  codeBlockHost.style.display = '';
+  codeBlockHost
+    .querySelectorAll<HTMLElement>('code[data-test-id="code-content"]')
+    .forEach((code) => {
+      delete code.dataset.wavedromCode;
+      delete code.dataset.wavedromProcessing;
+    });
+  wrapper.parentElement?.insertBefore(codeBlockHost, wrapper);
+  wrapper.remove();
+}
+
+function teardownWaveDromForCodeElement(codeEl: Element): void {
+  const wrapper = codeEl.closest<HTMLElement>('.gv-wavedrom-wrapper');
+  if (wrapper) teardownWaveDromWrapper(wrapper);
+}
+
 let wavedromEnabled = true;
 let renderGeneration = 0;
 
@@ -795,7 +831,14 @@ const renderWaveDrom = async (codeEl: HTMLElement, code: string) => {
 
     const svg = await renderWaveSvg(code, renderTheme === 'dark');
     if (!svg) {
+      const latestCode = codeEl.textContent || '';
+      if (latestCode !== code && wavedromEnabled && generationAtStart === renderGeneration) {
+        codeEl.dataset.wavedromProcessing = 'false';
+        void renderWaveDrom(codeEl, latestCode);
+        return;
+      }
       codeEl.dataset.wavedromProcessing = 'false';
+      teardownWaveDromForCodeElement(codeEl);
       return;
     }
     if (!wavedromEnabled || generationAtStart !== renderGeneration) {
@@ -879,7 +922,8 @@ const renderWaveDrom = async (codeEl: HTMLElement, code: string) => {
     console.log('[Gemini Voyager] WaveDrom diagram rendered');
   } catch {
     codeEl.dataset.wavedromProcessing = 'false';
-    const codeBlockHost = codeEl.closest('code-block') as HTMLElement;
+    teardownWaveDromForCodeElement(codeEl);
+    const codeBlockHost = codeEl.closest('code-block') as HTMLElement | null;
     if (codeBlockHost) codeBlockHost.style.display = '';
   }
 };
@@ -921,6 +965,7 @@ export const processCodeBlocks = () => {
     // WaveJSON is a niche format, and ordinary JSON output must not be
     // mistaken for a timing diagram.
     if (language && !isGenericLanguageLabel(language)) {
+      teardownWaveDromForCodeElement(codeEl);
       return;
     }
 
@@ -928,7 +973,9 @@ export const processCodeBlocks = () => {
     // (Code snippet, 代码段, …).
     if (isWaveJsonCode(codeText)) {
       void renderWaveDrom(codeEl as HTMLElement, codeText);
+      return;
     }
+    teardownWaveDromForCodeElement(codeEl);
   });
 };
 
@@ -938,33 +985,7 @@ let pendingProcessTimer: ReturnType<typeof setTimeout> | null = null;
 const teardownRenderedWaveDrom = () => {
   closeActiveModal?.();
   document.querySelectorAll<HTMLElement>('.gv-wavedrom-wrapper').forEach((wrapper) => {
-    const codeBlockHost = wrapper.querySelector<HTMLElement>(':scope > code-block');
-    if (!codeBlockHost) {
-      wrapper.remove();
-      return;
-    }
-
-    const nativeCopyBtn =
-      wrapper.querySelector<HTMLElement>('.gv-wavedrom-toggle .buttons') ??
-      wrapper.querySelector<HTMLElement>('.gv-wavedrom-toggle .copy-button');
-    if (nativeCopyBtn && !restoreNativeCopyButton(nativeCopyBtn)) {
-      // A wrapper can survive an extension hot reload while the module-level
-      // WeakMap cannot. Preserve the control in that recovery case even though
-      // its pre-reload sibling position is no longer knowable.
-      (codeBlockHost.querySelector('.code-block-decoration') ?? codeBlockHost).appendChild(
-        nativeCopyBtn,
-      );
-    }
-
-    codeBlockHost.style.display = '';
-    codeBlockHost
-      .querySelectorAll<HTMLElement>('code[data-test-id="code-content"]')
-      .forEach((code) => {
-        delete code.dataset.wavedromCode;
-        delete code.dataset.wavedromProcessing;
-      });
-    wrapper.parentElement?.insertBefore(codeBlockHost, wrapper);
-    wrapper.remove();
+    teardownWaveDromWrapper(wrapper);
   });
 };
 
