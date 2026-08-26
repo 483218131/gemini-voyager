@@ -26,6 +26,38 @@ Regression test:
 Commit:
 ```
 
+## Sanitized Mermaid SVGs must retain theme CSS and SVG labels
+
+Symptom:
+
+Mermaid flowcharts rendered as solid black shapes. After restoring the theme,
+node labels could still disappear or expose literal HTML/entity markup.
+
+Root cause:
+
+The post-render CSS guard rejected Mermaid's built-in tooltip `z-index` and
+removed the entire generated `<style>` block. DOMPurify also correctly removed
+Mermaid's HTML-label `foreignObject`, so flowcharts configured for HTML labels
+lost their text.
+
+Fix:
+
+Keep contained tooltip stacking while continuing to reject viewport-escaping
+CSS, render labels as sanitizable SVG text, translate simple HTML emphasis to
+Mermaid Markdown, and decode Mermaid's double-escaped ampersands only inside
+sanitized SVG text nodes.
+
+Regression test:
+
+`src/pages/content/mermaid/__tests__/mermaid.test.ts` verifies strict-mode SVG
+labels, normal Mermaid tooltip/theme CSS, visible sanitized labels, formatting,
+and entity decoding. The production Chrome build was also reloaded against a
+real Gemini flowchart to verify colored nodes and readable labels.
+
+Commit:
+
+`fix(mermaid): preserve sanitized theme and labels`
+
 ## Rendered Quote Reply blocks must preserve their raw markers
 
 Symptom:

@@ -61,6 +61,15 @@ describe('Mermaid dynamic loading', () => {
         expect.objectContaining({ securityLevel: 'strict' }),
       );
     });
+
+    it('uses SVG flowchart labels so sanitization preserves visible text', async () => {
+      await _initMermaidForTest();
+
+      const mermaid = await loadMermaid();
+      expect(mermaid?.initialize).toHaveBeenCalledWith(
+        expect.objectContaining({ htmlLabels: false, flowchart: { htmlLabels: false } }),
+      );
+    });
   });
 
   describe('resolveMermaidTheme', () => {
@@ -316,6 +325,36 @@ B --> C`;
       expect(diagram?.innerHTML).not.toContain('position:fixed');
       expect(diagram?.innerHTML).not.toContain('onload');
       expect(diagram?.textContent).toContain('Safe label');
+    });
+
+    it('preserves Mermaid theme CSS when its contained tooltip uses z-index', async () => {
+      const host = document.createElement('code-block');
+      const code = document.createElement('code');
+      host.appendChild(code);
+      document.body.appendChild(host);
+
+      const mermaid = await loadMermaid();
+      (mermaid?.render as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        svg: `<svg viewBox="0 0 100 50">
+          <style>
+            #chart .node rect { fill: #ececff; stroke: #9370db; }
+            div.mermaidTooltip { position: absolute; z-index: 100; }
+          </style>
+          <g id="chart" class="node">
+            <rect width="50" height="20"></rect>
+            <text><tspan>Dosing &amp;amp; Distribution</tspan></text>
+          </g>
+        </svg>`,
+      });
+
+      await _renderMermaidForTest(code, 'flowchart TD\nA --> B\nB --> C');
+
+      const style = document.querySelector<HTMLStyleElement>('.gv-mermaid-diagram style');
+      expect(style?.textContent).toContain('fill: #ececff');
+      expect(style?.textContent).toContain('z-index: 100');
+      expect(document.querySelector('.gv-mermaid-diagram tspan')?.textContent).toBe(
+        'Dosing & Distribution',
+      );
     });
   });
 
@@ -634,6 +673,16 @@ B --> C`;
   });
 
   describe('normalizeMermaidCode', () => {
+    it('converts simple HTML emphasis to Markdown for sanitized SVG labels', () => {
+      const input = `flowchart TD
+        A[<b>Prepare</b><br/>Dry portafilter]
+        A --> B[<em>Dose &amp; extract</em>]`;
+
+      expect(normalizeMermaidCode(input)).toBe(`flowchart TD
+        A[**Prepare**<br/>Dry portafilter]
+        A --> B[_Dose &amp; extract_]`);
+    });
+
     it('moves a trailing comment after linkStyle onto its own line', () => {
       const input = `graph TD
         A --> B

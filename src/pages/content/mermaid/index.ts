@@ -60,7 +60,7 @@ function containsUnsafeMermaidCss(value: string): boolean {
     .toLowerCase();
   return (
     /(?:^|[;{])\s*position\s*:\s*(?:fixed|sticky)/.test(normalized) ||
-    /(?:^|[;{])\s*(?:inset(?:-[a-z]+)?|z-index)\s*:/.test(normalized) ||
+    /(?:^|[;{])\s*inset(?:-[a-z]+)?\s*:/.test(normalized) ||
     /@import|(?:expression|behavior|-moz-binding)\s*[:(]/.test(normalized) ||
     /url\s*\(\s*(?!["']?#)/.test(normalized)
   );
@@ -100,6 +100,13 @@ async function sanitizeMermaidSvg(svg: string): Promise<string> {
         element.removeAttribute(attribute.name);
       }
     }
+  });
+  template.content.querySelectorAll('text, tspan').forEach((element) => {
+    element.childNodes.forEach((node) => {
+      if (node.nodeType === 3 && node.textContent?.includes('&amp;')) {
+        node.textContent = node.textContent.replace(/&amp;/gi, '&');
+      }
+    });
   });
 
   return template.innerHTML;
@@ -214,6 +221,8 @@ const initMermaid = async (): Promise<boolean> => {
   mermaid.initialize({
     startOnLoad: false,
     theme: theme === 'dark' ? 'dark' : 'default',
+    htmlLabels: false,
+    flowchart: { htmlLabels: false },
     securityLevel: 'strict',
     fontFamily: 'Google Sans, Roboto, sans-serif',
     logLevel: 5, // 5 = fatal, only log fatal errors (v9.x uses numbers)
@@ -663,7 +672,12 @@ export const normalizeWhitespace = (code: string): string => {
  * @internal Exported for testing
  */
 export const normalizeMermaidCode = (code: string): string => {
-  const lines = normalizeWhitespace(code).split('\n');
+  const lines = normalizeWhitespace(code)
+    .replace(/<\s*(?:b|strong)\s*>/gi, '**')
+    .replace(/<\s*\/\s*(?:b|strong)\s*>/gi, '**')
+    .replace(/<\s*(?:i|em)\s*>/gi, '_')
+    .replace(/<\s*\/\s*(?:i|em)\s*>/gi, '_')
+    .split('\n');
   const hasActivationParticipant = lines.some((line) =>
     /^\s*(?:actor|participant)\s+激活(?:\s+as\b|\s*$)/i.test(line),
   );
