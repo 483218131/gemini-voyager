@@ -1,0 +1,125 @@
+# Folders, timeline, and layout regression notes
+
+Read this file when changing folders, timeline navigation, sidebar behavior, chat width, drag and
+drop, or hover layout.
+
+## Timeline navigation must validate the live scroll viewport
+
+- **Trap:** Timeline dots, preview-list items, and `j`/`k` shortcuts could all appear inert after
+  Gemini rebuilt its chat viewport. The navigation fast path treated connected marker and container
+  nodes as current. Gemini can insert a new scroll viewport inside the old connected container, so
+  Voyager wrote `scrollTop` to the stale ancestor.
+- **Rule:** Before navigation, validate the target's nearest scroll container against the cached
+  viewport. Rebind and recalculate markers when it changed, including preview-panel navigation.
+- **Guard:** `src/pages/content/timeline/__tests__/TimelineManagerFlowClickActiveReset.test.ts`
+  (`refreshes connected markers when Gemini inserts a new scroll viewport` and
+  `refreshes the scroll viewport before preview-panel navigation`) and
+  `src/pages/content/timeline/__tests__/TimelineManagerNavigationRefresh.test.ts`
+  (`rebinds a connected stale scroll viewport before shortcut navigation`).
+
+## Folder recovery must remove untracked sidebar clones
+
+- **Trap:** Gemini's sidebar showed two complete Voyager folder panels, which displaced the native
+  conversation history and could make it appear unable to scroll. Gemini can clone its virtualized
+  sidebar subtree after Voyager mounts the folder panel. The cloned `.gv-folder-container` is not
+  referenced by `FolderManager.containerElement`, so the old instance-only cleanup left that orphan
+  in place when recovery injected a replacement.
+- **Rule:** Before mounting, remove both the tracked panel and untracked direct folder-panel
+  siblings from the current sidebar section host. Keep AI Studio and floating multi-select
+  containers out of this cleanup.
+- **Guard:** `src/pages/content/folder/__tests__/folderPositionEnforcer.test.ts`
+  (`removes an untracked folder clone before recovery mounts a replacement`).
+
+## Automatic folder fallback must not become a sticky floating mode
+
+- **Trap:** Folders briefly disappeared, then returned as a floating panel even though the
+  floating-mode setting was off. Closing that panel could leave a FAB that the already-off popup
+  toggle could not remove. The recovery watchdog applied its grace period only when the sidebar
+  container existed. A transiently missing sidebar opened the fallback immediately, and the shared
+  panel-close callback always restored the explicit-mode FAB.
+- **Rule:** Apply the same grace period to a missing sidebar, restore the FAB only for explicit
+  floating mode, and clear all fallback entry points when the sidebar recovers.
+- **Guard:** `src/pages/content/folder/__tests__/folderPositionEnforcer.test.ts`
+  (`waits before opening the floating fallback when the whole sidebar is temporarily missing`,
+  `does not leave a FAB or immediately reopen after closing an automatic fallback`, and
+  `clears every floating fallback entry point when the sidebar recovers`).
+
+## Folder conversation navigation must not hard-refresh Gemini
+
+- **Trap:** Clicking a folder conversation sometimes forced a full Gemini page refresh instead of
+  switching sessions inside the existing SPA. The folder navigator tried to preserve Gemini's native
+  SPA behavior by clicking the corresponding native sidebar link, but its fallback used
+  `location.assign`. That fallback fired when the native sidebar row was virtualized/not rendered,
+  or when Gemini's own route change was slower than the confirmation timeout. The floating folder
+  panel had an even more direct `location.assign` path.
+- **Rule:** Route folder and floating-panel conversation clicks through the shared conversation
+  navigator. If the native link is missing or does not navigate, fall back to `history.pushState`
+  plus `popstate`, not a hard page load.
+- **Guard:** `src/pages/content/folder/__tests__/folderNavigation.test.ts`
+  `src/pages/content/folder/__tests__/folderDisabledRuntime.test.ts`
+
+## Sidebar scroll exception must stay scoped away from chat scroll blocking
+
+- **Trap:** The prevent-auto-scroll feature blocked the Gemini sidebar history list from scrolling
+  after a submit. The original blocking logic applied to any scrollable ancestor while the submit
+  block window was active. Sidebar scroll containers were treated like the chat transcript.
+- **Rule:** Classify sidebar elements separately from chat scroll elements before blocking
+  `scrollTo`, `scrollBy`, `scrollTop`, or `scrollIntoView`.
+- **Guard:** `src/pages/content/preventAutoScroll/__tests__/preventAutoScrollScript.test.ts`
+
+## Claude timeline must treat the DOM as a sliding virtualized window
+
+- **Trap:** Claude mounts only about 6 to 9 turns and can briefly expose sparse, non-contiguous
+  windows during long jumps. Rebuilding from the mounted DOM made dots twitch or disappear;
+  mount-index IDs changed as the window slid, and pruning missing turns deleted valid markers.
+  Remembered absolute offsets also drift while Claude remeasures newly mounted content.
+- **Rule:** Keep a grow-only registry stitched across overlapping windows by content hash:
+  `c-<textHash>`, with `~n` for duplicates and hash-segment matching for legacy stars. Navigate to
+  unmounted turns iteratively with instant probing and direction-aware bisection, then smooth
+  fine-aim after mount. Make jumps over three viewports instant. Reuse this virtual-window model for
+  future Claude DOM features.
+- **Guard:** `src/features/plugins/builtin/claudeTimeline/index.test.ts` covers sparse-window
+  stability, durable IDs, and marker retention during virtualization.
+
+## The chat width sparkle rule also matches the Gemini logo pill
+
+- **Trap:** At widths of at least 1024px, the `chatWidth` loading selector
+  `main > div:has(img[src*="sparkle"])` also matched Gemini's logo wrapper. It stretched the wrapper
+  from 101px to the slider's computed width. Although the wrapper had `pointer-events: none`, its
+  auto-pointer child inherited the large box and became a transparent hit target over header
+  buttons. The affected area therefore tracked the chat-width slider, not sidebar width.
+- **Rule:** Exclude the logo wrapper with `:not(:has(chat-app-side-nav-menu-button))` while
+  retaining the #110 clamp for real loading wrappers. Do not change the static, in-flow host's
+  geometry because that perturbs the header layout.
+- **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` Live-page verification:
+  toggling only that selector moves the host between 101px (hit-stack top `mat-icon` /
+  `span.dynamic-upsell-label`) and the slider's pixel value (hit-stack top
+  `chat-app-side-nav-menu-button`) at 30/50/70/100%.
+
+## The file-drop overlay is pinned to Gemini's native input width
+
+- **Trap:** Gemini fixes the visual file-drop overlay at
+  `var(--bard-chat-window-max-width-default, 760px)`. The variable is unset, so the hint stays 760px
+  while `chatWidth` or `editInputWidth` can widen `input-area-v2`. Upload still works outside the
+  hint because `.chat-container` is the real drop target.
+- **Rule:** Both width modules must inject an overlay width with the same value and precedence as
+  their input rule. Keep `chatWidth`'s `input-container` prefix more specific than `editInputWidth`,
+  so the overlay and visible input choose the same winner regardless of injection order.
+- **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` and
+  `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`. At 70% width, a synthetic
+  drag over `.chat-container` must give the overlay and `input-area-v2` identical left and right
+  edges.
+
+## Compact timeline preview hover gap closes panel
+
+- **Trap:** In compact timeline mode, moving the pointer from the rail to the preview panel could
+  close the panel before the pointer reached it, making history items hard to click. The rail and
+  panel each owned separate hover enter/leave handlers, but the panel is positioned with a 12px
+  visual gap from the rail. A slow pointer crossing that non-hit-tested gap could outlive the
+  compact close delay before panel mouseenter canceled it.
+- **Rule:** Add a transparent fixed hover bridge over the actual rail-to-panel gap while the compact
+  preview is open. Treat the bridge as part of the interaction area for hover and outside-click
+  handling, and hide it when compact mode closes or turns off.
+- **Guard:** `src/pages/content/timeline/__tests__/TimelinePreviewPanel.test.ts`
+  (`keeps the panel open while the pointer pauses in the compact hover gap`,
+  `treats the compact hover bridge as part of the preview interaction area`).
