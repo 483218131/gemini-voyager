@@ -14,6 +14,25 @@ export function filterOutDeepResearchImmersiveNodes<T extends HTMLElement>(eleme
   return elements.filter((element) => !element.closest('deep-research-immersive-panel'));
 }
 
+export function findFirstElementBetweenTurns(
+  currentTurn: HTMLElement,
+  nextTurn: HTMLElement | undefined,
+  candidates: readonly HTMLElement[],
+): HTMLElement | null {
+  for (const candidate of candidates) {
+    const followsCurrent = !!(
+      currentTurn.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    const precedesNext =
+      !nextTurn ||
+      !!(candidate.compareDocumentPosition(nextTurn) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    if (followsCurrent && precedesNext) return candidate;
+  }
+
+  return null;
+}
+
 function hasVisibleUserTurns(root: HTMLElement, userSelectors: string[]): boolean {
   if (userSelectors.length === 0) return false;
   const nodes = filterOutDeepResearchImmersiveNodes(

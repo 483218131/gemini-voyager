@@ -2,6 +2,7 @@ import { DOMContentExtractor } from '@/features/export/services/DOMContentExtrac
 
 import {
   filterOutDeepResearchImmersiveNodes,
+  findFirstElementBetweenTurns,
   resolveConversationRoot,
 } from '../export/conversationDom';
 import { makeTurnId } from './turnId';
@@ -46,19 +47,6 @@ function filterTopLevel(elements: Element[]): HTMLElement[] {
       }
     }
     if (!isDescendant) out.push(el);
-  }
-  return out;
-}
-
-function dedupeByTextAndOffset(elements: HTMLElement[], firstTurnOffset: number): HTMLElement[] {
-  const seen = new Set<string>();
-  const out: HTMLElement[] = [];
-  for (const el of elements) {
-    const offsetFromStart = (el.offsetTop || 0) - firstTurnOffset;
-    const key = `${normalizeText(el.textContent || '')}|${Math.round(offsetFromStart)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(el);
   }
   return out;
 }
@@ -130,18 +118,13 @@ export function collectForkChatPairs(): ForkChatPair[] {
   );
   if (userNodesRaw.length === 0) return [];
 
-  let users = filterTopLevel(userNodesRaw);
+  const users = filterTopLevel(userNodesRaw);
   if (users.length === 0) return [];
-
-  const firstOffset = users[0].offsetTop || 0;
-  users = dedupeByTextAndOffset(users, firstOffset);
-  const userOffsets = users.map((el) => el.offsetTop || 0);
 
   const assistantNodesRaw = filterOutDeepResearchImmersiveNodes(
     Array.from(root.querySelectorAll<HTMLElement>(assistantSelectors.join(','))),
   );
   const assistants = filterTopLevel(assistantNodesRaw);
-  const assistantOffsets = assistants.map((el) => el.offsetTop || 0);
 
   const pairs: ForkChatPair[] = [];
 
@@ -153,19 +136,7 @@ export function collectForkChatPairs(): ForkChatPair[] {
     const userExtracted = DOMContentExtractor.extractUserContent(userEl).text;
     const userText = userExtracted || normalizeText(userEl.innerText || userEl.textContent || '');
 
-    const start = userOffsets[i];
-    const end = i + 1 < userOffsets.length ? userOffsets[i + 1] : Number.POSITIVE_INFINITY;
-
-    let assistantHost: HTMLElement | null = null;
-    let bestOff = Number.POSITIVE_INFINITY;
-
-    for (let k = 0; k < assistants.length; k++) {
-      const off = assistantOffsets[k];
-      if (off >= start && off < end && off < bestOff) {
-        bestOff = off;
-        assistantHost = assistants[k];
-      }
-    }
+    let assistantHost = findFirstElementBetweenTurns(userEl, users[i + 1], assistants);
 
     if (!assistantHost) {
       let sib: HTMLElement | null = userEl;

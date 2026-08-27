@@ -3,6 +3,17 @@
 Read this file when changing Mermaid, KaTeX, rendered previews, Quote Reply, or conversation export
 output.
 
+## Gemini turns must be paired by document order
+
+- **Trap:** Conversation export could omit or duplicate most Gemini responses, and collapse repeated
+  prompts into one, when virtualized turns exposed a mix of zero and nonzero `offsetTop` values.
+  Turn elements can have different offset parents, so their local offsets are not comparable.
+- **Rule:** Pair each response with the preceding user turn using DOM document order, bounded by the
+  next user turn. Keep repeated prompts as separate turns; selector queries are already unique and
+  top-level filtered. Do not use layout offsets as a shared conversation coordinate system.
+- **Guard:** `src/pages/content/fork/__tests__/chatPairs.test.ts`
+  (`pairs responses by DOM order when virtualized turns expose mixed offsets`).
+
 ## Sanitized Mermaid SVGs must retain theme CSS and SVG labels
 
 - **Trap:** Mermaid flowcharts turned black, then lost labels after the theme was restored. The CSS

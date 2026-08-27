@@ -36,7 +36,10 @@ import { isServerTurnId } from '../fork/turnId';
 import { historyTimestampStore } from '../timestamp/historyTimestamps';
 import { ExportPlatformAdapter, resolveExportAdapter } from './adapter/platformAdapters';
 import { assistantHasCanvasDoc, extractAllCanvasDocs, isAnyCanvasOpen } from './canvasDocExtractor';
-import { filterOutDeepResearchImmersiveNodes } from './conversationDom';
+import {
+  filterOutDeepResearchImmersiveNodes,
+  findFirstElementBetweenTurns,
+} from './conversationDom';
 import {
   getConversationMenuContext,
   getResponseMenuContext,
@@ -418,22 +421,6 @@ function getAssistantSelectors(): string[] {
   return exportAdapter.getAssistantSelectors();
 }
 
-function dedupeByTextAndOffset(elements: HTMLElement[], firstTurnOffset: number): HTMLElement[] {
-  const seen = new Set<string>();
-  const out: HTMLElement[] = [];
-  const offsetsAreZero = elements.every((el) => (el.offsetTop || 0) === 0);
-
-  for (let idx = 0; idx < elements.length; idx++) {
-    const el = elements[idx];
-    const offsetFromStart = offsetsAreZero ? idx : (el.offsetTop || 0) - firstTurnOffset;
-    const key = `${normalizeText(el.textContent || '')}|${Math.round(offsetFromStart)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(el);
-  }
-  return out;
-}
-
 function readStarredSet(): Set<string> {
   const cid = computeConversationId();
   try {
@@ -524,70 +511,27 @@ function collectChatPairs(): ChatTurn[] {
     Array.from(root.querySelectorAll<HTMLElement>(userSelectors.join(','))),
   );
   if (!userNodeList || userNodeList.length === 0) return [];
-  let users = filterTopLevel(userNodeList);
+  const users = filterTopLevel(userNodeList);
   if (users.length === 0) return [];
 
-  const firstOffset = (users[0] as HTMLElement).offsetTop || 0;
-  users = dedupeByTextAndOffset(users, firstOffset);
   const uniqueTurnIds = resolveUniqueExportTurnIds(users);
-  const userOffsets = users.map((el) => (el as HTMLElement).offsetTop || 0);
 
   const assistantsAll = filterOutDeepResearchImmersiveNodes(
     Array.from(root.querySelectorAll<HTMLElement>(assistantSelectors.join(','))),
   );
   const assistants = filterTopLevel(assistantsAll);
-  const assistantOffsets = assistants.map((el) => (el as HTMLElement).offsetTop || 0);
 
   const starredSet = readStarredSet();
   const nativeConversationId = extractConversationIdFromUrl();
   const pairs: ChatTurn[] = [];
-  const offsetsAreZero =
-    userOffsets.every((o) => o === 0) && assistantOffsets.every((o) => o === 0);
 
   for (let i = 0; i < users.length; i++) {
     const uEl = users[i] as HTMLElement;
     const uText = normalizeText(uEl.innerText || uEl.textContent || '');
-    const start = userOffsets[i];
-    const end = i + 1 < userOffsets.length ? userOffsets[i + 1] : Number.POSITIVE_INFINITY;
     let aText = '';
-    let aEl: HTMLElement | null = null;
-    let bestIdx = -1;
+    let aEl = findFirstElementBetweenTurns(uEl, users[i + 1], assistants);
 
-    if (!offsetsAreZero) {
-      let bestOff = Number.POSITIVE_INFINITY;
-      for (let k = 0; k < assistants.length; k++) {
-        const off = assistantOffsets[k];
-        if (off >= start && off < end) {
-          if (off < bestOff) {
-            bestOff = off;
-            bestIdx = k;
-          }
-        }
-      }
-    } else {
-      // Fallback: Pair by DOM tree document position when offsets are zero (e.g. when Canvas is open)
-      // An assistant belongs to this user if it is after this user and before the next user in the DOM
-      for (let k = 0; k < assistants.length; k++) {
-        const aElCandidate = assistants[k] as HTMLElement;
-        const isAfterUser = !!(
-          uEl.compareDocumentPosition(aElCandidate) & Node.DOCUMENT_POSITION_FOLLOWING
-        );
-        let isBeforeNextUser = true;
-        if (i + 1 < users.length) {
-          const nextUser = users[i + 1] as HTMLElement;
-          isBeforeNextUser = !!(
-            aElCandidate.compareDocumentPosition(nextUser) & Node.DOCUMENT_POSITION_FOLLOWING
-          );
-        }
-        if (isAfterUser && isBeforeNextUser) {
-          bestIdx = k;
-          break;
-        }
-      }
-    }
-
-    if (bestIdx >= 0) {
-      aEl = assistants[bestIdx] as HTMLElement;
+    if (aEl) {
       aText = extractAssistantText(aEl);
     } else {
       // Fallback: search next siblings up to a small window
