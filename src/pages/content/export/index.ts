@@ -503,7 +503,7 @@ type ChatTurn = {
   assistantHostElement?: HTMLElement;
 };
 
-function collectChatPairs(): ChatTurn[] {
+export function collectChatPairs(): ChatTurn[] {
   const userSelectors = getUserSelectors();
   const root = getConversationRoot(userSelectors);
   const assistantSelectors = getAssistantSelectors();

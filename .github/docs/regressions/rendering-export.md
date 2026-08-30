@@ -11,8 +11,9 @@ output.
 - **Rule:** Pair each response with the preceding user turn using DOM document order, bounded by the
   next user turn. Keep repeated prompts as separate turns; selector queries are already unique and
   top-level filtered. Do not use layout offsets as a shared conversation coordinate system.
-- **Guard:** `src/pages/content/fork/__tests__/chatPairs.test.ts`
-  (`pairs responses by DOM order when virtualized turns expose mixed offsets`).
+- **Guard:** `src/pages/content/export/__tests__/chatPairs.test.ts` and
+  `src/pages/content/fork/__tests__/chatPairs.test.ts` cover the export and fork collectors with
+  repeated prompts and mixed virtualized offsets.
 
 ## Sanitized Mermaid SVGs must retain theme CSS and SVG labels
 
