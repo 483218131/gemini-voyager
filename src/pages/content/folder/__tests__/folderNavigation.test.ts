@@ -253,6 +253,34 @@ describe('folder conversation navigation', () => {
     expect(secondRow.classList.contains('gv-folder-conversation-selected')).toBe(false);
   });
 
+  it('highlights the clicked raw-id row when the conversation is in multiple folders', () => {
+    const targetHexId = '12344321abcddcba';
+    const firstConversation = createConversation(targetHexId);
+    const secondConversation = createConversation(targetHexId);
+    firstConversation.conversationId = targetHexId;
+    secondConversation.conversationId = targetHexId;
+
+    manager = new FolderManager();
+    const typedManager = manager as unknown as TestableManager;
+    typedManager.data = {
+      folders: [],
+      folderContents: {
+        'folder-1': [firstConversation],
+        'folder-2': [secondConversation],
+      },
+    };
+    typedManager.containerElement = document.createElement('div');
+    const firstRow = typedManager.createConversationElement(firstConversation, 'folder-1', 1);
+    const secondRow = typedManager.createConversationElement(secondConversation, 'folder-2', 1);
+    typedManager.containerElement.append(firstRow, secondRow);
+    document.body.appendChild(typedManager.containerElement);
+
+    typedManager.navigateToConversationById('folder-2', targetHexId);
+
+    expect(firstRow.classList.contains('gv-folder-conversation-selected')).toBe(false);
+    expect(secondRow.classList.contains('gv-folder-conversation-selected')).toBe(true);
+  });
+
   it('does not hard navigate when the native SPA route changes after a short delay', () => {
     const targetHexId = '88889999aaaabbbb';
 

@@ -3,6 +3,17 @@
 Read this file when changing folders, timeline navigation, sidebar behavior, chat width, drag and
 drop, or hover layout.
 
+## Active folder rows must normalize stored conversation IDs
+
+- **Trap:** The active folder chat lost its background and accent even though the route and CSS were
+  valid. The highlighter required `data-conversation-id` to equal `c_<route-id>` exactly, while the
+  native Move to Folder and Folder-as-Project paths can store the same route ID without the `c_`
+  prefix.
+- **Rule:** Normalize stored and routed conversation IDs before comparing them. Keep the row's raw
+  stored ID only for distinguishing the same conversation across multiple folders.
+- **Guard:** `src/pages/content/folder/__tests__/folderNavigation.test.ts`
+  (`highlights the clicked raw-id row when the conversation is in multiple folders`).
+
 ## Timeline navigation must validate the live scroll viewport
 
 - **Trap:** Timeline dots, preview-list items, and `j`/`k` shortcuts could all appear inert after

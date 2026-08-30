@@ -7626,7 +7626,7 @@ export class FolderManager {
   private highlightActiveConversationInFolders(): void {
     if (!this.containerElement) return;
     const hex = this.getCurrentHexIdFromLocation();
-    const currentId = hex ? `c_${hex}` : null;
+    const currentId = this.normalizeConversationId(hex);
     const rows = Array.from(
       this.containerElement.querySelectorAll<HTMLElement>('.gv-folder-conversation'),
     );
@@ -7634,13 +7634,18 @@ export class FolderManager {
     rows.forEach((row) => row.classList.remove('gv-folder-conversation-selected'));
     if (!currentId) return;
 
-    const matches = rows.filter((row) => row.dataset.conversationId === currentId);
+    const matches = rows.filter(
+      (row) => this.normalizeConversationId(row.dataset.conversationId) === currentId,
+    );
     const activeRow =
       matches.find(
         (row) =>
           row.dataset.folderId &&
-          this.getFolderConversationInstanceKey(row.dataset.folderId, currentId) ===
-            this.activeFolderConversationKey,
+          row.dataset.conversationId &&
+          this.getFolderConversationInstanceKey(
+            row.dataset.folderId,
+            row.dataset.conversationId,
+          ) === this.activeFolderConversationKey,
       ) ?? matches[0];
 
     activeRow?.classList.add('gv-folder-conversation-selected');
