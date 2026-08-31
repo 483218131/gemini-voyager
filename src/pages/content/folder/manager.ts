@@ -126,6 +126,10 @@ const FOLDER_NAVIGATION_CONFIRM_DELAY_MS = 1200;
 // dialog. Keep only the conversation ID (never the title/content), and expire
 // it so an abandoned dialog cannot affect a later unrelated action.
 const NATIVE_DELETE_CANDIDATE_TIMEOUT_MS = 60_000;
+// Gemini may keep the deleted conversation route and sidebar row around for
+// several render ticks after confirmation. Poll for a bounded ~6 seconds;
+// timeout remains conservative and preserves the folder entry.
+const NATIVE_DELETE_SETTLE_CHECK_LIMIT = 20;
 // Trailing debounce for persisting pure-UI state changes (expand/collapse,
 // recently-opened marks). Data mutations still save immediately.
 const SAVE_DEBOUNCE_MS = 300;
@@ -332,9 +336,7 @@ export class FolderManager {
   // Per-row enhancement work (drag listeners, hide-archived state) for added
   // conversations is drained from this queue during idle time instead of the
   // sidebar-open animation frame — a burst can add every Recents row at once
-  // and this work is allowed to lag behind paint (issue #753). Removal
-  // *cancellation* stays synchronous in `flushMutationBatch`: it must beat
-  // the `removalCheckDelay` timer.
+  // and this work is allowed to lag behind paint (issue #753).
   private enhancementQueue: Set<HTMLElement> = new Set();
   private enhancementDrainIdleId: number | null = null;
   // Cached result of the legacy `.conversation-actions-container` layout
@@ -384,7 +386,6 @@ export class FolderManager {
   // menu trigger is clicked (belt-and-suspenders alongside nativeMenuObserver).
   private moveMenuTriggerHandler: ((event: Event) => void) | null = null;
   private moveMenuKeydownHandler: ((event: Event) => void) | null = null;
-  private activeNativeMenuConversationId: string | null = null;
   private nativeDeleteCandidateId: string | null = null;
   private nativeDeleteCandidateTimer: number | null = null;
   // Tracks the last input modality so menu-close focus handling stays a11y-safe:
@@ -2730,15 +2731,15 @@ export class FolderManager {
   }
 
   private getFolderConversationHref(conversation: ConversationReference): string {
-    const normalizedId = this.normalizeConversationId(conversation.conversationId);
+    const routeId = this.resolveConversationRouteId(conversation.url, conversation.conversationId);
 
     try {
       const storedUrl = new URL(conversation.url, window.location.origin);
 
-      if (this.accountIsolationEnabled && normalizedId) {
+      if (this.accountIsolationEnabled && routeId) {
         const currentUserMatch = window.location.pathname.match(/\/u\/(\d+)\//);
         const accountPrefix = currentUserMatch ? `/u/${currentUserMatch[1]}` : '';
-        return `${storedUrl.origin}${accountPrefix}/app/${normalizedId}${storedUrl.search}`;
+        return `${storedUrl.origin}${accountPrefix}/app/${routeId}${storedUrl.search}`;
       }
 
       return storedUrl.toString();
@@ -2746,7 +2747,7 @@ export class FolderManager {
       this.debug('Failed to build folder conversation href:', error);
     }
 
-    return normalizedId ? this.buildConversationUrlFromId(normalizedId) : window.location.href;
+    return routeId ? this.buildConversationUrlFromId(routeId) : window.location.href;
   }
 
   private setupDropZone(element: HTMLElement, folderId: string): void {
@@ -5236,9 +5237,10 @@ export class FolderManager {
   private async openNativeRenameForFolderConversation(
     conversation: ConversationReference,
   ): Promise<boolean> {
-    const conversationId =
-      this.normalizeConversationId(conversation.conversationId) ||
-      this.extractConversationIdFromHref(conversation.url);
+    const conversationId = this.resolveConversationRouteId(
+      conversation.url,
+      conversation.conversationId,
+    );
     if (!conversationId) return false;
 
     const conversationEl = this.findNativeConversationElement(conversationId);
@@ -6786,11 +6788,14 @@ export class FolderManager {
       }
     }
 
-    // Top-bar menu (or sidebar resolution miss): derive from the current page.
-    const pageInfo = this.extractConversationInfoFromPage();
-    if (pageInfo) {
-      this.debug('resolveConversationInfoForMenu(page):', pageInfo);
-      return pageInfo;
+    // Top-bar menus map to the current page. A sidebar resolution miss must
+    // stay unresolved rather than accidentally targeting the open page.
+    if (context.menuType === 'top') {
+      const pageInfo = this.extractConversationInfoFromPage();
+      if (pageInfo) {
+        this.debug('resolveConversationInfoForMenu(page):', pageInfo);
+        return pageInfo;
+      }
     }
     return null;
   }
@@ -6843,24 +6848,18 @@ export class FolderManager {
         return;
       }
 
-      if (event.type === 'click' && this.isNativeDeleteMenuAction(target)) {
-        const conversationId = this.activeNativeMenuConversationId;
+      if (event.type === 'click') {
+        const conversationId = this.resolveNativeDeleteMenuActionConversationId(target);
         if (conversationId) {
           this.rememberNativeDeleteCandidate(conversationId);
+          return;
         }
-        return;
       }
 
       const trigger = target.closest(CONVERSATION_MENU_TRIGGER_SELECTOR) as HTMLElement | null;
       if (!trigger) return;
 
       this.clearNativeDeleteCandidate();
-      const conversationEl = this.findConversationElementForTrigger(trigger);
-      const rawConversationId =
-        (conversationEl && this.extractNativeConversationId(conversationEl)) ||
-        this.extractConversationInfoFromPage()?.id ||
-        null;
-      this.activeNativeMenuConversationId = this.normalizeConversationId(rawConversationId);
 
       const panelIds = this.parseMenuTriggerPanelIds(trigger);
       for (let attempt = 0; attempt <= MOVE_MENU_INJECTION_RETRY_LIMIT; attempt++) {
@@ -6893,15 +6892,17 @@ export class FolderManager {
     this.moveMenuKeydownHandler = keyHandler;
   }
 
-  private isNativeDeleteMenuAction(target: HTMLElement): boolean {
+  private resolveNativeDeleteMenuActionConversationId(target: HTMLElement): string | null {
     const action = target.closest(
       '[data-test-id="delete-button"], button[role="menuitem"], [role="menuitem"], gem-menu-item',
     ) as HTMLElement | null;
-    if (!action || action.closest('[class*="gv-"]')) return false;
+    if (!action || action.closest('[class*="gv-"]')) return null;
 
     const panel = action.closest(CONVERSATION_MENU_PANEL_SELECTOR) as HTMLElement | null;
-    if (!panel || !getConversationMenuContext(panel)) return false;
-    if (action.getAttribute('data-test-id') === 'delete-button') return true;
+    const context = panel ? getConversationMenuContext(panel) : null;
+    if (!context) return null;
+
+    let isDeleteAction = action.getAttribute('data-test-id') === 'delete-button';
 
     const icon = action.querySelector('mat-icon, .material-icons');
     const iconName =
@@ -6909,13 +6910,21 @@ export class FolderManager {
       icon?.getAttribute('data-mat-icon-name') ||
       icon?.textContent?.trim().toLowerCase();
     if (iconName === 'delete' || iconName === 'delete_forever' || iconName === 'delete_outline') {
-      return true;
+      isDeleteAction = true;
     }
 
     const text = action.textContent?.trim().toLowerCase() || '';
-    return this.getDeleteKeywords().some(
-      (keyword) => text === keyword || (text.includes(keyword) && text.length < 20),
-    );
+    if (
+      this.getDeleteKeywords().some(
+        (keyword) => text === keyword || (text.includes(keyword) && text.length < 20),
+      )
+    ) {
+      isDeleteAction = true;
+    }
+    if (!isDeleteAction) return null;
+
+    const info = this.resolveConversationInfoForMenu(context);
+    return this.normalizeConversationId(info?.id);
   }
 
   private isNativeDeleteConfirmationTarget(target: HTMLElement): boolean {
@@ -6999,7 +7008,6 @@ export class FolderManager {
       document.removeEventListener('keydown', this.moveMenuKeydownHandler, true);
       this.moveMenuKeydownHandler = null;
     }
-    this.activeNativeMenuConversationId = null;
     this.clearNativeDeleteCandidate();
   }
 
@@ -7273,23 +7281,27 @@ export class FolderManager {
    * disappearance alone never calls this method because the sidebar virtualizes
    * rows during normal scrolling.
    */
-  private scheduleConversationRemovalCheck(conversationId: string): void {
+  private scheduleConversationRemovalCheck(
+    conversationId: string,
+    checksRemaining: number = NATIVE_DELETE_SETTLE_CHECK_LIMIT,
+  ): void {
+    const normalizedId = this.normalizeConversationId(conversationId);
+    if (!normalizedId || this.isDestroyed) return;
+
     // Cancel any existing timer for this conversation
-    const existingTimer = this.pendingRemovals.get(conversationId);
+    const existingTimer = this.pendingRemovals.get(normalizedId);
     if (existingTimer) {
       clearTimeout(existingTimer);
-      this.debug(`Cancelled previous removal timer for ${conversationId}`);
+      this.debug(`Cancelled previous removal timer for ${normalizedId}`);
     }
 
     // Schedule a new check after delay
     const timerId = window.setTimeout(() => {
-      this.confirmConversationRemoval(conversationId);
+      this.confirmConversationRemoval(normalizedId, checksRemaining);
     }, this.removalCheckDelay);
 
-    this.pendingRemovals.set(conversationId, timerId);
-    this.debug(
-      `Scheduled removal check for ${conversationId} (delay: ${this.removalCheckDelay}ms)`,
-    );
+    this.pendingRemovals.set(normalizedId, timerId);
+    this.debug(`Scheduled removal check for ${normalizedId} (delay: ${this.removalCheckDelay}ms)`);
   }
 
   /**
@@ -7348,9 +7360,10 @@ export class FolderManager {
    * URL / visible-row checks keep the folder entry if Gemini rejected or
    * cancelled the operation.
    */
-  private confirmConversationRemoval(conversationId: string): void {
+  private confirmConversationRemoval(conversationId: string, checksRemaining: number): void {
     // Remove from pending list
     this.pendingRemovals.delete(conversationId);
+    if (this.isDestroyed) return;
 
     this.debug(`\n═══ Confirming removal for conversation ${conversationId} ═══`);
     this.debug(`  Delay elapsed: ${this.removalCheckDelay}ms`);
@@ -7359,11 +7372,12 @@ export class FolderManager {
     const currentConvId = this.getCurrentConversationId();
     const currentUrl = window.location.href;
 
-    if (currentConvId === conversationId) {
+    if (this.normalizeConversationId(currentConvId) === conversationId) {
       this.debug(`  ✓ SKIPPED: Currently active conversation`);
       this.debug(`    Current URL: ${currentUrl}`);
       this.debug(`    Matched ID: ${currentConvId}`);
       this.debug(`════════════════════════════════════════════════\n`);
+      this.retryConversationRemovalCheck(conversationId, checksRemaining);
       return;
     }
 
@@ -7372,6 +7386,7 @@ export class FolderManager {
       this.debug(`  ✓ SKIPPED: Conversation still exists in DOM`);
       this.debug(`    Likely a UI refresh, not a deletion`);
       this.debug(`════════════════════════════════════════════════\n`);
+      this.retryConversationRemovalCheck(conversationId, checksRemaining);
       return;
     }
 
@@ -7384,6 +7399,14 @@ export class FolderManager {
     this.removeConversationFromAllFolders(conversationId);
   }
 
+  private retryConversationRemovalCheck(conversationId: string, checksRemaining: number): void {
+    if (checksRemaining <= 1) {
+      this.debug(`Removal check timed out for ${conversationId}; preserving folder entry`);
+      return;
+    }
+    this.scheduleConversationRemovalCheck(conversationId, checksRemaining - 1);
+  }
+
   private removeConversationFromAllFolders(conversationId: string): void {
     // Remove this conversation from all folders when the original conversation is deleted
     let removed = false;
@@ -7394,7 +7417,7 @@ export class FolderManager {
 
       // Filter out the deleted conversation
       this.data.folderContents[folderId] = conversations.filter(
-        (conv) => conv.conversationId !== conversationId && !conv.url.includes(conversationId),
+        (conv) => !this.isSameConversation(conversationId, conv),
       );
 
       if (this.data.folderContents[folderId].length < initialLength) {
@@ -7634,9 +7657,10 @@ export class FolderManager {
     rows.forEach((row) => row.classList.remove('gv-folder-conversation-selected'));
     if (!currentId) return;
 
-    const matches = rows.filter(
-      (row) => this.normalizeConversationId(row.dataset.conversationId) === currentId,
-    );
+    const matches = rows.filter((row) => {
+      const link = row.querySelector<HTMLAnchorElement>('a.gv-folder-conversation-link[href]');
+      return this.resolveConversationRouteId(link?.href, row.dataset.conversationId) === currentId;
+    });
     const activeRow =
       matches.find(
         (row) =>
@@ -9268,16 +9292,15 @@ export class FolderManager {
   }
 
   private isSameConversation(targetId: string, conversation: ConversationReference): boolean {
-    if (conversation.conversationId === targetId) return true;
+    const normalizedTarget = this.normalizeConversationId(targetId);
+    if (!normalizedTarget) return false;
 
-    const cleanId = targetId.replace(/^c_/, '');
-    const cleanStoredId = conversation.conversationId.replace(/^c_/, '');
+    if (this.normalizeConversationId(conversation.conversationId) === normalizedTarget) return true;
 
-    if (cleanId && cleanId === cleanStoredId) return true;
-
-    if (cleanId && cleanId.length > 8 && conversation.url.includes(cleanId)) return true;
-
-    return false;
+    return (
+      this.resolveConversationRouteId(conversation.url, conversation.conversationId) ===
+      normalizedTarget
+    );
   }
 
   private markConversationAsRecentlyOpened(conversationId: string): void {
@@ -9311,6 +9334,13 @@ export class FolderManager {
       .trim()
       .replace(/^c_/i, '');
     return normalized || null;
+  }
+
+  private resolveConversationRouteId(
+    href: string | null | undefined,
+    fallbackId: string | null | undefined,
+  ): string | null {
+    return this.extractConversationIdFromHref(href) ?? this.normalizeConversationId(fallbackId);
   }
 
   private extractConversationIdFromHref(href: string | null | undefined): string | null {
@@ -9493,9 +9523,10 @@ export class FolderManager {
     // This mimics how Gemini's original conversation links work
     try {
       const targetUrl = new URL(url);
-      const hexId =
-        this.normalizeConversationId(conversation?.conversationId) ||
-        this.extractConversationIdFromHref(targetUrl.toString());
+      const hexId = this.resolveConversationRouteId(
+        targetUrl.toString(),
+        conversation?.conversationId,
+      );
       const currentConversationId = this.getCurrentConversationId();
 
       let effectivePath: string | null = null;

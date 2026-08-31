@@ -150,6 +150,22 @@ describe('conversationMenuInjection', () => {
     expect(isConversationMenuPanel(panel)).toBe(true);
   });
 
+  it('keeps current top conversation menus distinct when they also export to Docs', () => {
+    const panel = createConversationMenuPanel();
+    const content = panel.querySelector('.mat-mdc-menu-content') as HTMLElement;
+    const exportToDocs = document.createElement('export-to-docs-button');
+    exportToDocs.setAttribute('data-test-id', 'export-to-docs-button');
+    content.appendChild(exportToDocs);
+
+    const trigger = document.createElement('gem-icon-button');
+    trigger.setAttribute('aria-haspopup', 'true');
+    trigger.setAttribute('aria-expanded', 'true');
+    document.body.appendChild(trigger);
+
+    expect(isConversationMenuPanel(panel)).toBe(true);
+    expect(getConversationMenuContext(panel)?.menuType).toBe('top');
+  });
+
   it('does not treat model switch menu as conversation menu', () => {
     const panel = createConversationMenuPanel();
     panel.classList.add('gds-mode-switch-menu');

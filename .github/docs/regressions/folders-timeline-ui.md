@@ -3,16 +3,36 @@
 Read this file when changing folders, timeline navigation, sidebar behavior, chat width, drag and
 drop, or hover layout.
 
-## Active folder rows must normalize stored conversation IDs
+## Active folder rows must use the navigation route ID
 
 - **Trap:** The active folder chat lost its background and accent even though the route and CSS were
-  valid. The highlighter required `data-conversation-id` to equal `c_<route-id>` exactly, while the
-  native Move to Folder and Folder-as-Project paths can store the same route ID without the `c_`
-  prefix.
-- **Rule:** Normalize stored and routed conversation IDs before comparing them. Keep the row's raw
-  stored ID only for distinguishing the same conversation across multiple folders.
+  valid. Normalizing `c_<route-id>` and bare IDs fixed only one storage shape: legacy native
+  fallbacks and imports can retain a synthetic ID such as `conv_*` while their saved URL still
+  contains the real `/app/<route-id>`.
+- **Rule:** Treat the saved navigation URL (or rendered row `href`) as the canonical route identity,
+  with the stored ID only as a fallback. Keep the row's raw stored ID only for distinguishing the
+  same conversation across multiple folders. Reuse that URL-first identity for account-scoped links
+  and navigation; never migrate or rewrite user data just to repair highlighting.
 - **Guard:** `src/pages/content/folder/__tests__/folderNavigation.test.ts`
-  (`highlights the clicked raw-id row when the conversation is in multiple folders`).
+  (`highlights an initially active legacy row from its stored conversation URL` and
+  `uses the URL route id for legacy conversations in account-isolated links and navigation`).
+
+## Explicit native deletion must resolve identity at action time and wait for Gemini to settle
+
+- **Trap:** Deleting the currently open conversation from Gemini's top menu left a dead folder
+  entry. The lr26 trigger no longer exposes Voyager's expected test ID, and the menu can contain both
+  strong conversation actions and Export to Docs. Even when deletion was captured, a single 300ms
+  check permanently gave up while the old route or sidebar row was still mounted.
+- **Rule:** Identify a Delete action from its live conversation menu, resolve its conversation from
+  that menu context at click time, and only arm cleanup after native confirmation. Poll for a bounded
+  window until both the route has left and the native row is absent; on timeout, preserve folder data.
+  Strong pin/rename/delete markers take precedence over overlapping report/export markers.
+- **Guard:** `src/pages/content/export/__tests__/conversationMenuInjection.test.ts`
+  (`keeps current top conversation menus distinct when they also export to Docs`) and
+  `src/pages/content/folder/__tests__/observerBatching.test.ts`
+  (`resolves the current conversation when the top Delete menu trigger has no test id`,
+  `retries a confirmed current-conversation deletion until the route and row settle`, and
+  `stops retrying a rejected native deletion and preserves the folder entry`).
 
 ## Timeline navigation must validate the live scroll viewport
 

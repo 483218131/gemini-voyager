@@ -32,12 +32,14 @@ type TestableManager = {
   selectedConversations: Set<string>;
   mutationBatchQueue: MutationRecord[];
   pendingRemovals: Map<string, number>;
+  removalCheckDelay: number;
   enhancementQueue: Set<HTMLElement>;
   legacyActionsProbe: { present: boolean; at: number } | null;
   flushMutationBatch: () => void;
   scheduleMutationBatchFlush: () => void;
   drainEnhancementQueue: (deadline?: IdleDeadline) => void;
   scheduleConversationRemovalCheck: (conversationId: string) => void;
+  removeConversationFromAllFolders: (conversationId: string) => void;
   makeConversationDraggable: (el: HTMLElement) => void;
   applyHideArchivedToConversation: (el: HTMLElement) => void;
   getNativeConversationActionsContainer: (el: HTMLElement) => HTMLElement | null;
@@ -173,6 +175,7 @@ describe('FolderManager — observer batching (issue #678)', () => {
     if (onlineDescriptor) {
       Object.defineProperty(navigator, 'onLine', onlineDescriptor);
     }
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -296,6 +299,162 @@ describe('FolderManager — observer batching (issue #678)', () => {
 
     expect(removalSpy).toHaveBeenCalledTimes(1);
     expect(removalSpy).toHaveBeenCalledWith('abcddcba');
+  });
+
+  it('resolves the current conversation when the top Delete menu trigger has no test id', () => {
+    const conversationId = '13579bdf2468ace0';
+    window.history.replaceState({}, '', `/app/${conversationId}`);
+    const removalSpy = vi.spyOn(typed, 'scheduleConversationRemovalCheck');
+    typed.setupConversationClickTracking();
+
+    const triggerHost = document.createElement('conversation-actions-icon');
+    const trigger = document.createElement('gem-icon-button');
+    trigger.setAttribute('aria-haspopup', 'true');
+    trigger.setAttribute('aria-expanded', 'true');
+    triggerHost.appendChild(trigger);
+    document.body.appendChild(triggerHost);
+
+    const menu = document.createElement('gem-menu');
+    for (const testId of ['pin-button', 'rename-button', 'export-to-docs-button']) {
+      const item = document.createElement('gem-menu-item');
+      item.setAttribute('data-test-id', testId);
+      menu.appendChild(item);
+    }
+    const deleteItem = document.createElement('gem-menu-item');
+    deleteItem.setAttribute('data-test-id', 'delete-button');
+    deleteItem.textContent = 'Delete';
+    menu.appendChild(deleteItem);
+    document.body.appendChild(menu);
+
+    deleteItem.click();
+
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    const confirmButton = document.createElement('button');
+    confirmButton.setAttribute('data-test-id', 'confirm-delete-button');
+    confirmButton.textContent = 'Delete';
+    dialog.appendChild(confirmButton);
+    document.body.appendChild(dialog);
+    confirmButton.click();
+
+    expect(removalSpy).toHaveBeenCalledTimes(1);
+    expect(removalSpy).toHaveBeenCalledWith(conversationId);
+  });
+
+  it('resolves a sidebar Delete action from its menu without a prior trigger click', () => {
+    const currentConversationId = 'aaaaaaaa11111111';
+    const sidebarConversationId = 'bbbbbbbb22222222';
+    window.history.replaceState({}, '', `/app/${currentConversationId}`);
+    const removalSpy = vi.spyOn(typed, 'scheduleConversationRemovalCheck');
+    typed.setupConversationClickTracking();
+
+    const row = createConversationEl(sidebarConversationId);
+    const trigger = document.createElement('button');
+    trigger.setAttribute('data-test-id', 'actions-menu-button');
+    trigger.setAttribute('aria-haspopup', 'menu');
+    trigger.setAttribute('aria-expanded', 'true');
+    trigger.setAttribute('aria-controls', 'sidebar-delete-menu');
+    row.appendChild(trigger);
+    typed.sidebarContainer!.appendChild(row);
+
+    const menu = document.createElement('gem-menu');
+    menu.id = 'sidebar-delete-menu';
+    const deleteItem = document.createElement('gem-menu-item');
+    deleteItem.setAttribute('data-test-id', 'delete-button');
+    deleteItem.textContent = 'Delete';
+    menu.appendChild(deleteItem);
+    document.body.appendChild(menu);
+    deleteItem.click();
+
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    const confirmButton = document.createElement('button');
+    confirmButton.setAttribute('data-test-id', 'confirm-delete-button');
+    confirmButton.textContent = 'Delete';
+    dialog.appendChild(confirmButton);
+    document.body.appendChild(dialog);
+    confirmButton.click();
+
+    expect(removalSpy).toHaveBeenCalledTimes(1);
+    expect(removalSpy).toHaveBeenCalledWith(sidebarConversationId);
+  });
+
+  it('retries a confirmed current-conversation deletion until the route and row settle', () => {
+    vi.useFakeTimers();
+    const conversationId = '2468ace013579bdf';
+    window.history.replaceState({}, '', `/app/${conversationId}`);
+    typed.data = {
+      folders: [],
+      folderContents: {
+        f1: [
+          {
+            conversationId: `c_${conversationId}`,
+            title: 'Deleted conversation',
+            url: `https://gemini.google.com/app/${conversationId}`,
+            addedAt: 0,
+          },
+        ],
+      },
+    };
+    const row = createConversationEl(conversationId);
+    typed.sidebarContainer!.appendChild(row);
+
+    typed.scheduleConversationRemovalCheck(conversationId);
+    vi.advanceTimersByTime(typed.removalCheckDelay);
+
+    expect(typed.pendingRemovals.has(conversationId)).toBe(true);
+    expect(typed.data.folderContents.f1).toHaveLength(1);
+
+    window.history.replaceState({}, '', '/app');
+    row.remove();
+    vi.advanceTimersByTime(typed.removalCheckDelay);
+
+    expect(typed.pendingRemovals.has(conversationId)).toBe(false);
+    expect(typed.data.folderContents.f1).toHaveLength(0);
+  });
+
+  it('stops retrying a rejected native deletion and preserves the folder entry', () => {
+    vi.useFakeTimers();
+    const conversationId = '11223344aabbccdd';
+    window.history.replaceState({}, '', `/app/${conversationId}`);
+    typed.data = {
+      folders: [],
+      folderContents: {
+        f1: [
+          {
+            conversationId: `c_${conversationId}`,
+            title: 'Preserved conversation',
+            url: `https://gemini.google.com/app/${conversationId}`,
+            addedAt: 0,
+          },
+        ],
+      },
+    };
+
+    typed.scheduleConversationRemovalCheck(conversationId);
+    vi.runAllTimers();
+
+    expect(typed.pendingRemovals.has(conversationId)).toBe(false);
+    expect(typed.data.folderContents.f1).toHaveLength(1);
+  });
+
+  it('cancels a pending deletion retry when the folder runtime is destroyed', () => {
+    vi.useFakeTimers();
+    const conversationId = '55667788aabbccdd';
+    window.history.replaceState({}, '', `/app/${conversationId}`);
+    const removalSpy = vi.spyOn(typed, 'removeConversationFromAllFolders');
+
+    typed.scheduleConversationRemovalCheck(conversationId);
+    vi.advanceTimersByTime(typed.removalCheckDelay);
+    expect(typed.pendingRemovals.has(conversationId)).toBe(true);
+
+    manager?.destroy();
+    manager = null;
+    window.history.replaceState({}, '', '/app');
+    vi.runAllTimers();
+
+    expect(typed.pendingRemovals.has(conversationId)).toBe(false);
+    expect(removalSpy).not.toHaveBeenCalled();
   });
 
   it('triggers native title sync when characterData mutations affect a conversation row', () => {

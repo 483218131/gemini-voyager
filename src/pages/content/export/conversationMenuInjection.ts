@@ -154,14 +154,17 @@ export function isConversationMenuPanel(menuPanel: HTMLElement): boolean {
 
   const menuContent = findMenuContent(menuPanel);
   if (!menuContent) return false;
-  if (hasDeepResearchReportMarkers(menuContent)) return false;
-
   const hasConversationActions = Boolean(
     menuContent.querySelector('[data-test-id="pin-button"]') ||
       menuContent.querySelector('[data-test-id="rename-button"]') ||
       menuContent.querySelector('[data-test-id="delete-button"]'),
   );
   if (hasConversationActions) return true;
+
+  // Current top conversation menus can also contain Export to Docs. Strong
+  // conversation-only actions win before the report-menu exclusion so those
+  // menus remain identifiable when Gemini combines both action sets.
+  if (hasDeepResearchReportMarkers(menuContent)) return false;
 
   const hasShareButton = Boolean(menuContent.querySelector('[data-test-id="share-button"]'));
   if (!hasShareButton) return false;

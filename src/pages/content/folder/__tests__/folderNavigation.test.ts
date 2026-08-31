@@ -32,6 +32,7 @@ type TestableManager = {
     level: number,
   ) => HTMLElement;
   navigateToConversationById: (folderId: string, conversationId: string) => void;
+  highlightActiveConversationInFolders: () => void;
   markConversationAsRecentlyOpened: (conversationId: string) => void;
   renderAllFolders: () => void;
   saveData: () => Promise<boolean>;
@@ -219,10 +220,12 @@ describe('folder conversation navigation', () => {
     expect(window.location.pathname).toBe(`/app/${targetHexId}`);
   });
 
-  it('highlights the clicked folder row when the same conversation is in multiple folders', () => {
+  it('highlights the clicked legacy-id row when one route is in multiple folders', () => {
     const targetHexId = 'ccccddddeeeeffff';
     const firstConversation = createConversation(targetHexId);
     const secondConversation = createConversation(targetHexId);
+    firstConversation.conversationId = 'conv_firstlegacy';
+    secondConversation.conversationId = 'imported_secondlegacy';
 
     manager = new FolderManager();
     const typedManager = manager as unknown as TestableManager;
@@ -242,12 +245,12 @@ describe('folder conversation navigation', () => {
     typedManager.containerElement.appendChild(list);
     document.body.appendChild(typedManager.containerElement);
 
-    typedManager.navigateToConversationById('folder-2', `c_${targetHexId}`);
+    typedManager.navigateToConversationById('folder-2', secondConversation.conversationId);
 
     expect(firstRow.classList.contains('gv-folder-conversation-selected')).toBe(false);
     expect(secondRow.classList.contains('gv-folder-conversation-selected')).toBe(true);
 
-    typedManager.navigateToConversationById('folder-1', `c_${targetHexId}`);
+    typedManager.navigateToConversationById('folder-1', firstConversation.conversationId);
 
     expect(firstRow.classList.contains('gv-folder-conversation-selected')).toBe(true);
     expect(secondRow.classList.contains('gv-folder-conversation-selected')).toBe(false);
@@ -272,6 +275,8 @@ describe('folder conversation navigation', () => {
     typedManager.containerElement = document.createElement('div');
     const firstRow = typedManager.createConversationElement(firstConversation, 'folder-1', 1);
     const secondRow = typedManager.createConversationElement(secondConversation, 'folder-2', 1);
+    firstRow.querySelector('a')?.remove();
+    secondRow.querySelector('a')?.remove();
     typedManager.containerElement.append(firstRow, secondRow);
     document.body.appendChild(typedManager.containerElement);
 
@@ -279,6 +284,24 @@ describe('folder conversation navigation', () => {
 
     expect(firstRow.classList.contains('gv-folder-conversation-selected')).toBe(false);
     expect(secondRow.classList.contains('gv-folder-conversation-selected')).toBe(true);
+  });
+
+  it('highlights an initially active legacy row from its stored conversation URL', () => {
+    const targetHexId = 'abcdef12344321ff';
+    const conversation = createConversation(targetHexId);
+    conversation.conversationId = 'conv_legacyfallback';
+    window.history.replaceState({}, '', `/app/${targetHexId}`);
+
+    manager = new FolderManager();
+    const typedManager = manager as unknown as TestableManager;
+    typedManager.containerElement = document.createElement('div');
+    const row = typedManager.createConversationElement(conversation, 'folder-1', 1);
+    typedManager.containerElement.appendChild(row);
+    document.body.appendChild(typedManager.containerElement);
+
+    typedManager.highlightActiveConversationInFolders();
+
+    expect(row.classList.contains('gv-folder-conversation-selected')).toBe(true);
   });
 
   it('does not hard navigate when the native SPA route changes after a short delay', () => {
@@ -366,6 +389,30 @@ describe('folder conversation navigation', () => {
     const link = row.querySelector<HTMLAnchorElement>('a.gv-folder-conversation-link');
 
     expect(link?.href).toBe(`https://gemini.google.com/u/2/app/${targetHexId}?hl=en`);
+  });
+
+  it('uses the URL route id for legacy conversations in account-isolated links and navigation', () => {
+    const targetHexId = '13572468abcdef90';
+    const conversation = createConversation(targetHexId);
+    conversation.conversationId = 'conv_legacyfallback';
+    conversation.url = `https://gemini.google.com/u/1/app/${targetHexId}?hl=en`;
+    window.history.replaceState({}, '', '/u/2/app/original12345678');
+
+    manager = new FolderManager();
+    const typedManager = manager as unknown as TestableManager;
+    typedManager.accountIsolationEnabled = true;
+    typedManager.data = {
+      folders: [],
+      folderContents: { 'folder-1': [conversation] },
+    };
+    vi.spyOn(typedManager, 'markConversationAsRecentlyOpened').mockImplementation(() => {});
+
+    const row = typedManager.createConversationElement(conversation, 'folder-1', 1);
+    const link = row.querySelector<HTMLAnchorElement>('a.gv-folder-conversation-link');
+    typedManager.navigateToConversationById('folder-1', conversation.conversationId);
+
+    expect(link?.href).toBe(`https://gemini.google.com/u/2/app/${targetHexId}?hl=en`);
+    expect(window.location.pathname).toBe(`/u/2/app/${targetHexId}`);
   });
 
   it('records recency without immediately reordering the visible folder list', () => {
