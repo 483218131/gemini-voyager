@@ -24,15 +24,15 @@
     '.gv-folder-container',
     '.gv-gems-inline-list',
   ].join(', ');
+  // Let Gemini restore the latest turn after load / conversation switches (#741).
   const INITIAL_NATIVE_SCROLL_ALLOW_MS = 8000;
   const ROUTE_NATIVE_SCROLL_ALLOW_MS = 4000;
-  const SUBMIT_SCROLL_BLOCK_MS = 120000;
+  // Ignore route-driven re-allow briefly after submit so Enter-while-reading stays blocked.
   const SUBMIT_ROUTE_GRACE_MS = 5000;
   const SEND_BUTTON_TEXT_RE =
     /\b(send|submit|run|update)\b|发送|提交|傳送|送出|送信|전송|enviar|envoyer|senden|отправ|إرسال|运行|執行|実行|실행|更新/i;
 
   let nativeScrollAllowedUntil = Date.now() + INITIAL_NATIVE_SCROLL_ALLOW_MS;
-  let blockScrollUntil = 0;
   let lastSubmitIntentAt = 0;
   let lastUrl = location.href;
 
@@ -49,21 +49,27 @@
   function allowNativeScrollFor(durationMs) {
     const now = Date.now();
     if (now - lastSubmitIntentAt < SUBMIT_ROUTE_GRACE_MS) return;
-    blockScrollUntil = 0;
     nativeScrollAllowedUntil = Math.max(nativeScrollAllowedUntil, now + durationMs);
+  }
+
+  function cancelNativeScrollAllow() {
+    if (!isEnabled()) return;
+    nativeScrollAllowedUntil = 0;
   }
 
   function markSubmitIntent() {
     if (!isEnabled()) return;
-    const now = Date.now();
-    lastSubmitIntentAt = now;
-    blockScrollUntil = now + SUBMIT_SCROLL_BLOCK_MS;
+    lastSubmitIntentAt = Date.now();
+    // Block immediately: do not wait out a lingering restore-allow window.
     nativeScrollAllowedUntil = 0;
   }
 
+  /**
+   * When enabled, block downward chat auto-scroll except during short restore
+   * windows after load / route change. Actual blocks still require isScrolledUp.
+   */
   function shouldBlockAutoScroll() {
-    const now = Date.now();
-    return isEnabled() && now >= nativeScrollAllowedUntil && now < blockScrollUntil;
+    return isEnabled() && Date.now() >= nativeScrollAllowedUntil;
   }
 
   function isSidebarElement(el) {
@@ -129,6 +135,21 @@
     return iconName === 'send' || iconName === 'play_arrow';
   }
 
+  function handleUserScrollIntent(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (isSidebarElement(target)) return;
+    // Wheel/touch over nested message text still counts as chat reading intent.
+    if (
+      !target.closest(CHAT_SCROLL_SELECTOR) &&
+      target !== document.documentElement &&
+      target !== document.body
+    ) {
+      return;
+    }
+    cancelNativeScrollAllow();
+  }
+
   document.addEventListener(
     'keydown',
     (event) => {
@@ -147,6 +168,11 @@
     },
     true,
   );
+
+  // User reading earlier turns: cancel any restore-allow window so delayed
+  // Gemini scroll-to-bottom cannot yank them after the conversation settles.
+  document.addEventListener('wheel', handleUserScrollIntent, { capture: true, passive: true });
+  document.addEventListener('touchmove', handleUserScrollIntent, { capture: true, passive: true });
 
   wrapHistoryMethod('pushState');
   wrapHistoryMethod('replaceState');

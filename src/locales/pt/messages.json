@@ -1230,8 +1230,8 @@
     "description": "Auto-hide sidebar toggle label"
   },
   "preventAutoScrollHint": {
-    "message": "Impede o Gemini de pular para o final quando você aperta Enter enquanto lê respostas anteriores.",
-    "description": "Auto-hide sidebar feature hint"
+    "message": "Mantém a sua posição ao ler turnos anteriores. O Gemini ainda pode saltar para a mensagem mais recente logo após abrir ou mudar de chat.",
+    "description": "Hint for prevent auto scroll feature"
   },
   "cloudSync": {
     "message": "Sincronização na Nuvem",

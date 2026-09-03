@@ -166,9 +166,9 @@ describe('prevent-auto-scroll page script', () => {
     vi.useRealTimers();
   });
 
-  it('allows Gemini to scroll to the latest message when there was no recent submit', () => {
+  it('allows Gemini to restore the latest message during the initial load window', () => {
     installScript();
-    vi.advanceTimersByTime(10000);
+    vi.advanceTimersByTime(1000);
 
     const { el, getScrollTop } = createScrollableElement();
 
@@ -176,6 +176,33 @@ describe('prevent-auto-scroll page script', () => {
 
     expect(elementScrollToSpy).toHaveBeenCalledTimes(1);
     expect(getScrollTop()).toBe(1800);
+  });
+
+  it('blocks downward auto-scroll after the initial restore window even without a submit', () => {
+    installScript();
+    vi.advanceTimersByTime(10000);
+
+    const { el, getScrollTop } = createScrollableElement();
+
+    el.scrollTo({ top: 1800 });
+
+    expect(elementScrollToSpy).not.toHaveBeenCalled();
+    expect(getScrollTop()).toBe(0);
+  });
+
+  it('cancels the restore window when the user scrolls the chat to read earlier turns', () => {
+    installScript();
+    vi.advanceTimersByTime(1000);
+
+    const { el, getScrollTop } = createScrollableElement();
+    const message = document.createElement('div');
+    el.appendChild(message);
+    message.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -40 }));
+
+    el.scrollTo({ top: 1800 });
+
+    expect(elementScrollToSpy).not.toHaveBeenCalled();
+    expect(getScrollTop()).toBe(0);
   });
 
   it('blocks downward auto-scroll after the user submits while reading older content', () => {

@@ -1181,8 +1181,8 @@
     "description": "Auto-hide sidebar toggle label"
   },
   "preventAutoScrollHint": {
-    "message": "避免在查看過往紀錄時按 Enter 導致頁面強制滾動到底部",
-    "description": "Auto-hide sidebar feature hint"
+    "message": "閱讀較早內容時保持目前位置；開啟或切換對話後仍允許短暫跳到最新訊息",
+    "description": "Hint for prevent auto scroll feature"
   },
   "cloudSync": {
     "message": "雲端同步",

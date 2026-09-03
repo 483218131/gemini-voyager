@@ -1230,8 +1230,8 @@
     "description": "Auto-hide sidebar toggle label"
   },
   "preventAutoScrollHint": {
-    "message": "Предотвращает прыжок Gemini вниз при нажатии Enter во время чтения предыдущих ответов.",
-    "description": "Auto-hide sidebar feature hint"
+    "message": "Сохраняет позицию при чтении более ранних ответов. Сразу после открытия или смены чата Gemini всё ещё может перейти к последнему сообщению.",
+    "description": "Hint for prevent auto scroll feature"
   },
   "cloudSync": {
     "message": "Облачная синхронизация",

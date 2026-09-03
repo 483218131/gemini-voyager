@@ -1249,7 +1249,7 @@
     "description": "Feature to prevent auto scrolling to bottom when generating answers"
   },
   "preventAutoScrollHint": {
-    "message": "Prevents Gemini from jumping to the bottom when you hit enter while reading previous responses.",
+    "message": "Keeps your place while reading earlier turns. Gemini can still jump to the latest message right after you open or switch chats.",
     "description": "Hint for prevent auto scroll feature"
   },
   "syncModeDisabled": {

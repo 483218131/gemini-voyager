@@ -13,6 +13,16 @@ generation traffic detection.
   for the chat/viewport.
 - **Guard:** `src/pages/content/preventAutoScroll/__tests__/preventAutoScrollScript.test.ts`
 
+## Prevent auto scroll must keep reading position after generation settles
+
+- **Trap:** With the toggle on, a finished conversation could still yank the viewport from ~40% back
+  to the bottom after a delay. The #741 restore fix gated blocking on a 120s post-submit window, so
+  idle reading (no recent submit / window expired) let Gemini's delayed scroll-to-bottom through.
+- **Rule:** When enabled, block downward chat auto-scroll whenever the user is scrolled up, except
+  during short load/route restore windows. Cancel those windows on user wheel/touch in the chat so
+  reading intent wins over delayed Gemini jumps. Still re-allow briefly after conversation switches.
+- **Guard:** `src/pages/content/preventAutoScroll/__tests__/preventAutoScrollScript.test.ts`
+
 ## Gemini table menus are not model menus
 
 - **Trap:** Gemini table option menus showed Voyager default-model star buttons, including the "Set

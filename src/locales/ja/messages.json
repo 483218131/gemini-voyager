@@ -1227,8 +1227,8 @@
     "description": "Auto-hide sidebar toggle label"
   },
   "preventAutoScrollHint": {
-    "message": "過去の回答を読んでいるときに Enter キーを押すと、一気に一番下までスクロールしてしまうのを防ぎます。",
-    "description": "Auto-hide sidebar feature hint"
+    "message": "過去の回答を読んでいるときに現在位置を保ちます。チャットを開く・切り替えた直後だけ、最新メッセージへのジャンプを許可します。",
+    "description": "Hint for prevent auto scroll feature"
   },
   "cloudSync": {
     "message": "クラウド同期",

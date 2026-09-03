@@ -1221,8 +1221,8 @@
     "description": "Auto-hide sidebar toggle label"
   },
   "preventAutoScrollHint": {
-    "message": "이전 응답을 읽는 동안 Enter 키를 누를 때 Gemini 가 맨 아래로 점프하는 것을 방지합니다.",
-    "description": "Auto-hide sidebar feature hint"
+    "message": "이전 응답을 읽는 동안 현재 위치를 유지합니다. 채팅을 열거나 전환한 직후에는 최신 메시지로 이동할 수 있습니다.",
+    "description": "Hint for prevent auto scroll feature"
   },
   "cloudSync": {
     "message": "클라우드 동기화",
