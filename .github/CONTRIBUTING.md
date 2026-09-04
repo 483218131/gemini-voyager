@@ -275,7 +275,7 @@ Voyager 通过以下功能增强 Gemini AI 聊天体验：
 - UI 自定义
 
 > [!NOTE]
-> **我们认为 Voyager 的功能已经足够充分且全面。** 引入过多个性化、小众的功能不会让软件更好用，反而会增加维护负担。除非你认为某个功能确实是急需的、大多数用户都会用到的，否则不建议提交 Feature Request。若确实必要，请到 [Discussions](https://github.com/Nagi-ovo/voyager/discussions) 提出，不要开 Issue。
+> **我们认为 Voyager 的功能已经足够充分且全面。** 引入过多个性化、小众的功能不会让软件更好用，反而会增加维护负担。除非你认为某个功能确实是急需的、大多数用户都会用到的，否则不建议提交 Feature Request。若确实必要，请先到 [Discussions](https://github.com/Nagi-ovo/voyager/discussions) 提出想法；维护者认可后再开 Issue 对齐具体方案，等待明确批准后才开始写代码。
 
 **不在范围内**：网站爬取、网络拦截、账户自动化。
 
@@ -580,7 +580,7 @@ Voyager enhances the Gemini AI chat experience with:
 - UI customization
 
 > [!NOTE]
-> **We believe Voyager's feature set is already comprehensive and well-rounded.** Adding too many niche or overly personalized features does not make the software better — it only increases the maintenance burden. Unless you believe a feature is truly essential and would benefit the majority of users, please reconsider submitting a Feature Request. If it truly is essential, raise it in [Discussions](https://github.com/Nagi-ovo/voyager/discussions), not as an Issue.
+> **We believe Voyager's feature set is already comprehensive and well-rounded.** Adding too many niche or overly personalized features does not make the software better — it only increases the maintenance burden. Unless you believe a feature is truly essential and would benefit the majority of users, please reconsider submitting a Feature Request. If it truly is essential, raise the idea in [Discussions](https://github.com/Nagi-ovo/voyager/discussions) first; once a maintainer signals interest, open an Issue to align on the approach and wait for explicit approval before writing any code.
 
 **Out of scope**: Site scraping, network interception, account automation.
 
