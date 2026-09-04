@@ -116,6 +116,30 @@ function applyWidth(widthPercent: number) {
       box-sizing: border-box !important;
     }
 
+    /* Gemini 3.8 / luminous layout pins the thread to
+       --bard-chat-window-content-width-default (708px). Native rules read
+       max-width: var(...), so the slider has to own the variables (#955). */
+    chat-window,
+    chat-window-content,
+    .enable-luminous-content-width-update,
+    .chat-container,
+    .chat-history-scroll-container,
+    infinite-scroller.chat-history {
+      --bard-chat-window-content-width-default: ${widthValue};
+      --bard-chat-window-max-width-default: ${widthValue};
+    }
+
+    .conversation-container {
+      max-width: ${widthValue} !important;
+      width: min(100%, ${widthValue}) !important;
+    }
+
+    .enable-extended-and-xl-grid .conversation-container user-query,
+    .enable-extended-and-xl-grid .conversation-container model-response-disclaimers {
+      max-width: ${widthValue} !important;
+      width: min(100%, ${widthValue}) !important;
+    }
+
     main > div:has(user-query),
     main > div:has(model-response),
     main > div:has(.conversation-container) {

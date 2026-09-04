@@ -118,6 +118,10 @@ describe('chatWidth', () => {
     const expectedPx = percentToPixels(70); // 1344
     expect(styleText).toContain(`max-width: ${expectedPx}px !important`);
     expect(styleText).toContain(`width: min(100%, ${expectedPx}px) !important`);
+    expect(styleText).toContain(`--bard-chat-window-content-width-default: ${expectedPx}px`);
+    expect(styleText).toContain(`--bard-chat-window-max-width-default: ${expectedPx}px`);
+    expect(styleText).toContain('.enable-luminous-content-width-update');
+    expect(styleText).toContain('.enable-extended-and-xl-grid .conversation-container user-query');
   });
 
   it('excludes the header logo pill wrapper from the sparkle width rule (#875)', async () => {

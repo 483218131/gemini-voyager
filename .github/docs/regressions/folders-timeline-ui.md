@@ -168,12 +168,26 @@ drop, or hover layout.
   while `chatWidth` or `editInputWidth` can widen `input-area-v2`. Upload still works outside the
   hint because `.chat-container` is the real drop target.
 - **Rule:** Both width modules must inject an overlay width with the same value and precedence as
-  their input rule. Keep `chatWidth`'s `input-container` prefix more specific than `editInputWidth`,
-  so the overlay and visible input choose the same winner regardless of injection order.
+  their input rule. When only chat width is on, its `input-container` prefix wins. When edit input
+  width is also on, `html body input-container …` must beat that prefix so the composer and overlay
+  follow the edit slider (#955), while the thread still follows chat width.
 - **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` and
   `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`. At 70% width, a synthetic
   drag over `.chat-container` must give the overlay and `input-area-v2` identical left and right
-  edges.
+  edges. `editInputWidth` tests must keep the `html body input-container` composer/overlay prefix.
+
+## Gemini luminous width variables cap the thread at 708px
+
+- **Trap:** Gemini 3.8's `.enable-luminous-content-width-update` host sets
+  `--bard-chat-window-content-width-default: 708px`. Native conversation and input rules read
+  `max-width: var(...)`. Voyager used to only set `max-width: none` / a pixel cap on its own
+  selectors, so the composer stayed on chat width's more specific `input-area-v2` rule and the
+  thread could look stuck at the luminous cap on the new layout.
+- **Rule:** `chatWidth` must assign both luminous variables on the chat-window hosts and keep an
+  explicit width on `.conversation-container`. `editInputWidth` must assign the same variables on
+  `input-container` and beat chat width's input/overlay selectors when both sliders are enabled.
+- **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` and
+  `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`.
 
 ## Compact timeline preview hover gap closes panel
 

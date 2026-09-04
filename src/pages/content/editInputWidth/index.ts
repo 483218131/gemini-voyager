@@ -114,32 +114,28 @@ function applyWidth(widthPercent: number): void {
 
     /* ===== Main chat input area (input-container > input-area-v2) ===== */
     input-container {
+      --bard-chat-window-content-width-default: ${widthValue};
+      --bard-chat-window-max-width-default: ${widthValue};
       max-width: ${widthValue} !important;
       width: min(100%, ${widthValue}) !important;
       margin-left: auto !important;
       margin-right: auto !important;
     }
 
-    input-container .input-area-container {
-      max-width: 100% !important;
-      width: 100% !important;
-    }
-
-    input-area-v2 {
-      max-width: 100% !important;
-      width: 100% !important;
-    }
-
-    input-area-v2 .input-area {
+    /* Beat chatWidth's \`input-container input-area-v2\` rule when both sliders
+       are on, so the composer follows Edit input width (#955). */
+    html body input-container .input-area-container,
+    html body input-container input-area-v2,
+    html body input-container input-area-v2 .input-area {
       max-width: 100% !important;
       width: 100% !important;
     }
 
     /* Widen the file-drop overlay with the input area (#887). Gemini pins it to
-       var(--bard-chat-window-max-width-default, 760px), which only matches the
-       native input width. Kept less specific than chatWidth's overlay rule so
-       both-enabled sessions follow chatWidth, like the input-area-v2 rules do. */
-    file-drop-indicator .overlay-container[data-filedrop-id="chat-window-input-container"] {
+       var(--bard-chat-window-max-width-default, 760px). Prefix with html body so
+       this wins over chatWidth when both modules are enabled, matching the
+       composer. */
+    html body input-container file-drop-indicator .overlay-container[data-filedrop-id="chat-window-input-container"] {
       max-width: ${widthValue} !important;
       width: min(100%, ${widthValue}) !important;
       margin-left: auto !important;

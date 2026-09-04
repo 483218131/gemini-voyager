@@ -36,6 +36,8 @@ describe('editInputWidth', () => {
     const styleText = getInjectedStyle().textContent ?? '';
     expect(styleText).toContain('max-width: 80vw !important');
     expect(styleText).toContain('width: min(100%, 80vw) !important');
+    expect(styleText).toContain('--bard-chat-window-content-width-default: 80vw');
+    expect(styleText).toContain('html body input-container input-area-v2');
   });
 
   it('widens the file-drop overlay to match the input area (#887)', async () => {
@@ -45,15 +47,15 @@ describe('editInputWidth', () => {
     const styleText = getInjectedStyle().textContent ?? '';
     // Read the selector back out of the injected CSS so this test fails if the
     // shipped rule changes, instead of only checking a hardcoded copy of it
-    const overlayRule = styleText.match(/(^|\n)\s*(file-drop-indicator[^{]+)\{([^}]+)\}/);
+    const overlayRule = styleText.match(/(^|\n)\s*(html body input-container file-drop-indicator[^{]+)\{([^}]+)\}/);
     expect(overlayRule).not.toBeNull();
     const selector = (overlayRule as RegExpMatchArray)[2].trim();
     const body = (overlayRule as RegExpMatchArray)[3];
 
-    // Must stay less specific than chatWidth's input-container-prefixed overlay
-    // rule so both-enabled sessions resolve the same way as the input-area rules
+    // More specific than chatWidth's input-container-prefixed overlay rule so
+    // both-enabled sessions follow Edit input width for the composer (#955).
     expect(selector).toBe(
-      'file-drop-indicator .overlay-container[data-filedrop-id="chat-window-input-container"]',
+      'html body input-container file-drop-indicator .overlay-container[data-filedrop-id="chat-window-input-container"]',
     );
     expect(body).toContain('max-width: 80vw !important');
     expect(body).toContain('width: min(100%, 80vw) !important');
