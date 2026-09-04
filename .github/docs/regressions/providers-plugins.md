@@ -16,6 +16,16 @@ or prompt commands.
 - **Guard:** `src/pages/content/export/adapter/__tests__/chatgpt.test.ts`
   (`repositions a virtual shell that moves offscreen after height reconciliation`).
 
+## ChatGPT export toolbar must avoid the native header cluster
+
+- **Trap:** The ChatGPT persistent export button sat at `top: 50px` / `right: 84px` and covered
+  Share, the more menu, or the conversation title. Avoidance only knew Gemini top-bar selectors, so
+  ChatGPT header actions never pushed the toolbar left.
+- **Rule:** Keep the ChatGPT toolbar on the header row and include `#conversation-header-actions`
+  plus Share / conversation-options in the top-right avoidance list.
+- **Guard:** `src/pages/content/export/__tests__/persistentExportToolbar.test.ts`
+  (`moves left to avoid ChatGPT header share actions`).
+
 ## ChatGPT export UI must belong to the active plugin lifecycle
 
 - **Trap:** Rapidly disabling and re-enabling the ChatGPT exporter could let a stale startup remove

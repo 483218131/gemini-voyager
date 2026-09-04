@@ -1636,7 +1636,9 @@ body.dark-theme .gv-export-dropdown-btn:hover,
 }
 
 .gv-persistent-export-toolbar[data-gv-platform='chatgpt'] {
-  top: 50px;
+  /* Same row as ChatGPT's header actions. Horizontal offset is computed so
+   * the button sits to the left of Share / more instead of over the title. */
+  top: 12px;
 }
 
 .gv-persistent-export-btn {

@@ -10,7 +10,9 @@ import {
 afterEach(() => {
   document.querySelectorAll('.gv-persistent-export-toolbar').forEach((n) => n.remove());
   document.body
-    .querySelectorAll('[data-test-id="upgrade-button"], top-bar-actions')
+    .querySelectorAll(
+      '[data-test-id="upgrade-button"], top-bar-actions, #conversation-header-actions',
+    )
     .forEach((n) => n.remove());
   vi.restoreAllMocks();
 });
@@ -97,7 +99,7 @@ describe('persistentExportToolbar', () => {
       /\.gv-persistent-export-toolbar\[data-gv-platform='chatgpt'\]\s*\{([^}]*)\}/,
     )?.[1];
 
-    expect(platformRule).toContain('top: 50px');
+    expect(platformRule).toContain('top: 12px');
     expect(platformRule).not.toContain('right:');
     expect(css).toContain('html.dark .gv-persistent-export-btn,');
     expect(css).toContain('html.dark .gv-persistent-export-btn:hover,');
@@ -176,6 +178,32 @@ describe('persistentExportToolbar', () => {
     await nextFrame();
 
     expect(handle.root.style.getPropertyValue('--gv-persistent-export-right')).toBe('372px');
+  });
+
+  it('moves left to avoid ChatGPT header share actions', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1280);
+    const headerActions = document.createElement('div');
+    headerActions.id = 'conversation-header-actions';
+    mockRect(headerActions, {
+      top: 8,
+      bottom: 48,
+      left: 1040,
+      right: 1268,
+      width: 228,
+      height: 40,
+    });
+    document.body.appendChild(headerActions);
+
+    const handle = mountPersistentExportToolbar({
+      label: 'Export',
+      tooltip: 'Export chat history',
+      onClick: vi.fn(),
+    });
+    handle.root.setAttribute('data-gv-platform', 'chatgpt');
+
+    await nextFrame();
+
+    expect(handle.root.style.getPropertyValue('--gv-persistent-export-right')).toBe('252px');
   });
 
   it('ignores full-width top-bar containers so the toolbar stays top-right', async () => {

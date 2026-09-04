@@ -27,6 +27,10 @@ const TOP_RIGHT_AVOIDANCE_SELECTORS = [
   '[aria-label*="upgrade" i]',
   '[aria-label*="pro" i]',
   '[aria-label*="advanced" i]',
+  // ChatGPT conversation header: Share / more sit in the same top-right cluster.
+  '#conversation-header-actions',
+  '[data-testid="share-chat-button"]',
+  '[data-testid="conversation-options-button"]',
 ].join(',');
 
 type OwnedToolbarRoot = HTMLDivElement & { _gvOwner?: symbol };
