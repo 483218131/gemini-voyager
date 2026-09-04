@@ -47,7 +47,9 @@ describe('editInputWidth', () => {
     const styleText = getInjectedStyle().textContent ?? '';
     // Read the selector back out of the injected CSS so this test fails if the
     // shipped rule changes, instead of only checking a hardcoded copy of it
-    const overlayRule = styleText.match(/(^|\n)\s*(html body input-container file-drop-indicator[^{]+)\{([^}]+)\}/);
+    const overlayRule = styleText.match(
+      /(^|\n)\s*(html body input-container file-drop-indicator[^{]+)\{([^}]+)\}/,
+    );
     expect(overlayRule).not.toBeNull();
     const selector = (overlayRule as RegExpMatchArray)[2].trim();
     const body = (overlayRule as RegExpMatchArray)[3];
