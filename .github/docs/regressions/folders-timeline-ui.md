@@ -268,6 +268,25 @@ drop, or hover layout.
 - **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` and
   `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`.
 
+## Gemini's edit-mode actions rely on block-level `justify-self`
+
+- **Trap:** Gemini right-aligns the Cancel/Update row with `justify-self: flex-end` on
+  `.edit-button-area`, a block-level flex container inside a `display: block` parent.
+  Self-alignment in block layout is a Chrome-only feature today. Safari drops the declaration, so
+  the row stretches to the full container width per spec and its own `justify-content: flex-start`
+  parks both buttons at the far left, visually detached from the edit box. Measured on the live
+  page: Chrome `x=904 w=172`, Safari `x=352 w=724`, with every other element in the edit tree
+  identical. No Voyager module targets this element, and the width sliders do not need to be
+  enabled for it to happen — do not start by suspecting `editInputWidth`.
+- **Rule:** Reproduce Gemini's intended result with properties every engine implements:
+  `width: fit-content` plus `margin-inline-start: auto` on `.user-query-container
+.edit-button-area`. Both need `!important` because Gemini's own `margin: 0` rule carries two
+  attribute selectors. Keep the margin logical so the row still lands on the inline end in RTL.
+  Verified as a no-op in Chrome: the row measures `x=904 w=172` with and without the shim.
+- **Guard:** `src/pages/content/__tests__/geminiEditActionsStyle.test.ts`. The shim must keep both
+  `!important` declarations, must not use a physical `margin-left`, and its selector must match the
+  edit-mode row without catching an unrelated `.edit-button-area`.
+
 ## Compact timeline preview hover gap closes panel
 
 - **Trap:** In compact timeline mode, moving the pointer from the rail to the preview panel could

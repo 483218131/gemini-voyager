@@ -14843,3 +14843,21 @@ body.gv-rtl .gv-ph-panel {
     max-height: calc(100dvh - 76px);
   }
 }
+
+/* ----- Gemini compatibility: edit-mode action row -----
+ * Gemini right-aligns the Cancel/Update row with `justify-self: flex-end` on
+ * `.edit-button-area`, which is a block-level flex container inside a block
+ * parent. Self-alignment in block layout is a Chrome-only feature today, so
+ * Safari drops the declaration, the row stretches to the full container width
+ * per spec, and its `justify-content: flex-start` parks both buttons at the far
+ * left, detached from the edit box they belong to.
+ *
+ * Reproduce the same result with properties every engine implements. Measured
+ * against Gemini's own layout: Chrome renders x=904 w=172 with and without this
+ * rule, and Safari matches that instead of x=352 w=724. `!important` is
+ * required because Gemini's own `margin: 0` rule carries two attribute
+ * selectors and would otherwise win. */
+.user-query-container .edit-button-area {
+  width: fit-content !important;
+  margin-inline-start: auto !important;
+}
