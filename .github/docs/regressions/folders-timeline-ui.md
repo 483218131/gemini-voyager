@@ -287,6 +287,24 @@ drop, or hover layout.
   `!important` declarations, must not use a physical `margin-left`, and its selector must match the
   edit-mode row without catching an unrelated `.edit-button-area`.
 
+## Edit input width desynced Cancel/Update from the edit box
+
+- **Trap:** Gemini's edit mode nests two `.edit-container` elements. The outer one holds both the
+  prompt box and `.edit-button-area` (Cancel/Update); the inner one sits inside
+  `.query-content.edit-mode` and starts indented by that element's horizontal padding.
+  `editInputWidth` matched both with `.edit-mode .edit-container` and gave them the same
+  `width: min(100%, <slider>)`, without `box-sizing: border-box`. Measured live at 60%: the outer
+  container ended at x=1036 and the form field at x=1088, so the box overhung the button row by
+  exactly the padding and the actions no longer sat under it.
+- **Rule:** The slider width belongs to the outermost edit container only. Anything nested
+  (`.edit-mode .edit-container .edit-container`, `.edit-mode .edit-container .query-content.edit-mode`)
+  must be `width: 100%` so it fills that owner instead of re-clamping from a different left offset.
+  Every selector that carries a width must also carry `box-sizing: border-box`, because these
+  containers have horizontal padding.
+- **Guard:** `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`. The nested-fill
+  selector is read back out of the injected CSS and run against Gemini's real edit-mode shape: it
+  must match the inner container and `.query-content.edit-mode`, and must not match the outer one.
+
 ## Compact timeline preview hover gap closes panel
 
 - **Trap:** In compact timeline mode, moving the pointer from the rail to the preview panel could
