@@ -263,14 +263,16 @@ jobs:
             else if (changes < 200) label = 'size/M';
             else if (changes < 500) label = 'size/L';
             else                    label = 'size/XL';
-            // Remove old size labels
+            // Keep the current size untouched to avoid duplicate timeline events.
             const { data: existing } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr });
             for (const l of existing) {
-              if (l.name.startsWith('size/')) {
+              if (l.name.startsWith('size/') && l.name !== label) {
                 await github.rest.issues.removeLabel({ owner, repo, issue_number: pr, name: l.name });
               }
             }
-            await github.rest.issues.addLabels({ owner, repo, issue_number: pr, labels: [label] });
+            if (!existing.some(l => l.name === label)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: pr, labels: [label] });
+            }
             core.info(`PR #${pr}: ${changes} changed lines → ${label}`);
 
   # ── Summary (required-check anchor) ───────────────────────────────────

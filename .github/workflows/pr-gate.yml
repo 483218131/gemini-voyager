@@ -10,7 +10,12 @@ concurrency:
 
 jobs:
   check-contributor:
-    if: github.repository == 'Nagi-ovo/voyager'
+    # Review bots edit the PR body; only policy-relevant edits need another check.
+    if: >-
+      github.repository == 'Nagi-ovo/voyager' &&
+      (github.event.action != 'edited' ||
+       github.event.changes.title != null ||
+       github.event.changes.base != null)
     runs-on: ubuntu-latest
     permissions:
       contents: read
