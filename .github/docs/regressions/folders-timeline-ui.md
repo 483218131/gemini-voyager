@@ -268,6 +268,24 @@ drop, or hover layout.
 - **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` and
   `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`.
 
+## Prompt panel accent must come from the brand token, not a rebuilt hue
+
+- **Trap:** The prompt panel's form controls are themed in three parallel layers: the base rules, a
+  `prefers-color-scheme` / `.theme-host.<theme>` layer, and a `.gv-pm-panel[data-gv-theme='…']`
+  layer. The panel always carries `data-gv-theme`, so that last layer is the one that renders.
+  `.gv-pm-save` rebuilt its colour as `oklch(0.55 0.17 var(--gv-pm-brand-h))` — keeping only the
+  hue — and then hardcoded hue 158 in `:hover` and hue 160 in the dark foreground. A user's custom
+  accent therefore lost its chroma at rest and snapped back to the default green on hover.
+- **Rule:** Paint accent surfaces with `var(--gv-pm-brand, var(--gv-pm-brand-default))`,
+  `var(--gv-pm-brand-fg, …)` and `var(--gv-pm-brand-hover)`. The `*-default` tokens are already
+  theme-scoped for `:root`, `prefers-color-scheme: dark`, `.theme-host.dark-theme` and
+  `.theme-host.light-theme`, so a token-driven rule adapts without a per-theme copy. Reserve
+  `oklch(… var(--gv-pm-brand-h) / <alpha>)` for translucent washes, never for a solid fill. When
+  restyling one layer, update the `data-gv-theme` layer too or the change never ships.
+- **Guard:** `src/pages/content/prompt/__tests__/promptFormStyle.test.ts`. Every `.gv-pm-save` block
+  that sets a background must resolve it through a brand token, and no `.gv-pm-save` / `.gv-pm-add`
+  block may contain a literal hue 158 or 160.
+
 ## Gemini's edit-mode actions rely on block-level `justify-self`
 
 - **Trap:** Gemini right-aligns the Cancel/Update row with `justify-self: flex-end` on
