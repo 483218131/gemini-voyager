@@ -1067,6 +1067,11 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
     const TOOLTIP_OPEN_DELAY_MS = 250;
     const TOOLTIP_HIDE_GRACE_MS = 150;
     let tooltipEl: HTMLDivElement | null = null;
+    let tooltipBody: HTMLDivElement | null = null;
+    /* Bumped on every open and every hide. A Markdown render started for one
+     * row must not paint into the preview after the pointer has moved to a
+     * different row, or after the preview has already been dismissed. */
+    let tooltipRenderToken = 0;
     let tooltipOpenTimer: number | null = null;
     let tooltipHideTimer: number | null = null;
     let tooltipTargetHovered = false;
@@ -1089,6 +1094,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
     function actuallyHideTooltip(): void {
       clearOpenTimer();
       clearHideTimer();
+      tooltipRenderToken += 1;
       tooltipTargetHovered = false;
       tooltipSelfHovered = false;
       if (tooltipEl) {
@@ -1125,21 +1131,25 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
         tooltipSelfHovered = false;
         scheduleHide();
       });
+      // Content lives in an inner .gv-md so the rendered Markdown is styled by
+      // the same rules as the comfortable-mode list item, while the outer
+      // element keeps the surface, scrolling and positioning.
+      const body = document.createElement('div');
+      body.className = 'gv-md';
+      el.appendChild(body);
       document.body.appendChild(el);
       tooltipEl = el;
+      tooltipBody = body;
       return el;
     }
 
-    function showTooltip(target: HTMLElement, fullText: string): void {
-      const el = ensureTooltipEl();
-      // Reset scroll so each open starts at the top of the content.
-      el.scrollTop = 0;
-      el.textContent = fullText;
-      el.setAttribute('data-gv-theme', panel.getAttribute('data-gv-theme') || '');
-
-      // Position: prefer above the target, fall back to below if clipped.
-      // Measurement requires the element to be laid out, so reveal first then
-      // adjust; CSS keeps it invisible until the `-visible` class is applied.
+    // Position: prefer above the target, fall back to below if clipped.
+    // Measurement requires the element to be laid out, so reveal first then
+    // adjust; CSS keeps it invisible until the `-visible` class is applied.
+    // Called again once Markdown lands, because rendering changes the height.
+    function positionTooltip(target: HTMLElement): void {
+      const el = tooltipEl;
+      if (!el) return;
       el.style.left = '0px';
       el.style.top = '0px';
       el.style.visibility = 'hidden';
@@ -1163,6 +1173,44 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
       el.style.left = `${Math.round(left)}px`;
       el.style.top = `${Math.round(top)}px`;
       el.style.visibility = '';
+    }
+
+    function showTooltip(target: HTMLElement, fullText: string): void {
+      const el = ensureTooltipEl();
+      const body = tooltipBody;
+      if (!body) return;
+      // Reset scroll so each open starts at the top of the content.
+      el.scrollTop = 0;
+      // Show the raw text immediately so the peek stays instant on the first
+      // hover, when marked + KaTeX are still being fetched. The Markdown pass
+      // below replaces it; if the import fails, this stays as the fallback.
+      body.textContent = fullText;
+      body.classList.add('gv-pm-tooltip-raw');
+      el.setAttribute('data-gv-theme', panel.getAttribute('data-gv-theme') || '');
+      positionTooltip(target);
+
+      const token = ++tooltipRenderToken;
+      const paint = (html: string): void => {
+        // Stale render: the pointer moved to another row, or the preview was
+        // dismissed while marked was loading.
+        if (token !== tooltipRenderToken || !tooltipEl) return;
+        body.innerHTML = DOMPurify.sanitize(html);
+        body.classList.remove('gv-pm-tooltip-raw');
+        positionTooltip(target);
+      };
+      void ensureMarkdown()
+        .then(() => {
+          if (token !== tooltipRenderToken) return;
+          const out = marked.parse(fullText);
+          if (typeof out === 'string') {
+            paint(out);
+            return;
+          }
+          return out.then(paint);
+        })
+        .catch(() => {
+          // Keep the plain-text fallback already on screen.
+        });
     }
 
     function attachPromptTooltip(target: HTMLElement, fullText: string, _host: HTMLElement): void {
@@ -2447,6 +2495,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
               tooltipEl.remove();
             } catch {}
             tooltipEl = null;
+            tooltipBody = null;
           }
           for (const target of tooltipScrollTargets) {
             try {

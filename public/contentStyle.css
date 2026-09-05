@@ -11039,6 +11039,15 @@ body.light-theme .gv-pm-view-mode.gv-pm-view-mode-compact,
 .gv-pm-item-compact .gv-pm-del::before {
   width: 14px;
   height: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.92 0.004 250 / 0.22) transparent;
+}
+
+/* Plain-text fallback shown for the instant before `marked` resolves (and if
+   it fails to load at all). Only this state needs newline preservation —
+   rendered Markdown must wrap normally. */
+.gv-pm-tooltip-raw {
+  white-space: pre-wrap;
 }
 
 .gv-pm-item-compact .gv-pm-expand-btn {
@@ -11105,10 +11114,125 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
 }
 
 .gv-pm-tooltip[data-gv-theme='light'] {
-  background: rgba(255, 255, 255, 0.98);
-  color: #111827;
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  background: oklch(0.995 0.002 250);
+  color: oklch(0.14 0.004 285);
+  border-color: oklch(0.92 0.004 250 / 0.7);
+  box-shadow: 0 6px 20px oklch(0 0 0 / 0.1);
+  scrollbar-color: oklch(0.14 0.004 285 / 0.22) transparent;
+}
+
+/* ----- Markdown typography inside the hover preview -----
+ * Prompts are authored as Markdown, so the preview renders it (same marked +
+ * KaTeX + DOMPurify path as the comfortable-mode list item). Host-page
+ * heading sizes would blow the card apart, so every block is re-scaled
+ * against the card's own 13px base and given tight, even rhythm. */
+.gv-pm-tooltip .gv-md > :first-child {
+  margin-top: 0;
+}
+
+.gv-pm-tooltip .gv-md > :last-child {
+  margin-bottom: 0;
+}
+
+.gv-pm-tooltip .gv-md h1,
+.gv-pm-tooltip .gv-md h2,
+.gv-pm-tooltip .gv-md h3,
+.gv-pm-tooltip .gv-md h4,
+.gv-pm-tooltip .gv-md h5,
+.gv-pm-tooltip .gv-md h6 {
+  margin: 0.9em 0 0.35em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.gv-pm-tooltip .gv-md h1 {
+  font-size: 15px;
+}
+
+.gv-pm-tooltip .gv-md h2 {
+  font-size: 14px;
+}
+
+.gv-pm-tooltip .gv-md h3,
+.gv-pm-tooltip .gv-md h4,
+.gv-pm-tooltip .gv-md h5,
+.gv-pm-tooltip .gv-md h6 {
+  font-size: 13px;
+}
+
+.gv-pm-tooltip .gv-md p,
+.gv-pm-tooltip .gv-md ul,
+.gv-pm-tooltip .gv-md ol,
+.gv-pm-tooltip .gv-md blockquote,
+.gv-pm-tooltip .gv-md pre,
+.gv-pm-tooltip .gv-md table {
+  margin: 0 0 0.55em;
+}
+
+.gv-pm-tooltip .gv-md ul,
+.gv-pm-tooltip .gv-md ol {
+  padding-inline-start: 1.35em;
+}
+
+.gv-pm-tooltip .gv-md li {
+  margin: 0 0 0.2em;
+}
+
+.gv-pm-tooltip .gv-md li > ul,
+.gv-pm-tooltip .gv-md li > ol {
+  margin: 0.2em 0 0;
+}
+
+.gv-pm-tooltip .gv-md blockquote {
+  padding-inline-start: 0.75em;
+  border-inline-start: 2px solid currentcolor;
+  opacity: 0.75;
+}
+
+.gv-pm-tooltip .gv-md hr {
+  height: 1px;
+  margin: 0.9em 0;
+  border: 0;
+  background: currentcolor;
+  opacity: 0.16;
+}
+
+.gv-pm-tooltip .gv-md code {
+  padding: 0.1em 0.34em;
+  border-radius: 5px;
+  background: oklch(0.92 0.004 250 / 0.12);
+  font-size: 0.92em;
+}
+
+.gv-pm-tooltip .gv-md pre {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: oklch(0.92 0.004 250 / 0.09);
+}
+
+.gv-pm-tooltip .gv-md pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.gv-pm-tooltip .gv-md a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+.gv-pm-tooltip .gv-md img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.gv-pm-tooltip[data-gv-theme='light'] .gv-md code {
+  background: oklch(0.14 0.004 285 / 0.08);
+}
+
+.gv-pm-tooltip[data-gv-theme='light'] .gv-md pre {
+  background: oklch(0.14 0.004 285 / 0.06);
 }
 
 /* ----- Slash prompt completion ----- */
