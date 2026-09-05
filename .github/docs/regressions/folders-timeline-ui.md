@@ -49,24 +49,51 @@ drop, or hover layout.
   pin/rename/delete markers take precedence over overlapping report/export markers.
 - **Guard:** `src/pages/content/export/__tests__/conversationMenuInjection.test.ts`
   (`keeps current top conversation menus distinct when they also export to Docs`) and
-  `src/pages/content/folder/__tests__/observerBatching.test.ts`
-  (`resolves the current conversation when the top Delete menu trigger has no test id`,
-  `removes only the confirmed current conversation when the sidebar reinitializes before confirmation`,
-  `removes the deleted current conversation when Gemini lands on pageId=none`,
-  `ignores a hidden stale native row after current deletion completes at pageId=none`,
-  `ignores a Voyager-hidden archived row after confirmed current deletion`,
-  `ignores a Voyager-hidden archived row marked on legacy actions after deletion`,
-  `preserves a live row when Gemini temporarily hides the sidebar ancestor`,
-  `preserves a hidden native row when current deletion never reaches pageId=none`,
+  `src/pages/content/folder/NativeConversationMenus.test.ts`
+  (`requires native confirmation, then waits for the current route and row to leave`,
+  `checks the row itself after a confirmed current deletion with a %s`,
+  `preserves a conversation after %s even when Gemini reaches pageId=none`,
+  `preserves a hidden row when the current deletion never reaches its completion route`,
+  `expires rejected deletion checks instead of deleting after a later unrelated navigation`, and
+  `keeps an explicit deletion check across a transient native-row re-add`). Manager integration
+  remains in `src/pages/content/folder/__tests__/observerBatching.test.ts`
+  (`removes only the confirmed current conversation after sidebar reinitialization and settlement at %s`,
+  `discards a pending native deletion after the %s changes`,
   `preserves folder entries when native deletion is cancelled after sidebar reinitialization`,
-  `does not infer deletion from pageId=none without an explicit confirmation`,
-  `preserves folder entries when native deletion is cancelled with Escape`,
-  `preserves folder entries when native deletion is cancelled by clicking the overlay backdrop`,
-  `discards a pending native deletion after the storage key changes`,
-  `discards a pending native deletion after the route account changes`,
-  `clears native deletion state on destroy after sidebar reinitialization`,
-  `retries a confirmed current-conversation deletion until the route and row settle`, and
-  `stops retrying a rejected native deletion and preserves the folder entry`).
+  and `clears native deletion on destroy after remount (confirmed: %s)`).
+
+## Batch deletion cancellation must reach native menu waits
+
+- **Trap:** Clearing the batch flag or its outer timers left a pending native-menu promise alive.
+  It could click the next account's Delete control or continue the remaining batch after disable.
+- **Rule:** Bind the batch to its account activation and route; pass cancellation through row,
+  menu, confirmation and inter-item waits. Reset, disable and destroy abort that work immediately.
+  Sidebar-only remounts retain the batch. Cancelled work must not report success or schedule reload.
+- **Guard:** `src/pages/content/folder/FolderNativeBatchDelete.test.ts` covers each wait, remount,
+  account changes and a replacement batch while the old one is unwinding.
+
+## Retained selection must be restored into replacement sidebar UI
+
+- **Trap:** Sidebar recovery kept selected conversation IDs but replaced the toolbar and rows,
+  hiding the active selection mode, count and actions while later clicks still selected items.
+- **Rule:** After mounting the replacement tree, restore selected rows and toolbar state from the
+  selection owner; remove a temporary floating selection host when the sidebar takes over.
+- **Guard:** `src/pages/content/folder/FolderSelection.test.ts` covers native/folder selections
+  through remount and floating-to-sidebar toolbar handover.
+
+## Native move menus must resolve ownership when clicked
+
+- **Trap:** Gemini can mount a conversation menu before updating the trigger's `aria-expanded`
+  and `aria-controls`. Capturing menu context during injection binds the button to a missing or
+  incorrect trigger. A sidebar move then does nothing on the new-chat page, or saves the currently
+  open conversation instead of the selected sidebar conversation. Injection retries only update
+  the existing button's label, so they cannot repair its captured callback context.
+- **Rule:** Read the live menu context when the injected Move to folder action is clicked. Resolve
+  the sidebar conversation from that trigger; never use the current page to replace an unresolved
+  sidebar identity.
+- **Guard:** `src/pages/content/folder/__tests__/topMenuInjection.test.ts`
+  (`resolves a sidebar trigger linked after menu injection when %s`, with and without another
+  conversation open).
 
 ## Timeline navigation must validate the live scroll viewport
 
@@ -77,10 +104,39 @@ drop, or hover layout.
 - **Rule:** Before navigation, validate the target's nearest scroll container against the cached
   viewport. Rebind and recalculate markers when it changed, including preview-panel navigation.
 - **Guard:** `src/pages/content/timeline/__tests__/TimelineManagerFlowClickActiveReset.test.ts`
-  (`refreshes connected markers when Gemini inserts a new scroll viewport` and
-  `refreshes the scroll viewport before preview-panel navigation`) and
+  (`rebinds a connected nested viewport before %s navigation`, covering dots and preview items) and
   `src/pages/content/timeline/__tests__/TimelineManagerNavigationRefresh.test.ts`
-  (`rebinds a connected stale scroll viewport before shortcut navigation`).
+  (`rebinds a connected stale viewport before shortcut navigation`).
+
+## Timeline state changes must preserve rail browsing position
+
+- **Trap:** Calling the full view render after a star or hierarchy change also synchronized the rail
+  to the native chat viewport. A user browsing a long rail with its slider was pulled back to the
+  current chat position when editing a marker.
+- **Rule:** State changes update geometry, virtual dots, slider and preview without synchronizing
+  the rail to the chat. Keep that synchronization in native scrolling and navigation paths.
+- **Guard:** `src/pages/content/timeline/__tests__/TimelineManagerFlowClickActiveReset.test.ts`
+  (`preserves the manually scrolled rail when a marker level changes`).
+
+## Timeline surfaces must cancel work that has not become visible
+
+- **Trap:** Clearing tooltip DOM without cancelling a queued animation frame could revive it after
+  an immediate hide; an old hide timer could close a newer tooltip. A pending long press could also
+  star a turn after its interaction owner was destroyed.
+- **Rule:** Tooltip visibility and marker interactions own their complete timer/animation/listener
+  lifetimes. Hide cancels pending visibility work; destroy cancels pending input actions as well.
+- **Guard:** `src/pages/content/timeline/__tests__/TimelineTooltip.test.ts` and
+  `src/pages/content/timeline/__tests__/TimelineMarkerInteractions.test.ts` cover queued frames,
+  overlapping hide/show and teardown during long press.
+
+## Timestamp opt-in changes can arrive during initialization
+
+- **Trap:** Moving the timestamp setting listener to the end of manager initialization lost changes
+  made while history or keyboard settings were loading, leaving timestamps enabled after opt-out.
+- **Rule:** The timestamp owner subscribes before its first asynchronous read and preserves settings
+  changes received while that read is pending. Unsubscribe when the owner is destroyed.
+- **Guard:** `src/pages/content/timeline/__tests__/TimelineTimestamps.test.ts` covers setting changes
+  during pending initialization and shared history-store lifetime.
 
 ## Folder recovery must remove untracked sidebar clones
 
@@ -108,6 +164,29 @@ drop, or hover layout.
   (`waits before opening the floating fallback when the whole sidebar is temporarily missing`,
   `does not leave a FAB or immediately reopen after closing an automatic fallback`, and
   `clears every floating fallback entry point when the sidebar recovers`).
+
+## A pending floating mount must preserve the latest requested mode
+
+- **Trap:** Stopping and restarting the folder runtime during an asynchronous floating mount could
+  reuse the old mount promise and silently discard the new request. A request for the panel could
+  finish as a FAB, or a stopped instance could remove its replacement.
+- **Rule:** Track the requested panel/FAB intent along with the in-flight mount. Coalesce identical
+  requests within one lifetime; after stop or an intent change, wait for the old mount to settle and
+  clean it up before mounting the current request. The mount promise must include asynchronous FAB
+  setup, so cleanup cannot race a detached continuation.
+  Switching a completed automatic fallback to explicit closed floating mode must close the old
+  panel before showing the FAB, even when there is no pending mount promise.
+- **Guard:** `src/pages/content/folder/FolderSidebarRuntime.test.ts` covers stop/restart while a
+  floating mount is pending with panel-to-panel, panel-to-FAB and FAB-to-panel requests.
+
+## Imported activity timestamps must stay within browser timer limits
+
+- **Trap:** A valid future `lastTurnAt` more than 24.8 days away overflowed the browser timeout
+  range, refreshing Activity on a 1 ms loop instead of waiting for its Priority expiry.
+- **Rule:** Clamp the scheduled delay to the signed 32-bit timeout limit, then recompute expiry
+  when it fires. Preserve the imported timestamp.
+- **Guard:** `src/pages/content/folder/__tests__/folderActivityView.test.ts` covers future data
+  without a refresh loop and ordinary Priority expiry.
 
 ## Folder conversation navigation must not hard-refresh Gemini
 

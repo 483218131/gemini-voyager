@@ -1,8 +1,13 @@
 import { CLOUD_SYNC_PATH, CLOUD_UPLOAD_PATH } from '@/core/icons/cloudSyncPaths';
 import { isSafari } from '@/core/utils/browser';
+import {
+  type ConversationSortMode,
+  getFolderDepth,
+  sortConversationsByPriority,
+  sortFolders,
+} from '@/features/folder/model/folderData';
 import { getTranslationSyncUnsafe } from '@/utils/i18n';
 
-import { type ConversationSortMode, sortConversationsByPriority } from './conversationSort';
 import { FOLDER_COLORS, getFolderColor, isDarkMode } from './folderColors';
 import type { ConversationReference, Folder, FolderData } from './types';
 
@@ -13,6 +18,7 @@ export type FloatingPanelSize = { w: number; h: number };
 
 export type MountArgs = {
   data: FolderData;
+  dataReady?: boolean;
   conversationSortMode?: ConversationSortMode;
   storedPos?: FloatingPanelPos | null;
   storedSize?: FloatingPanelSize | null;
@@ -38,7 +44,10 @@ export type FloatingPanelMountArgs = MountArgs;
 
 export type FloatingPanelHandle = {
   element: HTMLElement;
+  setDataReady: (ready: boolean) => void;
   update: (data: FolderData, conversationSortMode?: ConversationSortMode) => void;
+  /** Replaces account data and discards transient edits without changing panel geometry. */
+  reset: (data: FolderData, conversationSortMode?: ConversationSortMode) => void;
   destroy: () => void;
 };
 
@@ -141,36 +150,8 @@ function defaultPos(size: FloatingPanelSize): FloatingPanelPos {
   };
 }
 
-function sortFolders(folders: Folder[]): Folder[] {
-  return [...folders].sort((a, b) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-
-    const aIdx = a.sortIndex ?? -1;
-    const bIdx = b.sortIndex ?? -1;
-    if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx;
-
-    return a.name.localeCompare(b.name, undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    });
-  });
-}
-
 function getFolderChildren(data: FolderData, parentId: string | null): Folder[] {
   return sortFolders(data.folders.filter((folder) => folder.parentId === parentId));
-}
-
-function getFolderDepth(data: FolderData, folderId: string): number {
-  let depth = 0;
-  let current = data.folders.find((folder) => folder.id === folderId);
-
-  while (current?.parentId) {
-    depth += 1;
-    current = data.folders.find((folder) => folder.id === current?.parentId);
-  }
-
-  return depth;
 }
 
 function canCreateChildAtDepth(depth: number): boolean {
@@ -840,6 +821,7 @@ function renderContextMenu(container: HTMLElement, context: RenderContext): void
 
 export function mountFloatingPanel({
   data,
+  dataReady = true,
   conversationSortMode = 'manual',
   storedPos,
   storedSize,
@@ -928,6 +910,17 @@ export function mountFloatingPanel({
 
   const body = document.createElement('div');
   body.className = `${FLOATING_PANEL_CLASS}__body`;
+
+  const setDataReady = (ready: boolean): void => {
+    body.inert = !ready;
+    body.setAttribute('aria-busy', String(!ready));
+    headerActions
+      .querySelectorAll<HTMLButtonElement>(`.${FLOATING_PANEL_CLASS}__icon-button`)
+      .forEach((button) => {
+        button.disabled = !ready;
+      });
+  };
+  setDataReady(dataReady);
 
   panel.appendChild(header);
   panel.appendChild(createHintStack());
@@ -1127,6 +1120,15 @@ export function mountFloatingPanel({
 
   return {
     element: panel,
+    setDataReady,
+    reset: (next, nextConversationSortMode) => {
+      currentData = next;
+      if (nextConversationSortMode) currentConversationSortMode = nextConversationSortMode;
+      inlineEditor = null;
+      contextMenu = null;
+      expandedFolders.clear();
+      render();
+    },
     update: (next, nextConversationSortMode) => {
       currentData = next;
       if (nextConversationSortMode) currentConversationSortMode = nextConversationSortMode;

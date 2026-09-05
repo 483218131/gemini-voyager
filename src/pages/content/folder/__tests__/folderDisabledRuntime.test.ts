@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
 
+import type { FolderNavigation } from '../FolderNavigation';
+import type { FolderSidebarRuntime } from '../FolderSidebarRuntime';
+import type { FolderStore } from '../FolderStore';
 import { FolderManager } from '../manager';
+import type { FolderData } from '../types';
 
 const { mountFloatingFabMock, mountFloatingPanelMock } = vi.hoisted(() => ({
   mountFloatingFabMock: vi.fn(),
@@ -35,22 +39,13 @@ vi.mock('../floatingModeFab', () => ({
 }));
 
 type TestableManager = {
-  cleanupTasks: Array<() => void>;
-  containerElement: HTMLElement | null;
-  sidebarContainer: HTMLElement | null;
-  recentSection: HTMLElement | null;
-  conversationObserver: MutationObserver | null;
-  sideNavObserver: MutationObserver | null;
-  nativeMenuObserver: MutationObserver | null;
+  store: FolderStore;
+  sidebarRuntime: FolderSidebarRuntime;
+  navigation: FolderNavigation;
   folderEnabled: boolean;
   floatingModeEnabled: boolean;
   floatingOpenOnStart: boolean;
-  floatingModeActive: boolean;
   applyFolderEnabledSetting: () => void;
-  setupMutationObserver: () => void;
-  setupSideNavObserver: () => void;
-  startFloatingMode: (openPanel?: boolean) => Promise<void>;
-  navigateToConversation: (url: string, conversation?: unknown) => void;
 };
 
 function mountSidebar(): { appRoot: HTMLElement; sidebar: HTMLElement; recents: HTMLElement } {
@@ -85,61 +80,73 @@ describe('FolderManager disabled runtime teardown', () => {
     manager?.destroy();
     manager = null;
     document.body.innerHTML = '';
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  it('removes mounted folder UI and disconnects sidebar observers when disabled', () => {
+  it('stops enhancing native rows and menus when disabled while preserving folder data', async () => {
+    vi.useFakeTimers();
     manager = new FolderManager();
     const typed = manager as unknown as TestableManager;
-    const { sidebar, recents } = mountSidebar();
+    const { recents } = mountSidebar();
+    const row = document.createElement('div');
+    row.setAttribute('data-test-id', 'conversation');
+    row.innerHTML = '<a href="/app/abcdef0123456789">Native conversation</a>';
+    const nextRow = row.cloneNode(true) as HTMLElement;
+    recents.appendChild(row);
 
-    const container = document.createElement('div');
-    container.className = 'gv-folder-container';
-    sidebar.insertBefore(container, recents);
-
-    typed.sidebarContainer = sidebar;
-    typed.recentSection = recents;
-    typed.containerElement = container;
+    const menu = document.createElement('gem-menu');
+    menu.innerHTML = '<gem-menu-item data-test-id="rename-button">Rename</gem-menu-item>';
+    const nextMenu = menu.cloneNode(true) as HTMLElement;
+    const storedData: FolderData = {
+      folders: [
+        {
+          id: 'saved-folder',
+          name: 'Saved folder',
+          parentId: null,
+          isExpanded: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      folderContents: { 'saved-folder': [] },
+    };
+    typed.store.data = structuredClone(storedData);
     typed.folderEnabled = true;
-    typed.setupMutationObserver();
-    typed.setupSideNavObserver();
+    await typed.sidebarRuntime.start('sidebar');
+    document.body.appendChild(menu);
+    await vi.advanceTimersByTimeAsync(100);
 
-    const nativeMenuObserver = new MutationObserver(() => {});
-    nativeMenuObserver.observe(document.body, { childList: true });
-    typed.nativeMenuObserver = nativeMenuObserver;
-
-    let cleanupRan = false;
-    typed.cleanupTasks = [
-      () => {
-        cleanupRan = true;
-      },
-    ];
+    expect(row.draggable).toBe(true);
+    expect(menu.querySelector('.gv-move-to-folder-btn')).not.toBeNull();
+    expect(document.querySelector('.gv-folder-container')).not.toBeNull();
+    menu.remove();
 
     typed.folderEnabled = false;
     typed.applyFolderEnabledSetting();
+    recents.appendChild(nextRow);
+    document.body.appendChild(nextMenu);
+    await vi.advanceTimersByTimeAsync(100);
 
-    expect(cleanupRan).toBe(true);
-    expect(container.isConnected).toBe(false);
-    expect(typed.containerElement).toBeNull();
-    expect(typed.sidebarContainer).toBeNull();
-    expect(typed.recentSection).toBeNull();
-    expect(typed.conversationObserver).toBeNull();
-    expect(typed.sideNavObserver).toBeNull();
-    expect(typed.nativeMenuObserver).toBeNull();
+    expect(document.querySelector('.gv-folder-container')).toBeNull();
+    expect(nextRow.draggable).toBe(false);
+    expect(nextMenu.querySelector('.gv-move-to-folder-btn')).toBeNull();
+    expect(typed.store.data).toEqual(storedData);
   });
 
-  it('uses floating mode when folders are re-enabled with the floating toggle on', () => {
+  it('uses floating mode when folders are re-enabled with the floating toggle on', async () => {
     manager = new FolderManager();
     const typed = manager as unknown as TestableManager;
-    const startFloatingSpy = vi.spyOn(typed, 'startFloatingMode').mockResolvedValue(undefined);
-
-    typed.folderEnabled = true;
+    typed.folderEnabled = false;
     typed.floatingModeEnabled = true;
-    typed.floatingModeActive = false;
-
     typed.applyFolderEnabledSetting();
 
-    expect(startFloatingSpy).toHaveBeenCalledTimes(1);
+    typed.folderEnabled = true;
+    typed.applyFolderEnabledSetting();
+
+    await vi.waitFor(() => expect(mountFloatingPanelMock).toHaveBeenCalledTimes(1));
+    expect(typed.sidebarRuntime.isFloatingMode).toBe(true);
+    expect(document.querySelector('.gv-folder-container')).toBeNull();
   });
 
   it('opens the floating panel by default when floating mode starts', async () => {
@@ -148,7 +155,7 @@ describe('FolderManager disabled runtime teardown', () => {
 
     typed.folderEnabled = true;
 
-    await typed.startFloatingMode();
+    await typed.sidebarRuntime.start('floating');
 
     expect(mountFloatingPanelMock).toHaveBeenCalledTimes(1);
     expect(mountFloatingFabMock).not.toHaveBeenCalled();
@@ -159,7 +166,7 @@ describe('FolderManager disabled runtime teardown', () => {
     const typed = manager as unknown as TestableManager;
     typed.folderEnabled = true;
 
-    await typed.startFloatingMode();
+    await typed.sidebarRuntime.start('floating');
     const calls = mountFloatingPanelMock.mock.calls as unknown as Array<[{ onClose?: () => void }]>;
     const panelArgs = calls[0]?.[0];
     panelArgs?.onClose?.();
@@ -170,7 +177,7 @@ describe('FolderManager disabled runtime teardown', () => {
   it('routes floating panel conversation clicks through the SPA navigator', async () => {
     manager = new FolderManager();
     const typed = manager as unknown as TestableManager;
-    const navigateSpy = vi.spyOn(typed, 'navigateToConversation').mockImplementation(() => {});
+    const navigateSpy = vi.spyOn(typed.navigation, 'navigate').mockImplementation(() => {});
     const conversation = {
       conversationId: 'c_1234567890abcdef',
       title: 'Conversation',
@@ -180,7 +187,7 @@ describe('FolderManager disabled runtime teardown', () => {
 
     typed.folderEnabled = true;
 
-    await typed.startFloatingMode();
+    await typed.sidebarRuntime.start('floating');
     const calls = mountFloatingPanelMock.mock.calls as unknown as Array<
       [
         {
@@ -192,7 +199,7 @@ describe('FolderManager disabled runtime teardown', () => {
     args.onNavigate?.(conversation);
 
     expect(navigateSpy).toHaveBeenCalledTimes(1);
-    expect(navigateSpy).toHaveBeenCalledWith(conversation.url, conversation);
+    expect(navigateSpy).toHaveBeenCalledWith(conversation);
   });
 
   it('starts floating mode as a FAB only when startup panel is disabled', async () => {
@@ -200,12 +207,13 @@ describe('FolderManager disabled runtime teardown', () => {
     const typed = manager as unknown as TestableManager;
 
     typed.folderEnabled = true;
+    typed.floatingModeEnabled = true;
     typed.floatingOpenOnStart = false;
 
-    await typed.startFloatingMode();
+    typed.applyFolderEnabledSetting();
     await vi.waitFor(() => expect(mountFloatingFabMock).toHaveBeenCalledTimes(1));
 
     expect(mountFloatingPanelMock).not.toHaveBeenCalled();
-    expect(typed.floatingModeActive).toBe(true);
+    expect(typed.sidebarRuntime.isFloatingMode).toBe(true);
   });
 });

@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { sortConversationsByPriority } from '../conversationSort';
+import {
+  normalizeFolderData,
+  sortConversationsByPriority,
+} from '@/features/folder/model/folderData';
+
+import type { FolderStore } from '../FolderStore';
 import { FolderManager } from '../manager';
+import * as storageAdapters from '../storage/FolderStorageAdapter';
 import type { ConversationReference, Folder, FolderData } from '../types';
 
 vi.mock('@/utils/i18n', () => ({
@@ -10,12 +16,7 @@ vi.mock('@/utils/i18n', () => ({
   initI18n: () => Promise.resolve(),
 }));
 
-type TestableManager = {
-  data: FolderData;
-  saveData: () => void;
-  refresh: () => void;
-  ensureDataIntegrity: () => void;
-};
+type ManagerOwners = { store: FolderStore };
 
 function createFolder(id: string, name: string, sortIndex: number): Folder {
   const now = Date.now();
@@ -47,22 +48,39 @@ function createConversation(
 
 describe('addConversationToFolderFromNative — sort-order preservation', () => {
   let manager: FolderManager | null = null;
+  let saved: FolderData | null = null;
+
+  async function makeManager(): Promise<FolderStore> {
+    saved = null;
+    vi.spyOn(storageAdapters, 'createFolderStorageAdapter').mockReturnValue({
+      init: async () => {},
+      loadData: async () => ({ folders: [], folderContents: {} }),
+      saveData: async (_key, data) => {
+        saved = structuredClone(data);
+        return true;
+      },
+      removeData: async () => {},
+      getBackendName: () => 'test-memory',
+    });
+    manager = new FolderManager();
+    const store = (manager as unknown as ManagerOwners).store;
+    await store.init();
+    return store;
+  }
 
   afterEach(() => {
     manager?.destroy();
     manager = null;
     document.body.innerHTML = '';
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
-  it('places newly auto-assigned conversation at the top after data normalization', () => {
-    manager = new FolderManager();
-    const typedManager = manager as unknown as TestableManager;
-    vi.spyOn(typedManager, 'saveData').mockImplementation(() => {});
-    vi.spyOn(typedManager, 'refresh').mockImplementation(() => {});
+  it('places newly auto-assigned conversation at the top after data normalization', async () => {
+    const store = await makeManager();
 
     const folder = createFolder('folder-1', 'Project A', 0);
-    typedManager.data = {
+    store.data = {
       folders: [folder],
       folderContents: {
         'folder-1': [
@@ -79,21 +97,21 @@ describe('addConversationToFolderFromNative — sort-order preservation', () => 
       'https://gemini.google.com/app/auto-assigned',
     );
 
-    typedManager.ensureDataIntegrity();
+    store.data = normalizeFolderData(store.data);
 
-    const sorted = sortConversationsByPriority(typedManager.data.folderContents['folder-1']);
+    const sorted = sortConversationsByPriority(store.data.folderContents['folder-1']);
 
     expect(sorted[0]?.conversationId).toBe('auto-assigned');
+    expect(
+      sortConversationsByPriority(saved?.folderContents['folder-1'] ?? [])[0]?.conversationId,
+    ).toBe('auto-assigned');
   });
 
-  it('does not create duplicate sortIndex values when an existing entry lacks sortIndex', () => {
-    manager = new FolderManager();
-    const typedManager = manager as unknown as TestableManager;
-    vi.spyOn(typedManager, 'saveData').mockImplementation(() => {});
-    vi.spyOn(typedManager, 'refresh').mockImplementation(() => {});
+  it('does not create duplicate sortIndex values when an existing entry lacks sortIndex', async () => {
+    const store = await makeManager();
 
     const folder = createFolder('folder-1', 'Project A', 0);
-    typedManager.data = {
+    store.data = {
       folders: [folder],
       folderContents: {
         'folder-1': [
@@ -120,7 +138,10 @@ describe('addConversationToFolderFromNative — sort-order preservation', () => 
       'https://gemini.google.com/app/auto-assigned',
     );
 
-    const indices = typedManager.data.folderContents['folder-1'].map((c) => c.sortIndex);
+    const indices = store.data.folderContents['folder-1'].map((c) => c.sortIndex);
     expect(new Set(indices).size).toBe(indices.length);
+    expect(saved?.folderContents['folder-1'].map((conversation) => conversation.sortIndex)).toEqual(
+      indices,
+    );
   });
 });

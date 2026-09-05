@@ -1,13 +1,12 @@
 /**
- * Folder-specific types
- * Extracted from the monolithic FolderManager
+ * Shared folder storage and import/export schema.
+ * Persisted IDs are opaque strings, including legacy and imported IDs.
+ * Normalize conversation identities only at the routing/identity boundary.
  */
-import type { ConversationId, FolderId } from './common';
-
 export interface Folder {
-  readonly id: FolderId;
+  id: string;
   name: string;
-  parentId: FolderId | null;
+  parentId: string | null;
   isExpanded: boolean;
   pinned?: boolean;
   color?: string;
@@ -18,7 +17,7 @@ export interface Folder {
 }
 
 export interface ConversationReference {
-  readonly conversationId: ConversationId;
+  conversationId: string;
   title: string;
   url: string;
   addedAt: number;
@@ -35,33 +34,4 @@ export interface ConversationReference {
 export interface FolderData {
   folders: Folder[];
   folderContents: Record<string, ConversationReference[]>;
-}
-
-export type DragDataType = 'conversation' | 'folder';
-
-export interface BaseDragData {
-  type: DragDataType;
-  title: string;
-}
-
-export interface ConversationDragData extends BaseDragData {
-  type: 'conversation';
-  conversationId: ConversationId;
-  url: string;
-  isGem?: boolean;
-  gemId?: string;
-  sourceFolderId?: FolderId;
-}
-
-export interface FolderDragData extends BaseDragData {
-  type: 'folder';
-  folderId: FolderId;
-}
-
-export type DragData = ConversationDragData | FolderDragData;
-
-export interface GemConfig {
-  readonly id: string;
-  readonly name: string;
-  readonly icon: string;
 }
