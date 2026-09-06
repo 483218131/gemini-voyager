@@ -380,3 +380,22 @@ drop, or hover layout.
   the surface is in the document, since nothing is measurable before it inherits its font.
 - **Guard:** `src/pages/content/prompt/__tests__/PromptTemplateFill.test.ts`
   (`grows a slot to fit what is typed into it, and its repeats too`).
+
+## An off-canvas measuring span must not be `position: absolute` inside a scroll container
+
+- **Trap:** `.gv-pm-slot-sizer` parked itself at `position: absolute; left: -9999px` inside
+  `.gv-pm-fill`, which is `overflow: auto`. `visibility: hidden` does not remove a box from its
+  ancestor's scrollable overflow, and the `-9999px` escape only works while that ancestor is LTR:
+  overflow past the inline-start edge is unreachable, so no scrollbar appears. On an RTL host page
+  the surface inherits `direction: rtl` from the page — `body.gv-rtl` is only a scoping hook and
+  never sets `direction` itself — which makes the same offset end-side overflow. Every template fill
+  surface then carries a horizontal scrollbar, and a wheel or trackpad gesture pans the sentence
+  off-screen.
+- **Rule:** Measure with a `position: fixed` span, not an absolute one. A fixed box contributes to no
+  ancestor's scrollable overflow in either direction. It is safe here because its containing block is
+  the viewport, exactly like `.gv-pm-fill` itself, so it adds no dependency the surface does not
+  already have — but that holds only while no ancestor carries `transform`, `filter` or `contain`,
+  which would re-contain the fixed box and would already be mispositioning the surface.
+- **Guard:** `src/pages/content/prompt/__tests__/promptFormStyle.test.ts`
+  (`keeps the slot sizer out of the fill surface scroll region`), which also pins the
+  no-transform premise on `.gv-pm-fill`.

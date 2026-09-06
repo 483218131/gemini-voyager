@@ -72,4 +72,26 @@ describe('prompt form accent', () => {
     expect(body).toContain('border-radius: 10px');
     expect(body).not.toMatch(/#[0-9a-f]{3,6}\b/i);
   });
+
+  it('keeps the slot sizer out of the fill surface scroll region', () => {
+    const css = readContentStyle();
+    const sizer = blocksFor(css, '.gv-pm-slot-sizer').find(([, body]) => body.includes('position'));
+    expect(sizer).toBeDefined();
+    const body = (sizer as [string, string])[1];
+
+    // The sizer parks itself off-canvas inside `.gv-pm-fill`, which scrolls.
+    // An absolutely positioned child is measured into that box's scrollable
+    // overflow, and `left: -9999px` only escapes it while the surface is LTR;
+    // on an RTL host page it becomes end-side overflow and the fill card grows
+    // a horizontal scrollbar that pans the sentence away. A fixed box
+    // contributes to no ancestor's scrollable overflow.
+    expect(body).toMatch(/position:\s*fixed/);
+    expect(body).not.toMatch(/position:\s*absolute/);
+
+    const fill = blocksFor(css, '.gv-pm-fill').find(([selector]) => selector === '.gv-pm-fill');
+    expect(fill).toBeDefined();
+    // Pins the premise: a transformed ancestor would make `fixed` contained
+    // again, and would already be mispositioning the surface itself.
+    expect((fill as [string, string])[1]).not.toMatch(/\b(?:transform|filter|contain)\s*:/);
+  });
 });
