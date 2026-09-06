@@ -336,3 +336,17 @@ drop, or hover layout.
 - **Guard:** `src/pages/content/timeline/__tests__/TimelinePreviewPanel.test.ts`
   (`keeps the panel open while the pointer pauses in the compact hover gap`,
   `treats the compact hover bridge as part of the preview interaction area`).
+
+## A panel remount must not close the folder dialogs that hold unsaved input
+
+- **Trap:** `onPanelUnmount` called `dialogs.closeAll()`, and `FolderSidebarRuntime` runs that same
+  unmount when Gemini rebuilds its sidebar, not only on stop. A folder instructions editor or
+  move-to-folder picker open at that moment vanished mid-edit and took the typed text with it. The
+  two are body-level overlays with no tie to the sidebar, so nothing about the rebuild required
+  closing them.
+- **Rule:** Give the unmount a reason. `stop` closes everything; `remount` closes only the transient
+  views. A view is transient unless it is a body-level modal holding user input — the colour picker,
+  delete confirmations and context menus are anchored to a sidebar row and would otherwise be
+  stranded at stale coordinates against a rebuilt list, so those must still close.
+- **Guard:** `src/pages/content/folder/folderDialogs.test.ts`
+  (`keeps the input-bearing modals across a panel remount and drops the anchored ones`).
