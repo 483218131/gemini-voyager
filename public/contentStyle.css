@@ -15287,31 +15287,11 @@ body.gv-rtl .gv-ph-panel {
   border-radius: 4px;
   padding: 0 3px;
   font-weight: 500;
-  /* It is an <input> while the turn is unsent: the value is still the person's
-     to change. `font: inherit` first, or it renders in the browser's form font
-     inside a paragraph of prompt. */
-  font: inherit;
-  font-weight: 500;
-  border: 0;
-  /* The measured width is the whole box, padding included. */
-  box-sizing: border-box;
-  min-width: 2ch;
-  vertical-align: baseline;
-}
-
-/* Measures a field's value in the tooltip's own type, since `ch` is the advance
-   of `0` and a CJK value is about twice as wide as its length claims. */
-.gv-pm-slash-tooltip-sizer {
-  box-sizing: border-box;
-  position: fixed;
-  top: 0;
-  left: -9999px;
-  visibility: hidden;
-  white-space: pre;
-  pointer-events: none;
-  font: inherit;
-  font-weight: 500;
-  padding: 0 3px;
+  /* An editable span, so it wraps with the sentence around it and needs no
+     width of its own. An `<input>` cannot wrap, and a long value ran off the
+     side of the card. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .gv-pm-slash-tooltip-value:focus {

@@ -135,9 +135,14 @@ describe('slash completion with template prompts', () => {
     const placed = token(input)!;
     placed.dispatchEvent(new MouseEvent('mouseenter'));
     const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
-    const fields = [...tooltip.querySelectorAll<HTMLInputElement>('.gv-pm-slash-tooltip-value')];
+    const fields = [...tooltip.querySelectorAll<HTMLElement>('.gv-pm-slash-tooltip-value')];
 
-    expect(fields.map((f) => f.value)).toEqual(['沉没成本', '克制']);
+    expect(fields.map((f) => f.textContent)).toEqual(['沉没成本', '克制']);
+    // Editable, and able to wrap: an `<input>` cannot, and a long value ran
+    // off the side of the card instead of flowing with the sentence.
+    expect(
+      fields.every((f) => f.tagName === 'SPAN' && f.getAttribute('contenteditable') === 'true'),
+    ).toBe(true);
     // The template around them is not editable; that belongs in the manager.
     const prose = [...tooltip.childNodes]
       .filter((node) => node.nodeType === Node.TEXT_NODE)
@@ -159,8 +164,8 @@ describe('slash completion with template prompts', () => {
 
     const placed = token(input)!;
     placed.dispatchEvent(new MouseEvent('mouseenter'));
-    const field = document.querySelector<HTMLInputElement>('.gv-pm-slash-tooltip-value')!;
-    field.value = '锚定效应';
+    const field = document.querySelector<HTMLElement>('.gv-pm-slash-tooltip-value')!;
+    field.textContent = '锚定效应';
     field.dispatchEvent(new Event('input', { bubbles: true }));
 
     // Expansion reads the token's own body first, so the edit has to land there.
@@ -180,7 +185,7 @@ describe('slash completion with template prompts', () => {
 
     const placed = token(input)!;
     placed.dispatchEvent(new MouseEvent('mouseenter'));
-    const field = document.querySelector<HTMLInputElement>('.gv-pm-slash-tooltip-value')!;
+    const field = document.querySelector<HTMLElement>('.gv-pm-slash-tooltip-value')!;
     const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
     let reachedDocument = false;
     document.addEventListener('keydown', () => (reachedDocument = true), { once: true });
@@ -188,6 +193,8 @@ describe('slash completion with template prompts', () => {
     field.dispatchEvent(event);
 
     expect(reachedDocument).toBe(false);
+    // A placeholder holds one value, never a second line.
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it('leaves a preview unmarked when no template was filled', () => {

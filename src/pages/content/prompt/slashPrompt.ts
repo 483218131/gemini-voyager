@@ -570,17 +570,13 @@ function paintTooltipBody(tooltip: HTMLElement, text: string, target?: HTMLEleme
   // saved prompt, and editing that belongs in the prompt manager.
   tooltip.classList.add('gv-pm-slash-tooltip-editable');
   const values = match.values.map(([start, end]) => text.slice(start, end));
-  const fields: HTMLInputElement[] = [];
-  const sizer = document.createElement('span');
-  sizer.className = 'gv-pm-slash-tooltip-sizer';
-  sizer.setAttribute('aria-hidden', 'true');
-  tooltip.appendChild(sizer);
+  const fields: HTMLElement[] = [];
 
   const commit = (): void => {
     if (!target) return;
     const next = rebuildFromValues(
       source,
-      fields.map((field) => field.value),
+      fields.map((field) => field.textContent ?? ''),
     );
     target.dataset.gvPromptText = next;
     syncSelectedPromptText(target, next);
@@ -589,35 +585,34 @@ function paintTooltipBody(tooltip: HTMLElement, text: string, target?: HTMLEleme
   let cursor = 0;
   match.values.forEach(([start, end], index) => {
     if (start > cursor) tooltip.append(text.slice(cursor, start));
-    const field = document.createElement('input');
-    field.type = 'text';
+    // An editable span rather than an `<input>`: an input is single-line by
+    // definition, so a long value ran off the side of the card instead of
+    // wrapping with the sentence it sits in. A span flows with the prose, and
+    // sizing it stops being this code's problem at all.
+    const field = document.createElement('span');
     field.className = TOOLTIP_VALUE_CLASS;
-    field.value = values[index];
+    field.setAttribute('contenteditable', 'true');
+    field.textContent = values[index];
+    field.setAttribute('role', 'textbox');
     field.setAttribute('aria-label', values[index] || 'value');
-    // Measured, not counted. `ch` is the advance of `0`, so a CJK value is
-    // about twice as wide as its length claims and gets clipped - the same trap
-    // the template fill slots hit with the `size` attribute. The sizer carries
-    // the field's own padding, so its width is the whole box; only the caret
-    // needs a pixel on top, and adding the padding again left every field
-    // visibly wider than what it held.
-    const fit = (): void => {
-      sizer.textContent = field.value || ' ';
-      field.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 1}px`;
-    };
-    field.addEventListener('input', () => {
-      fit();
-      commit();
+    field.addEventListener('input', commit);
+    field.addEventListener('keydown', (event) => {
+      // The list below is still listening for Enter and the arrow keys, and a
+      // placeholder holds one value, never a second line.
+      event.stopPropagation();
+      if (event.key === 'Enter') event.preventDefault();
     });
-    field.addEventListener('gv-fit', fit);
-    // The list below is still listening for Enter and the arrow keys.
-    field.addEventListener('keydown', (event) => event.stopPropagation());
+    field.addEventListener('paste', (event) => {
+      // Without this a paste carries the source document's markup in.
+      event.preventDefault();
+      const plain = event.clipboardData?.getData('text/plain')?.replace(/\s+/g, ' ') ?? '';
+      field.ownerDocument.execCommand('insertText', false, plain);
+    });
     fields.push(field);
     tooltip.appendChild(field);
     cursor = end;
   });
   if (cursor < text.length) tooltip.append(text.slice(cursor));
-  // Only measurable once the fields have inherited the tooltip's font.
-  for (const field of fields) field.dispatchEvent(new Event('gv-fit'));
 }
 
 /** The prompt body with `values` dropped into its placeholders, in order. */
