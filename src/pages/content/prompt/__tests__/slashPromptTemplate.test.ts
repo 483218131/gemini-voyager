@@ -118,9 +118,10 @@ describe('slash completion with template prompts', () => {
     expect(fillSurface()).toBeNull();
   });
 
-  it('marks what was filled in when the token preview is hovered', () => {
+  it('offers the filled values as fields while the turn is unsent', () => {
     // The token carries an already-resolved body, so without this the preview
-    // is a wall of template text with the reader's own answers buried in it.
+    // is a wall of template text with the reader's own answers buried in it -
+    // and those answers are still theirs to change until the turn is sent.
     const input = createContentEditable('/fable');
     destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
     typeInto(input);
@@ -134,12 +135,59 @@ describe('slash completion with template prompts', () => {
     const placed = token(input)!;
     placed.dispatchEvent(new MouseEvent('mouseenter'));
     const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
+    const fields = [...tooltip.querySelectorAll<HTMLInputElement>('.gv-pm-slash-tooltip-value')];
 
-    expect(
-      [...tooltip.querySelectorAll('.gv-pm-slash-tooltip-value')].map((m) => m.textContent),
-    ).toEqual(['沉没成本', '克制']);
-    // The body itself is unchanged; only the answers inside it are marked.
-    expect(tooltip.textContent).toBe('围绕 沉没成本 这个概念,用 克制 的语气写一则寓言。');
+    expect(fields.map((f) => f.value)).toEqual(['沉没成本', '克制']);
+    // The template around them is not editable; that belongs in the manager.
+    const prose = [...tooltip.childNodes]
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent)
+      .join('');
+    expect(prose).toBe('围绕  这个概念,用  的语气写一则寓言。');
+  });
+
+  it('sends what was changed in the preview', () => {
+    const input = createContentEditable('/fable');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const [concept, tone] = slots();
+    concept.value = '沉没成本';
+    tone.value = '克制';
+    concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    const placed = token(input)!;
+    placed.dispatchEvent(new MouseEvent('mouseenter'));
+    const field = document.querySelector<HTMLInputElement>('.gv-pm-slash-tooltip-value')!;
+    field.value = '锚定效应';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Expansion reads the token's own body first, so the edit has to land there.
+    expect(placed.dataset.gvPromptText).toBe('围绕 锚定效应 这个概念,用 克制 的语气写一则寓言。');
+  });
+
+  it('leaves the list keys alone while a preview field has focus', () => {
+    const input = createContentEditable('/fable');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const [concept, tone] = slots();
+    concept.value = '沉没成本';
+    tone.value = '克制';
+    concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    const placed = token(input)!;
+    placed.dispatchEvent(new MouseEvent('mouseenter'));
+    const field = document.querySelector<HTMLInputElement>('.gv-pm-slash-tooltip-value')!;
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    let reachedDocument = false;
+    document.addEventListener('keydown', () => (reachedDocument = true), { once: true });
+
+    field.dispatchEvent(event);
+
+    expect(reachedDocument).toBe(false);
   });
 
   it('leaves a preview unmarked when no template was filled', () => {

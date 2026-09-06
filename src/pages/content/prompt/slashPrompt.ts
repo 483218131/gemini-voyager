@@ -5,6 +5,7 @@ import { StorageKeys } from '@/core/types/common';
 import { type PromptItem } from '@/core/types/sync';
 import { getPromptNameComparisonKey, getPromptNameConflictIds } from '@/core/utils/promptName';
 import { isPromptTemplate } from '@/features/prompt/model/promptTemplate';
+import { parsePromptTemplate } from '@/features/prompt/model/promptTemplate';
 import { matchSentPrompt } from '@/features/prompt/model/promptTextMatch';
 import { getTranslationSync } from '@/utils/i18n';
 
@@ -391,6 +392,30 @@ function getQueryAnchorRect(query: PromptQuery, inputRect: DOMRect): DOMRect {
   return isVisibleInsideInput ? rect : inputRect;
 }
 
+/**
+ * Grow the typed query into the whole name, the way the completion drawn past
+ * the caret says it will. Only the query text changes: this is Tab as it works
+ * in a shell, not a commit - Enter still places the token, and a template still
+ * gets to ask for its values first.
+ */
+function completeQuery(query: PromptQuery, name: string): boolean {
+  const completed = `/${name.trim()}`;
+  if (query.input instanceof HTMLTextAreaElement) {
+    query.input.focus();
+    query.input.setRangeText(completed, query.start, query.end, 'end');
+    dispatchInput(query.input);
+    return true;
+  }
+  const range = createQueryRange(query);
+  if (!range) return false;
+  range.deleteContents();
+  const text = document.createTextNode(completed);
+  range.insertNode(text);
+  setCaretAfter(query.input, text);
+  dispatchInput(query.input);
+  return true;
+}
+
 function setCaretAfter(input: HTMLElement, node: Node): void {
   const range = document.createRange();
   range.selectNodeContents(node);
@@ -528,26 +553,99 @@ function applyPromptTokenColor(token: HTMLElement): void {
  * of template text with the reader's own answers buried in it. The original
  * body rides along on `data-gv-prompt-source`, which is enough to locate them.
  */
-function paintTooltipBody(tooltip: HTMLElement, text: string, source?: string): void {
+function paintTooltipBody(tooltip: HTMLElement, text: string, target?: HTMLElement): void {
   tooltip.textContent = '';
+  const source = target?.dataset.gvPromptSource;
   const match = source
     ? matchSentPrompt(text, [{ id: 'token', name: 'token', text: source }])
     : null;
-  if (!match || match.values.length === 0) {
+  if (!source || !match || match.values.length === 0) {
     tooltip.textContent = text;
+    tooltip.classList.remove('gv-pm-slash-tooltip-editable');
     return;
   }
 
+  // A token that has not been sent yet is still the person's to change, so the
+  // values are fields rather than marks. The body around them is not: it is the
+  // saved prompt, and editing that belongs in the prompt manager.
+  tooltip.classList.add('gv-pm-slash-tooltip-editable');
+  const values = match.values.map(([start, end]) => text.slice(start, end));
+  const fields: HTMLInputElement[] = [];
+  const sizer = document.createElement('span');
+  sizer.className = 'gv-pm-slash-tooltip-sizer';
+  sizer.setAttribute('aria-hidden', 'true');
+  tooltip.appendChild(sizer);
+
+  const commit = (): void => {
+    if (!target) return;
+    const next = rebuildFromValues(
+      source,
+      fields.map((field) => field.value),
+    );
+    target.dataset.gvPromptText = next;
+    syncSelectedPromptText(target, next);
+  };
+
   let cursor = 0;
-  for (const [start, end] of match.values) {
+  match.values.forEach(([start, end], index) => {
     if (start > cursor) tooltip.append(text.slice(cursor, start));
-    const mark = document.createElement('mark');
-    mark.className = TOOLTIP_VALUE_CLASS;
-    mark.textContent = text.slice(start, end);
-    tooltip.appendChild(mark);
+    const field = document.createElement('input');
+    field.type = 'text';
+    field.className = TOOLTIP_VALUE_CLASS;
+    field.value = values[index];
+    field.setAttribute('aria-label', values[index] || 'value');
+    // Measured, not counted. `ch` is the advance of `0`, so a CJK value is
+    // about twice as wide as its length claims and gets clipped - the same trap
+    // the template fill slots hit with the `size` attribute.
+    const fit = (): void => {
+      sizer.textContent = field.value || ' ';
+      field.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 6}px`;
+    };
+    field.addEventListener('input', () => {
+      fit();
+      commit();
+    });
+    field.addEventListener('gv-fit', fit);
+    // The list below is still listening for Enter and the arrow keys.
+    field.addEventListener('keydown', (event) => event.stopPropagation());
+    fields.push(field);
+    tooltip.appendChild(field);
     cursor = end;
-  }
+  });
   if (cursor < text.length) tooltip.append(text.slice(cursor));
+  // Only measurable once the fields have inherited the tooltip's font.
+  for (const field of fields) field.dispatchEvent(new Event('gv-fit'));
+}
+
+/** The prompt body with `values` dropped into its placeholders, in order. */
+export function rebuildFromValues(source: string, values: string[]): string {
+  let index = 0;
+  return parsePromptTemplate(source)
+    .map((segment) => (segment.kind === 'text' ? segment.value : (values[index++] ?? '')))
+    .join('');
+}
+
+/**
+ * Keep the record `expandPromptTokens` falls back on in step with the token.
+ *
+ * Expansion prefers a live token's own dataset, but a token Gemini rebuilt as
+ * plain text is expanded from this record instead, and an edit that reached
+ * only one of the two would send whichever the editor happened to leave behind.
+ * Records are pushed in insertion order and tokens read in document order, the
+ * same correspondence `removeSelectedPromptRecords` already relies on.
+ */
+function syncSelectedPromptText(token: HTMLElement, text: string): void {
+  const input = token.closest<HTMLElement>(CHAT_INPUT_SELECTOR);
+  if (!input) return;
+  const records = selectedPrompts.get(input);
+  if (!records) return;
+  const tokens = [
+    ...input.querySelectorAll<HTMLElement>(`.${TOKEN_CLASS}`),
+    ...document.querySelectorAll<HTMLElement>(`.${TEXTAREA_TOKEN_CLASS}`),
+  ];
+  const index = tokens.indexOf(token);
+  const record = index >= 0 ? records[index] : undefined;
+  if (record) record.text = text;
 }
 
 /**
@@ -615,7 +713,7 @@ function showTooltip(target: HTMLElement, text: string): void {
   cancelTooltipHide();
   const tooltip = createTooltip();
   tooltip.scrollTop = 0;
-  paintTooltipBody(tooltip, text, target.dataset.gvPromptSource);
+  paintTooltipBody(tooltip, text, target);
   tooltip.dataset.gvTheme = detectTheme();
   tooltip.style.left = '0px';
   tooltip.style.top = '0px';
@@ -1653,6 +1751,20 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
+        // Tab takes the completion that is already drawn past the caret, and
+        // stops there. Pressing it used to place the token outright, which for
+        // a template meant the fill surface opened over a composer still
+        // reading `/a` - the completion it had just offered never arrived.
+        const selected = results[selectedIndex];
+        if (
+          event.key === 'Tab' &&
+          activeQuery &&
+          selected?.name &&
+          ghostSuffix(activeQuery.query, selected.name) &&
+          completeQuery(activeQuery, selected.name)
+        ) {
+          return;
+        }
         confirm(selectedIndex);
         return;
       }

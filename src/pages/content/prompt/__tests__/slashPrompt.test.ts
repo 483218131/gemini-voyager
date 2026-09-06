@@ -393,6 +393,46 @@ describe('slash prompt completion', () => {
     });
   });
 
+  it('takes the completion on Tab without placing the token', () => {
+    // Tab used to place the token outright, which for a template opened the
+    // fill surface over a composer still reading `/a` - the completion it had
+    // just offered never arrived.
+    withQueryRect(() => {
+      const input = createContentEditable('/trans');
+      destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+      typeInto(input);
+
+      press(input, 'Tab');
+
+      expect(input.textContent).toBe('/Translator');
+      expect(input.querySelector('.gv-pm-slash-token')).toBeNull();
+    });
+  });
+
+  it('places the token on Tab once there is nothing left to complete', () => {
+    withQueryRect(() => {
+      const input = createContentEditable('/Translator');
+      destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+      typeInto(input);
+
+      press(input, 'Tab');
+
+      expect(input.querySelector('.gv-pm-slash-token')?.textContent).toBe('Translator');
+    });
+  });
+
+  it('still places the token on Enter while a completion is showing', () => {
+    withQueryRect(() => {
+      const input = createContentEditable('/trans');
+      destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+      typeInto(input);
+
+      press(input, 'Enter');
+
+      expect(input.querySelector('.gv-pm-slash-token')?.textContent).toBe('Translator');
+    });
+  });
+
   it('takes the completion down with the list', () => {
     withQueryRect(() => {
       const input = createContentEditable('/trans');

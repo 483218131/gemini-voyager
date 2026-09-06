@@ -15287,6 +15287,40 @@ body.gv-rtl .gv-ph-panel {
   border-radius: 4px;
   padding: 0 3px;
   font-weight: 500;
+  /* It is an <input> while the turn is unsent: the value is still the person's
+     to change. `font: inherit` first, or it renders in the browser's form font
+     inside a paragraph of prompt. */
+  font: inherit;
+  font-weight: 500;
+  border: 0;
+  min-width: 2ch;
+  vertical-align: baseline;
+}
+
+/* Measures a field's value in the tooltip's own type, since `ch` is the advance
+   of `0` and a CJK value is about twice as wide as its length claims. */
+.gv-pm-slash-tooltip-sizer {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font: inherit;
+  font-weight: 500;
+  padding: 0 3px;
+}
+
+.gv-pm-slash-tooltip-value:focus {
+  outline: 2px solid
+    color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 55%, transparent);
+  outline-offset: 1px;
+}
+
+/* Only a preview that offers fields takes the pointer. A read-only one stays
+   transparent to it, so hovering the token behind it is unaffected. */
+.gv-pm-slash-tooltip-editable {
+  pointer-events: auto;
 }
 
 .gv-pm-slash-tooltip[data-gv-theme='light'] .gv-pm-slash-tooltip-value {
