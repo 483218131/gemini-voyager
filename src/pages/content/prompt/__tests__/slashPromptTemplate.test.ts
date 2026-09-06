@@ -257,7 +257,21 @@ describe('slash completion with template prompts', () => {
     expect(token(input)?.dataset.gvPromptText).toBe(prompts[0].text);
   });
 
-  it('leaves the composer alone when the fill is abandoned', () => {
+  it('shows the chosen prompt in the composer while its values are collected', () => {
+    // A template places its token only once the values are in, so the composer
+    // used to sit on the bare query - typing `/` and pressing Enter opened the
+    // fill surface over a composer still reading `/`, which said nothing about
+    // what had just been chosen.
+    const input = createContentEditable('/');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    expect(fillSurface()).not.toBeNull();
+    expect(input.textContent).toBe('/Fable');
+  });
+
+  it('leaves the query editable when the fill is abandoned', () => {
     const input = createContentEditable('/fable');
     destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
     typeInto(input);
@@ -269,8 +283,8 @@ describe('slash completion with template prompts', () => {
 
     expect(fillSurface()).toBeNull();
     expect(token(input)).toBeNull();
-    // The query the user typed is still theirs to edit.
-    expect(input.textContent).toBe('/fable');
+    // Nothing is placed, and the completed query is still text the user owns.
+    expect(input.textContent).toBe('/Fable');
   });
 
   it('does not disturb a prompt that has no placeholders', () => {

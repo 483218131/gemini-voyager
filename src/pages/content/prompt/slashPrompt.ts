@@ -1530,8 +1530,24 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     const hideInputValue = query.start === 0 && query.end === readText(query.input).length;
 
     if (isPromptTemplate(prompt.text)) {
+      // Grow the query into the name first. A template collects its values
+      // before the token is placed, so without this the composer sat on the
+      // bare `/` for the whole time the fill surface was open and said nothing
+      // about what had just been chosen.
+      const name = prompt.name!.trim();
+      const completed = completeQuery(query, name)
+        ? {
+            ...query,
+            query: name,
+            end: query.start + 1 + name.length,
+          }
+        : query;
       close();
-      openTemplateFillForQuery(query, prompt, hideInputValue);
+      openTemplateFillForQuery(
+        completed,
+        prompt,
+        completed.start === 0 && completed.end === readText(completed.input).length,
+      );
       return true;
     }
 
