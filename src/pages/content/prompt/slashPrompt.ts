@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill';
 
+import { createPackageIcon } from '@/core/icons/promptManagerIcons';
 import { promptStorageService } from '@/core/services/StorageService';
 import { StorageKeys } from '@/core/types/common';
 import { type PromptItem } from '@/core/types/sync';
@@ -463,7 +464,10 @@ function createPromptToken(prompt: TokenPrompt): HTMLSpanElement {
   token.dataset.gvTheme = detectTheme();
   token.setAttribute('role', 'button');
   token.setAttribute('aria-label', prompt.name!.trim());
-  token.textContent = prompt.name!.trim();
+  // The icon carries no text, so everything that reads this token by its text -
+  // `expandPromptTokens`, `isTextareaPromptOnlyValue`, `readText` - still sees
+  // exactly the prompt's name.
+  token.append(createPackageIcon(14), prompt.name!.trim());
   applyPromptTokenColor(token);
   bindPromptTooltip(token, prompt.text);
   return token;
@@ -1433,7 +1437,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     const name = document.createElement('span');
     name.className = TEXTAREA_TOKEN_NAME_CLASS;
     name.textContent = prompt.name!.trim();
-    chip.appendChild(name);
+    chip.append(createPackageIcon(14), name);
     syncMarkerTypography(chip, input, null);
     chip.dataset.gvPromptText = prompt.text;
     if ((prompt as TokenPrompt).gvSourceText) {

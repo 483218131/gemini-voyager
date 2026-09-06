@@ -367,6 +367,22 @@ describe('slash prompt completion', () => {
     expect(Number.parseInt(tooltip.style.left, 10)).toBe(window.innerWidth - 8 - 420);
   });
 
+  it('marks a placed token as a prompt without changing what reads its text', () => {
+    // `expandPromptTokens`, `isTextareaPromptOnlyValue` and `readText` all go
+    // by the token's text, and the icon contributes none.
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const placed = input.querySelector<HTMLElement>('.gv-pm-slash-token')!;
+    const icon = placed.querySelector('svg');
+
+    expect(icon?.classList.contains('lucide-package')).toBe(true);
+    expect(placed.firstElementChild).toBe(icon);
+    expect(placed.textContent).toBe('Translator');
+  });
+
   it('completes the rest of the selected name past what was typed', () => {
     expect(ghostSuffix('Trans', 'Translator')).toBe('lator');
     // Matching is case-insensitive; the completion keeps the saved casing.

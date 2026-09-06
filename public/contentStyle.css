@@ -11463,6 +11463,8 @@ body.gv-rtl .gv-pm-fill-doc {
 
 .gv-pm-slash-token[contenteditable='false'] {
   display: inline-flex;
+  /* Room for the icon that says this is a prompt rather than typed text. */
+  gap: 5px;
   max-width: min(280px, 80%);
   align-items: center;
   color: var(--gv-pm-slash-token-color, var(--gv-pm-brand, var(--gv-pm-brand-default))) !important;
@@ -11495,6 +11497,8 @@ body.gv-rtl .gv-pm-fill-doc {
 .gv-pm-slash-textarea-token {
   position: fixed;
   display: inline-flex;
+  align-items: center;
+  gap: 5px;
   max-width: 180px;
   color: var(--gv-pm-brand, var(--gv-pm-brand-default)) !important;
   cursor: default;
@@ -15172,6 +15176,14 @@ body.gv-rtl .gv-ph-panel {
   transition-property: background-color, box-shadow, scale;
   transition-duration: 150ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.gv-pm-slash-token .lucide,
+.gv-pm-slash-textarea-token .lucide {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  opacity: 0.9;
 }
 
 .gv-pm-sent-chip .lucide {
