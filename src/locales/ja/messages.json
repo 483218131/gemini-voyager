@@ -163,6 +163,9 @@
     "message": "そのまま挿入",
     "description": "Insert the prompt body with its placeholders untouched"
   },
+  "pm_sent_chip_hint": {
+    "message": "クリックすると送信内容を表示します"
+  },
   "pm_convert_braces": {
     "message": "{name} を {{name}} に変換",
     "description": "Action that rewrites single-brace placeholders as template variables"

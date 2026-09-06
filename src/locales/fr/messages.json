@@ -163,6 +163,9 @@
     "message": "Laisser tel quel",
     "description": "Insert the prompt body with its placeholders untouched"
   },
+  "pm_sent_chip_hint": {
+    "message": "Cliquez pour afficher le texte envoyé"
+  },
   "pm_convert_braces": {
     "message": "Convertir {name} en {{name}}",
     "description": "Action that rewrites single-brace placeholders as template variables"

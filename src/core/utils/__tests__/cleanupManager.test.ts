@@ -133,6 +133,7 @@ describe('willCleanUp tests module', () => {
       'DestroyFolderManagerInstance',
       'DestroyPromptManagerInstance',
       'DestroySlashPromptFeatureInstance',
+      'DestroySentPromptChips',
       'CleanupQuoteReply',
       'CleanupInputVimMode',
       'CleanupSendBehavior',

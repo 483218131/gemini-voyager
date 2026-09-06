@@ -163,6 +163,9 @@
     "message": "Оставить как есть",
     "description": "Insert the prompt body with its placeholders untouched"
   },
+  "pm_sent_chip_hint": {
+    "message": "Нажмите, чтобы показать отправленный текст"
+  },
   "pm_convert_braces": {
     "message": "Преобразовать {name} в {{name}}",
     "description": "Action that rewrites single-brace placeholders as template variables"

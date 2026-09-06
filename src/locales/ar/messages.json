@@ -163,6 +163,9 @@
     "message": "اتركه كما هو",
     "description": "Insert the prompt body with its placeholders untouched"
   },
+  "pm_sent_chip_hint": {
+    "message": "انقر لعرض ما تم إرساله"
+  },
   "pm_convert_braces": {
     "message": "حوّل {name} إلى {{name}}",
     "description": "Action that rewrites single-brace placeholders as template variables"

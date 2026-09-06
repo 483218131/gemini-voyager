@@ -55,6 +55,7 @@ import { createPostChangelogFlow } from './postChangelogFlow';
 import { startPreventAutoScroll } from './preventAutoScroll/index';
 import { createCustomSiteCoverageReconciler } from './prompt/customSiteCoverage';
 import { startPromptManager } from './prompt/index';
+import { startSentPromptChipsFeature } from './prompt/sentPromptChipsFeature';
 import { slashPromptCoachmarkStep } from './prompt/slashPromptCoachmark';
 import { startSlashPromptFeature } from './prompt/slashPromptFeature';
 import { startPromptHistory } from './promptHistory/index';
@@ -197,6 +198,14 @@ async function initializeFeatures(): Promise<void> {
     cleanupManager.registerCleanupFunction(
       () => slashPrompt.destroy(),
       CleanupPositions.DestroySlashPromptFeatureInstance,
+    );
+
+    // Collapses a sent prompt back to its token. Started beside slash
+    // completion because it restores what that feature's token looked like.
+    const sentPromptChips = await startSentPromptChipsFeature();
+    cleanupManager.registerCleanupFunction(
+      () => sentPromptChips.destroy(),
+      CleanupPositions.DestroySentPromptChips,
     );
 
     // Yield between features instead of sleeping a fixed amount. On an idle main

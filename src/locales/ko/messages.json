@@ -163,6 +163,9 @@
     "message": "그대로 두기",
     "description": "Insert the prompt body with its placeholders untouched"
   },
+  "pm_sent_chip_hint": {
+    "message": "클릭하면 실제로 보낸 내용을 표시합니다"
+  },
   "pm_convert_braces": {
     "message": "{name}을 {{name}}으로 변환",
     "description": "Action that rewrites single-brace placeholders as template variables"

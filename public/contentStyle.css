@@ -15107,3 +15107,94 @@ body.gv-rtl .gv-ph-panel {
   width: fit-content !important;
   margin-inline-start: auto !important;
 }
+
+/* A sent prompt, collapsed back to the token it was chosen as. Gemini stores
+   the expanded body, so this is presentation only: the bubble keeps every node
+   Gemini rendered, and `.gv-pm-sent-collapsed` merely hides them behind the
+   chip until the user asks to see what was actually sent. */
+.gv-pm-sent-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  /* `font: inherit` so the chip sits on the bubble's own type, not the
+     browser's button font. */
+  font: inherit;
+  font-weight: 500;
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 18%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 30%, transparent);
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Named, not `all`: the bubble around this animates on its own. */
+  transition-property: background-color, box-shadow, scale;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.gv-pm-sent-chip:hover {
+  background: color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 26%, transparent);
+}
+
+.gv-pm-sent-chip:active {
+  scale: 0.96;
+}
+
+.gv-pm-sent-chip[data-gv-theme='light'],
+[data-gv-theme='light'] > .gv-pm-sent-chip {
+  color: var(--gv-pm-brand-hover);
+}
+
+/* Only the lines the prompt itself accounts for. Hiding every child would take
+   the sentence the person typed after the token with it - and that is the half
+   of the turn worth reading. `display: none` also keeps the hidden lines out of
+   the accessibility tree and out of find-in-page while they are not shown. */
+.gv-pm-sent-line {
+  display: none !important;
+}
+
+/* The person's own words, lifted out of the line they share with the prompt's
+   last sentence. Rendered by this feature rather than by editing Gemini's text
+   node, so teardown is a removal and the bubble is left byte-identical. */
+.gv-pm-sent-rest {
+  display: inline;
+  font: inherit;
+  color: inherit;
+}
+
+.gv-pm-sent-collapsed {
+  /* The bubble was sized for a paragraph of prompt. Measured on
+     gemini.google.com it keeps `20px 28px`, so a 28px chip sat in a 68px pill
+     with the padding making up every pixel of the difference. Tighten it to the
+     chip while collapsed, and hand the original spacing back on expand.
+     `!important` because Gemini's own rule matches at the same specificity. */
+  min-height: 0 !important;
+  padding: 8px 14px !important;
+}
+
+/* Gemini's own show-more control, while the chip is collapsed. It governs text
+   that is already hidden, so leaving it visible crowds the row with a second
+   toggle for the same content. Visibility only - the element stays in the
+   layout Gemini built, and teardown just drops this class. */
+.gv-pm-sent-toggle-hidden {
+  display: none !important;
+}
+
+.gv-pm-sent-rest {
+  margin-left: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-pm-sent-chip {
+    transition-duration: 0ms;
+  }
+
+  .gv-pm-sent-chip:active {
+    scale: 1;
+  }
+}
