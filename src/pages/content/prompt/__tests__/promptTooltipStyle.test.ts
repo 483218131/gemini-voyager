@@ -61,4 +61,19 @@ describe('prompt hover preview styling', () => {
     expect(cssBlock(css, '.gv-pm-tooltip .gv-md h2')).toContain('font-size: 14px');
     expect(cssBlock(css, '.gv-pm-tooltip .gv-md > :first-child')).toContain('margin-top: 0');
   });
+
+  it('marks the clipped card instead of ending mid-sentence', () => {
+    const css = readContentStyle();
+    const fade = cssBlock(css, '.gv-pm-tooltip-more::after');
+
+    // macOS hides overlay scrollbars until a scroll starts, so a card cut off
+    // at `max-height` looked broken rather than scrollable.
+    expect(cssBlock(css, '.gv-pm-tooltip')).toContain('max-height');
+    // Sticky, so the fade rides the bottom of the scrollport rather than the
+    // end of the content, and it is scoped to the `-more` class so the last
+    // line is not washed out once the user has scrolled to it.
+    expect(fade).toContain('position: sticky');
+    expect(fade).toContain('linear-gradient');
+    expect(css).toContain(".gv-pm-tooltip-more[data-gv-theme='light']::after");
+  });
 });

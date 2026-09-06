@@ -15198,3 +15198,22 @@ body.gv-rtl .gv-ph-panel {
     scale: 1;
   }
 }
+
+/* Shown only while content remains below the fold, set from the scroll
+   position rather than always-on: a permanent fade would wash out the last
+   line of a prompt the user has already scrolled to the end of. Sticky, so it
+   rides the bottom of the scrollport instead of the end of the content. */
+.gv-pm-tooltip-more::after {
+  content: '';
+  display: block;
+  position: sticky;
+  bottom: -12px;
+  height: 32px;
+  margin-top: -32px;
+  background: linear-gradient(to bottom, transparent, oklch(0.2 0.008 285));
+  pointer-events: none;
+}
+
+.gv-pm-tooltip-more[data-gv-theme='light']::after {
+  background: linear-gradient(to bottom, transparent, oklch(0.995 0.002 250));
+}

@@ -1167,6 +1167,9 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
         tooltipSelfHovered = false;
         scheduleHide();
       });
+      // macOS hides overlay scrollbars until a scroll begins, so a clipped card
+      // simply stopped mid-sentence and read as broken rather than scrollable.
+      el.addEventListener('scroll', () => markTooltipOverflow(el), { passive: true });
       // Content lives in an inner .gv-md so the rendered Markdown is styled by
       // the same rules as the comfortable-mode list item, while the outer
       // element keeps the surface, scrolling and positioning.
@@ -1183,6 +1186,12 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
     // Measurement requires the element to be laid out, so reveal first then
     // adjust; CSS keeps it invisible until the `-visible` class is applied.
     // Called again once Markdown lands, because rendering changes the height.
+    /** Flags "there is more below" so the surface can show it. */
+    function markTooltipOverflow(el: HTMLElement): void {
+      const more = el.scrollHeight - el.scrollTop - el.clientHeight > 1;
+      el.classList.toggle('gv-pm-tooltip-more', more);
+    }
+
     function positionTooltip(target: HTMLElement): void {
       const el = tooltipEl;
       if (!el) return;
@@ -1196,19 +1205,34 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
       const vh = window.innerHeight;
       const pad = 8;
 
-      let left = targetRect.left;
-      if (left + tipRect.width > vw - pad) left = vw - pad - tipRect.width;
-      if (left < pad) left = pad;
+      const panelRect = panel.getBoundingClientRect();
+      const gap = 10;
 
-      let top = targetRect.top - tipRect.height - 6;
-      if (top < pad) {
-        top = targetRect.bottom + 6;
-        if (top + tipRect.height > vh - pad) top = Math.max(pad, vh - pad - tipRect.height);
-      }
+      // Beside the panel, never over it. The preview explains one row, and
+      // starting it at that row's own left edge laid the card across the list -
+      // hiding both the row it belongs to and every row the pointer was about
+      // to travel to. Prefer the side with room; fall back to the roomier edge
+      // of the viewport only when neither side fits.
+      const roomRight = vw - panelRect.right - gap - pad;
+      const roomLeft = panelRect.left - gap - pad;
+      let left: number;
+      if (roomRight >= tipRect.width) left = panelRect.right + gap;
+      else if (roomLeft >= tipRect.width) left = panelRect.left - gap - tipRect.width;
+      else left = roomRight >= roomLeft ? vw - pad - tipRect.width : pad;
+
+      // Aligned to the row, then clamped into the viewport. Flipping between
+      // above and below made the card jump the moment a row near the middle of
+      // the list stopped fitting above it; sliding it keeps the card still
+      // while the pointer moves down the list.
+      let top = targetRect.top;
+      if (top + tipRect.height > vh - pad) top = vh - pad - tipRect.height;
+      if (top < pad) top = pad;
 
       el.style.left = `${Math.round(left)}px`;
       el.style.top = `${Math.round(top)}px`;
       el.style.visibility = '';
+      // Only measurable once the card has its final size.
+      markTooltipOverflow(el);
     }
 
     function showTooltip(target: HTMLElement, fullText: string): void {
