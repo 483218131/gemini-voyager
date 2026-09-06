@@ -63,11 +63,19 @@
     transparent
   );
   --timeline-star-color: #f59e0b;
-  --timeline-tooltip-bg: #ffffff;
-  --timeline-tooltip-text: #0f172a;
-  --timeline-tooltip-border: #e2e8f0;
+  /* The same oklch surfaces the prompt panel and its preview use. These were
+     Tailwind-era hex, and the dark one was a blue-black (#0b1220) against the
+     panel's neutral, so two Voyager surfaces sitting on the same page read as
+     two different products. Shared with the timeline context menu, which is why
+     the whole family moves together. */
+  --timeline-tooltip-bg: oklch(0.995 0.002 250);
+  --timeline-tooltip-text: oklch(0.14 0.004 285);
+  --timeline-tooltip-border: oklch(0.92 0.004 250 / 0.7);
   --timeline-tooltip-radius: 14px;
-  --timeline-tooltip-shadow: 0 12px 36px rgba(2, 8, 23, 0.18), 0 3px 8px rgba(2, 8, 23, 0.08);
+  /* One restrained lift, matching the prompt preview. The old pair of shadows
+     read as a heavier, separate layer than every other floating Voyager
+     surface. */
+  --timeline-tooltip-shadow: 0 6px 20px oklch(0 0 0 / 0.28);
   --timeline-tooltip-lh: 18px;
   --timeline-tooltip-pad-y: 10px;
   --timeline-tooltip-pad-x: 12px;
@@ -101,9 +109,9 @@
       transparent
     );
     --timeline-star-color: #f59e0b;
-    --timeline-tooltip-bg: #0b1220;
-    --timeline-tooltip-text: #e2e8f0;
-    --timeline-tooltip-border: #1f2937;
+    --timeline-tooltip-bg: oklch(0.2 0.008 285);
+    --timeline-tooltip-text: oklch(0.92 0.004 250);
+    --timeline-tooltip-border: oklch(0.3 0.008 285 / 0.7);
     --timeline-bar-bg: rgba(2, 6, 23, 0.75);
   }
 }
@@ -121,9 +129,9 @@
     transparent
   );
   --timeline-star-color: #f59e0b;
-  --timeline-tooltip-bg: #0b1220;
-  --timeline-tooltip-text: #e2e8f0;
-  --timeline-tooltip-border: #1f2937;
+  --timeline-tooltip-bg: oklch(0.2 0.008 285);
+  --timeline-tooltip-text: oklch(0.92 0.004 250);
+  --timeline-tooltip-border: oklch(0.3 0.008 285 / 0.7);
   --timeline-bar-bg: rgba(2, 6, 23, 0.75);
 }
 
@@ -139,9 +147,9 @@
     transparent
   );
   --timeline-star-color: #f59e0b;
-  --timeline-tooltip-bg: #ffffff;
-  --timeline-tooltip-text: #0f172a;
-  --timeline-tooltip-border: #e2e8f0;
+  --timeline-tooltip-bg: oklch(0.995 0.002 250);
+  --timeline-tooltip-text: oklch(0.14 0.004 285);
+  --timeline-tooltip-border: oklch(0.92 0.004 250 / 0.7);
   --timeline-bar-bg: rgba(248, 250, 252, 0.88);
 }
 
@@ -875,7 +883,20 @@ body.gv-rtl .gv-timeline-style-preview.is-ruler span {
   border-radius: var(--timeline-tooltip-radius);
   border: var(--timeline-tooltip-border-w) solid var(--timeline-tooltip-border);
   font-size: 13px;
-  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  /* Pinned, like the prompt preview: Gemini, Claude and ChatGPT each set a
+     different body font, and 'Google Sans' is one host's. Without this the
+     tooltip renders in the page's font while every other Voyager surface does
+     not. */
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji';
   line-height: var(--timeline-tooltip-lh);
   max-height: calc(
     3 * var(--timeline-tooltip-lh) + 2 * var(--timeline-tooltip-pad-y) + 2 *
