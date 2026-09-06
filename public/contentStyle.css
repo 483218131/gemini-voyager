@@ -11187,16 +11187,39 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
  * surfaces: a chip that advertises them wherever a body is rendered, and the
  * fill card that collects their values before the text reaches the composer. */
 
+/* The read-only marker for a placeholder, painted into rendered prose so the
+   list shows which prompts are templates. Deliberately quieter than
+   `.gv-pm-slot`: that one is an input the user types into and keeps the solid
+   accent underline, this one is an indicator and must not out-shout the
+   sentence carrying it. */
 .gv-pm-var {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.88em;
-  padding: 0 5px;
-  border-radius: 5px;
-  background: var(--gv-pm-brand-soft);
+  /* No font-family or font-size override, on purpose. A monospace run at
+     0.88em inside 13px CJK prose broke the line twice over: a different
+     x-height, and the one token that matters rendered smaller and weaker than
+     the words around it. Placeholder names may themselves be CJK - `NAME` in
+     promptTemplate.ts admits 一-龥 - and any size step renders those ideographs
+     at an obviously different height from the prose. Weight and tint carry the
+     distinction instead. */
+  font-weight: 500;
+  padding: 1px 6px;
+  /* 6px against 1px of vertical padding keeps the corner concentric with the
+     ~5px inner curve of the text run it wraps. */
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 18%, transparent);
+  /* A hairline ring instead of the old `inset 0 -1.5px 0`. That rule was
+     heavier than the 11px text sitting on it and read as a broken link, while
+     the 14% background underneath was too faint to register - so the chip
+     announced itself entirely through the one part that looked like damage. */
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 30%, transparent);
   color: var(--gv-pm-brand, var(--gv-pm-brand-default));
-  /* The underline is what reads as "a blank to fill", not just "code". */
-  box-shadow: inset 0 -1.5px 0 var(--gv-pm-brand, var(--gv-pm-brand-default));
   white-space: nowrap;
+}
+
+/* The sage accent is mid-lightness, which is legible on the dark card but thin
+   against a near-white one. The panel already carries a darkened variant. */
+[data-gv-theme='light'] .gv-pm-var {
+  color: var(--gv-pm-brand-hover);
 }
 
 .gv-pm-fill {
