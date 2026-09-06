@@ -18,11 +18,12 @@ const FABLE_LINES = [
 let controller: SentPromptChipsController | null = null;
 
 /**
- * The shape a real Gemini turn has, read off gemini.google.com: one
- * `.query-text-line` per authored line, plus the copy and expand controls,
- * whose Material Symbols glyph *is* the element's own text.
+ * The shape a real Gemini turn has, read off gemini.google.com: a
+ * `.query-text` block of `.query-text-line` paragraphs, the copy and expand
+ * controls whose Material Symbols glyph *is* their text, and the show-more
+ * container for a long turn.
  */
-function mountTurn(lines: string[], withControls = true): HTMLElement {
+function mountTurn(lines: string[]): HTMLElement {
   const turn = document.createElement('span');
   turn.className = 'user-query-bubble-with-background';
   const wrap = document.createElement('div');
@@ -34,13 +35,12 @@ function mountTurn(lines: string[], withControls = true): HTMLElement {
     wrap.appendChild(p);
   }
   turn.appendChild(wrap);
-  if (withControls) {
-    turn.insertAdjacentHTML(
-      'beforeend',
-      '<button aria-label="copy"><mat-icon>content_copy</mat-icon></button>' +
-        '<button aria-label="expand"><mat-icon>expand_more</mat-icon></button>',
-    );
-  }
+  turn.insertAdjacentHTML(
+    'beforeend',
+    '<button aria-label="copy"><mat-icon>content_copy</mat-icon></button>' +
+      '<div class="luminous-toggle-container">' +
+      '<button data-test-id="luminous-expand-button"></button></div>',
+  );
   document.body.appendChild(turn);
   return turn;
 }
@@ -50,11 +50,8 @@ function start(prompts = [fable]): SentPromptChipsController {
   return controller;
 }
 
-function visibleLines(turn: HTMLElement): string[] {
-  return [...turn.querySelectorAll<HTMLElement>('.query-text-line')]
-    .filter((line) => !line.classList.contains('gv-pm-sent-line'))
-    .map((line) => line.textContent ?? '');
-}
+const chipOf = (turn: HTMLElement) => turn.querySelector<HTMLElement>('.gv-pm-sent-chip');
+const bodyOf = (turn: HTMLElement) => turn.querySelector<HTMLElement>('.gv-pm-sent-body');
 
 afterEach(() => {
   controller?.destroy();
@@ -63,65 +60,104 @@ afterEach(() => {
 });
 
 describe('SentPromptChips', () => {
-  it('collapses a sent prompt to its name and leaves the message in the DOM', () => {
+  it('stands in for the prompt with its name, collapsed', () => {
     const turn = mountTurn(FABLE_LINES);
 
     start();
 
-    expect(turn.querySelector('.gv-pm-sent-chip')?.textContent).toBe('寓言写作');
-    // Gemini owns these nodes; hiding is a class, never a removal, because the
-    // bubble is re-rendered on navigation.
-    expect(turn.querySelectorAll('.query-text-line')).toHaveLength(FABLE_LINES.length);
-    expect(visibleLines(turn)).toEqual([]);
+    expect(chipOf(turn)?.textContent).toBe('寓言写作');
+    expect(bodyOf(turn)?.hidden).toBe(true);
   });
 
-  it('keeps what the person typed on a line of their own', () => {
-    // A slash token leaves the composer editable. Collapsing the appended
-    // sentence would hide the only part of the turn that is actually theirs.
-    const turn = mountTurn([...FABLE_LINES, '再补充一点要求']);
+  it("hides Gemini's own copy of the text rather than removing it", () => {
+    // The bubble is re-rendered on navigation, so nothing Gemini owns is safe
+    // to delete or rewrite.
+    const turn = mountTurn(FABLE_LINES);
 
     start();
 
-    expect(turn.querySelector('.gv-pm-sent-chip')?.textContent).toBe('寓言写作');
-    expect(visibleLines(turn)).toEqual(['再补充一点要求']);
+    const lines = [...turn.querySelectorAll<HTMLElement>('.query-text-line')];
+    expect(lines).toHaveLength(FABLE_LINES.length);
+    expect(lines.every((line) => line.classList.contains('gv-pm-sent-line'))).toBe(true);
+    expect(lines.map((line) => line.textContent)).toEqual(FABLE_LINES);
   });
 
-  it("keeps what the person typed onto the prompt's own last line", () => {
-    // Measured on gemini.google.com: typing after the token appends to that
-    // line, so the boundary falls inside it and there is no line to leave
-    // showing. The remainder comes back as our own element instead.
-    const merged = [...FABLE_LINES.slice(0, -1), FABLE_LINES[FABLE_LINES.length - 1] + '大大'];
+  it('marks what was typed into the placeholder', () => {
+    // Without it a filled template reads as one undifferentiated wall and the
+    // reader cannot find their own answer inside it.
+    const turn = mountTurn(FABLE_LINES);
+
+    start();
+    chipOf(turn)?.click();
+
+    const values = [...turn.querySelectorAll('.gv-pm-sent-value')].map((el) => el.textContent);
+    expect(values).toEqual(['hihi']);
+  });
+
+  it('renders the prompt as its own lines, in order', () => {
+    const turn = mountTurn(FABLE_LINES);
+
+    start();
+    chipOf(turn)?.click();
+
+    const rendered = [...(bodyOf(turn)?.querySelectorAll('p') ?? [])].map((p) => p.textContent);
+    expect(rendered).toEqual(FABLE_LINES);
+  });
+
+  it('keeps what the person typed after the prompt visible in both states', () => {
+    // Measured on gemini.google.com: the appended text lands on the prompt's
+    // own last line, with no newline between them.
+    const merged = [...FABLE_LINES.slice(0, -1), `${FABLE_LINES[FABLE_LINES.length - 1]}大大`];
     const turn = mountTurn(merged);
 
     start();
+    const rest = turn.querySelector<HTMLElement>('.gv-pm-sent-rest');
+    expect(rest?.textContent).toBe('大大');
 
-    expect(turn.querySelector('.gv-pm-sent-chip')?.textContent).toBe('寓言写作');
-    expect(turn.querySelector('.gv-pm-sent-rest')?.textContent).toBe('大大');
-    expect(visibleLines(turn)).toEqual([]);
+    chipOf(turn)?.click();
+    expect(rest?.isConnected).toBe(true);
+    expect(rest?.textContent).toBe('大大');
+    // The appended words must not also appear inside the quoted prompt.
+    expect(bodyOf(turn)?.textContent).not.toContain('大大');
   });
 
-  it('reveals the prompt when the chip is clicked, and hides it again', () => {
-    const turn = mountTurn([...FABLE_LINES, '再补充一点要求']);
+  it('opens and closes on the chip', () => {
+    const turn = mountTurn(FABLE_LINES);
     start();
-    const chip = turn.querySelector<HTMLElement>('.gv-pm-sent-chip');
+    const chip = chipOf(turn);
 
     chip?.click();
-    expect(visibleLines(turn)).toEqual([...FABLE_LINES, '再补充一点要求']);
+    expect(bodyOf(turn)?.hidden).toBe(false);
     expect(chip?.getAttribute('aria-expanded')).toBe('true');
 
     chip?.click();
-    expect(visibleLines(turn)).toEqual(['再补充一点要求']);
+    expect(bodyOf(turn)?.hidden).toBe(true);
     expect(chip?.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('ignores the icon-font controls beside the message', () => {
-    // Reading the bubble wholesale drags `content_copy` and `expand_more` into
-    // the message, and no anchored pattern can match after that.
+  it("hides Gemini's show-more control, which governs text already hidden", () => {
     const turn = mountTurn(FABLE_LINES);
 
     start();
 
-    expect(turn.querySelector('.gv-pm-sent-chip')).not.toBeNull();
+    const toggle = turn.querySelector('.luminous-toggle-container');
+    expect(toggle?.classList.contains('gv-pm-sent-toggle-hidden')).toBe(true);
+  });
+
+  it("never presses Gemini's expand button", () => {
+    // Pressing it makes Gemini re-render the whole turn; stripping its clamp
+    // makes Gemini put the clamp straight back. Both showed as a
+    // grow-then-shrink flicker, so this feature does neither.
+    const turn = mountTurn(FABLE_LINES);
+    const button = turn.querySelector<HTMLButtonElement>('[data-test-id="luminous-expand-button"]');
+    let pressed = 0;
+    button?.addEventListener('click', () => pressed++);
+
+    start();
+    chipOf(turn)?.click();
+    chipOf(turn)?.click();
+
+    expect(pressed).toBe(0);
   });
 
   it('leaves an ordinary message untouched', () => {
@@ -129,32 +165,19 @@ describe('SentPromptChips', () => {
 
     start();
 
-    expect(turn.querySelector('.gv-pm-sent-chip')).toBeNull();
-    expect(turn.classList.contains('gv-pm-sent-collapsed')).toBe(false);
-  });
-
-  it('does not match its own chip label back into the message', () => {
-    const turn = mountTurn(FABLE_LINES);
-    const instance = start();
-
-    const first = turn.querySelector('.gv-pm-sent-chip');
-    instance.refresh();
-    instance.refresh();
-
-    expect(turn.querySelectorAll('.gv-pm-sent-chip')).toHaveLength(1);
-    expect(turn.querySelector('.gv-pm-sent-chip')).toBe(first);
+    expect(chipOf(turn)).toBeNull();
+    expect(turn.querySelector('.gv-pm-sent-line')).toBeNull();
   });
 
   it('releases a turn whose prompt was deleted', () => {
     const turn = mountTurn(FABLE_LINES);
     const instance = start();
-    expect(turn.querySelector('.gv-pm-sent-chip')).not.toBeNull();
+    expect(chipOf(turn)).not.toBeNull();
 
     instance.setPrompts([]);
 
-    expect(turn.querySelector('.gv-pm-sent-chip')).toBeNull();
-    expect(turn.classList.contains('gv-pm-sent-collapsed')).toBe(false);
-    expect(visibleLines(turn)).toEqual(FABLE_LINES);
+    expect(chipOf(turn)).toBeNull();
+    expect(turn.querySelector('.gv-pm-sent-line')).toBeNull();
   });
 
   it('relabels a turn when its prompt is renamed', () => {
@@ -164,12 +187,11 @@ describe('SentPromptChips', () => {
     instance.setPrompts([{ ...fable, name: '新名字' }]);
 
     expect(turn.querySelectorAll('.gv-pm-sent-chip')).toHaveLength(1);
-    expect(turn.querySelector('.gv-pm-sent-chip')?.textContent).toBe('新名字');
+    expect(chipOf(turn)?.textContent).toBe('新名字');
   });
 
   it('leaves Gemini exactly as it found it on teardown', () => {
-    const merged = [...FABLE_LINES.slice(0, -1), FABLE_LINES[FABLE_LINES.length - 1] + '大大'];
-    const turn = mountTurn(merged);
+    const turn = mountTurn(FABLE_LINES);
     const before = turn.outerHTML;
     const instance = start();
     expect(turn.outerHTML).not.toBe(before);
@@ -181,117 +203,40 @@ describe('SentPromptChips', () => {
   });
 });
 
-describe("SentPromptChips and Gemini's own show-more control", () => {
-  function mountWithToggle(lines: string[]): {
-    turn: HTMLElement;
-    toggle: HTMLElement;
-    button: HTMLButtonElement;
-  } {
-    const turn = mountTurn(lines);
-    const toggle = document.createElement('div');
-    toggle.className = 'luminous-toggle-container';
-    const button = document.createElement('button');
-    button.setAttribute('data-test-id', 'luminous-expand-button');
-    toggle.appendChild(button);
-    turn.appendChild(toggle);
-    return { turn, toggle, button };
-  }
-
-  it('hides the control that would toggle the text this chip already hides', () => {
-    const { turn, toggle } = mountWithToggle(FABLE_LINES);
-
-    start();
-
-    expect(toggle.classList.contains('gv-pm-sent-toggle-hidden')).toBe(true);
-    turn.querySelector<HTMLElement>('.gv-pm-sent-chip')?.click();
-    expect(toggle.classList.contains('gv-pm-sent-toggle-hidden')).toBe(false);
-  });
-
-  it("presses Gemini's own button instead of stripping its clamp", () => {
-    // Removing the class looked right for a frame and then fought back: Gemini
-    // owns that state and re-applies it, which is the grow-then-shrink flicker.
-    // Going through its control lets it run the transition itself.
-    const { turn, button } = mountWithToggle(FABLE_LINES);
-    const clamp = turn.querySelector<HTMLElement>('.query-text') as HTMLElement;
-    clamp.classList.add('collapsed');
-    let pressed = 0;
-    button.addEventListener('click', () => pressed++);
-
-    start();
-    expect(pressed).toBe(0);
-    // The class is never touched here; only Gemini may clear it.
-    expect(clamp.classList.contains('collapsed')).toBe(true);
-
-    turn.querySelector<HTMLElement>('.gv-pm-sent-chip')?.click();
-    expect(pressed).toBe(1);
-    expect(clamp.classList.contains('collapsed')).toBe(true);
-  });
-
-  it('leaves an unclamped turn alone', () => {
-    const { turn, button } = mountWithToggle(FABLE_LINES);
-    let pressed = 0;
-    button.addEventListener('click', () => pressed++);
-
-    start();
-    turn.querySelector<HTMLElement>('.gv-pm-sent-chip')?.click();
-
-    expect(pressed).toBe(0);
-  });
-
-  it('gives the control back on teardown, even while expanded', () => {
-    const { turn, toggle } = mountWithToggle(FABLE_LINES);
-    const instance = start();
-    turn.querySelector<HTMLElement>('.gv-pm-sent-chip')?.click();
-
-    instance.destroy();
-    controller = null;
-
-    expect(toggle.classList.contains('gv-pm-sent-toggle-hidden')).toBe(false);
-  });
-});
-
 describe('SentPromptChips across a Gemini re-render', () => {
   it('stays open on a turn the reader opened, even after the nodes are replaced', () => {
-    // Pressing Gemini's expand button makes it re-render the turn: measured on
-    // gemini.google.com, the bubble went to zero height mid-click while Angular
-    // swapped the nodes. Re-collapsing the replacement is the grow-then-shrink
-    // flicker, so the open state has to key off the message, not the element.
+    // Gemini replaces a turn's nodes for reasons this code does not control.
+    // Re-collapsing the replacement undoes the reader's own click.
     const turn = mountTurn(FABLE_LINES);
     const instance = start();
-    turn.querySelector<HTMLElement>('.gv-pm-sent-chip')?.click();
-    expect(visibleLines(turn)).toEqual(FABLE_LINES);
+    chipOf(turn)?.click();
+    expect(bodyOf(turn)?.hidden).toBe(false);
 
     turn.remove();
     const replacement = mountTurn(FABLE_LINES);
     instance.refresh();
 
-    expect(replacement.querySelector('.gv-pm-sent-chip')).not.toBeNull();
-    expect(visibleLines(replacement)).toEqual(FABLE_LINES);
+    expect(bodyOf(replacement)?.hidden).toBe(false);
   });
 
   it('collapses a replacement the reader had not opened', () => {
     const turn = mountTurn(FABLE_LINES);
     const instance = start();
-    expect(visibleLines(turn)).toEqual([]);
 
     turn.remove();
     const replacement = mountTurn(FABLE_LINES);
     instance.refresh();
 
-    expect(visibleLines(replacement)).toEqual([]);
+    expect(bodyOf(replacement)?.hidden).toBe(true);
   });
 
-  it('forgets the open state once the chip is collapsed again', () => {
+  it('mounts exactly one container per turn across repeated passes', () => {
     const turn = mountTurn(FABLE_LINES);
     const instance = start();
-    const chip = () => turn.querySelector<HTMLElement>('.gv-pm-sent-chip');
-    chip()?.click();
-    chip()?.click();
 
-    turn.remove();
-    const replacement = mountTurn(FABLE_LINES);
+    instance.refresh();
     instance.refresh();
 
-    expect(visibleLines(replacement)).toEqual([]);
+    expect(turn.querySelectorAll('.gv-pm-sent')).toHaveLength(1);
   });
 });

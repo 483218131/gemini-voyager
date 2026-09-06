@@ -94,4 +94,19 @@ describe('prompt form accent', () => {
     // again, and would already be mispositioning the surface itself.
     expect((fill as [string, string])[1]).not.toMatch(/\b(?:transform|filter|contain)\s*:/);
   });
+
+  it('dims the quoted prompt with colour, never opacity', () => {
+    const css = readContentStyle();
+    const body = blocksFor(css, '.gv-pm-sent-body').find(([, b]) => b.includes('border-left'));
+    const value = blocksFor(css, '.gv-pm-sent-value').find(([, b]) => b.includes('background'));
+    expect(body).toBeDefined();
+    expect(value).toBeDefined();
+
+    // `opacity` applies to the whole subtree and cannot be undone by a child,
+    // so the filled values would be dimmed along with the template they sit in.
+    expect((body as [string, string])[1]).not.toMatch(/opacity\s*:/);
+    expect((body as [string, string])[1]).toMatch(/color\s*:\s*color-mix/);
+    // The value carries the chip's accent so it lifts clear of the quotation.
+    expect((value as [string, string])[1]).toMatch(/--gv-pm-brand/);
+  });
 });

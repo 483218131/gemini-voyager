@@ -5,7 +5,7 @@ import { compilePrompts, matchCompiledPrompt, matchSentPrompt } from '../promptT
 const fable = {
   id: 'fable',
   name: '寓言写作',
-  text: '围绕 {{concept}} 这个概念，写一则寓言来完整地解释它。\n要像真正的寓言那样间接讲，不要直接点破。',
+  text: '# 寓言写作 Prompt\n\n围绕 {{concept}} 这个概念，写一则寓言来完整地解释它。\n要像真正的寓言那样间接讲，不要直接点破。',
 };
 
 const plain = {
@@ -14,40 +14,95 @@ const plain = {
   text: '把这篇论文的方法与贡献讲清楚。\n\n不要写摘要。',
 };
 
+/** What `.query-text-line` reading gives back: one newline between blocks. */
+const rendered = (...lines: string[]): string => lines.join('\n');
+
+const SENT = rendered(
+  '# 寓言写作 Prompt',
+  '',
+  '围绕 hihi 这个概念，写一则寓言来完整地解释它。',
+  '要像真正的寓言那样间接讲，不要直接点破。',
+);
+
 describe('promptTextMatch', () => {
   it('recognises a template message by the values that were filled in', () => {
-    const sent =
-      '围绕 Forward Deployed Engineer (FDE) 这个概念，写一则寓言来完整地解释它。 要像真正的寓言那样间接讲，不要直接点破。';
-
-    expect(matchSentPrompt(sent, [fable])?.name).toBe('寓言写作');
+    expect(matchSentPrompt(SENT, [fable])?.name).toBe('寓言写作');
   });
 
-  it('recognises a message whose placeholder was left unfilled', () => {
+  it('locates what was typed into each placeholder', () => {
+    // Without this the expanded prompt reads as one undifferentiated wall and
+    // the reader cannot tell their own answer from the template around it.
+    const match = matchSentPrompt(SENT, [fable]);
+    const values = (match?.values ?? []).map(([start, end]) => SENT.slice(start, end));
+
+    expect(values).toEqual(['hihi']);
+  });
+
+  it('locates every placeholder of a body that has several', () => {
+    const two = { id: 'two', name: '两个', text: '把 {{what}} 翻译成 {{lang}}，保持语气。' };
+    const sent = '把 这段代码注释 翻译成 法语，保持语气。';
+    const match = matchSentPrompt(sent, [two]);
+
+    expect((match?.values ?? []).map(([s, e]) => sent.slice(s, e))).toEqual([
+      '这段代码注释',
+      '法语',
+    ]);
+  });
+
+  it('marks nothing when the placeholder was left blank', () => {
     // `fillPromptTemplate` sends the literal `{{name}}` for a blank variable,
-    // so the sent text still has to resolve to the same prompt.
-    const sent =
-      '围绕 {{concept}} 这个概念，写一则寓言来完整地解释它。 要像真正的寓言那样间接讲，不要直接点破。';
+    // so the turn still resolves to the prompt - the braces are just its text.
+    const sent = SENT.replace('hihi', '{{concept}}');
+    const match = matchSentPrompt(sent, [fable]);
 
-    expect(matchSentPrompt(sent, [fable])?.name).toBe('寓言写作');
+    expect(match?.name).toBe('寓言写作');
+    expect((match?.values ?? []).map(([s, e]) => sent.slice(s, e))).toEqual(['{{concept}}']);
   });
 
-  it('ignores the newlines Gemini drops when it re-renders the message', () => {
-    // The bubble is block markup, so `textContent` runs the paragraphs together
-    // and the composer's token spacer can leave a trailing space behind.
-    const sent = '把这篇论文的方法与贡献讲清楚。 不要写摘要。 ';
+  it('absorbs the padding each rendered line carries', () => {
+    // Read off gemini.google.com, a line comes back as `" # 寓言写作 Prompt "`.
+    // Anchoring hard against the prompt's first character missed every turn.
+    const padded = SENT.split('\n')
+      .map((line) => (line ? ` ${line} ` : line))
+      .join('\n');
 
-    expect(matchSentPrompt(sent, [plain])?.name).toBe('论文速读');
+    expect(matchSentPrompt(padded, [fable])?.name).toBe('寓言写作');
+    const match = matchSentPrompt(padded, [fable]);
+    expect((match?.values ?? []).map(([s2, e2]) => padded.slice(s2, e2))).toEqual(['hihi']);
+  });
+
+  it('absorbs the blank lines the renderer collapses', () => {
+    // The body was authored with `\n\n` between blocks; reading the turn back
+    // gives a single newline, or none at all.
+    expect(matchSentPrompt('把这篇论文的方法与贡献讲清楚。\n不要写摘要。', [plain])?.name).toBe(
+      '论文速读',
+    );
+    expect(matchSentPrompt('把这篇论文的方法与贡献讲清楚。不要写摘要。', [plain])?.name).toBe(
+      '论文速读',
+    );
+  });
+
+  it('reports where the prompt stops when the person kept typing', () => {
+    // Measured on gemini.google.com: the prompt ended and `大大` followed on the
+    // same line, with no newline between them.
+    const sent = `${SENT}大大`;
+    const match = matchSentPrompt(sent, [fable]);
+
+    expect(match?.name).toBe('寓言写作');
+    expect(sent.slice(match?.end)).toBe('大大');
+  });
+
+  it('reports the whole message when nothing was appended', () => {
+    expect(matchSentPrompt(SENT, [fable])?.end).toBe(SENT.length);
   });
 
   it('leaves an ordinary message alone', () => {
     expect(matchSentPrompt('帮我看看这段代码', [fable, plain])).toBeNull();
-    expect(matchSentPrompt('', [fable, plain])).toBeNull();
+    expect(matchSentPrompt('   ', [fable, plain])).toBeNull();
   });
 
-  it('does not let a template claim more than it actually pinned down', () => {
-    const sent = '围绕 X 这个概念，写一则寓言来完整地解释它。 然后再补一段完全无关的话。';
-
-    expect(matchSentPrompt(sent, [fable])).toBeNull();
+  it('does not claim a message that merely ends the same way', () => {
+    expect(matchSentPrompt(`先说点别的\n${SENT}`, [fable])).toBeNull();
   });
 
   it('refuses a body that is little more than a placeholder', () => {
@@ -74,7 +129,6 @@ describe('promptTextMatch', () => {
     const empty = { id: 'empty', name: '空的', text: '' };
 
     expect(compilePrompts([unnamed, empty])).toHaveLength(0);
-    expect(matchSentPrompt('把这篇论文的方法与贡献讲清楚。', [unnamed, empty])).toBeNull();
   });
 
   it('treats regex metacharacters in a body as literal text', () => {
@@ -85,88 +139,20 @@ describe('promptTextMatch', () => {
     expect(matchSentPrompt('匹配 abc 和 (x|y) 与 结果 结尾', [risky])).toBeNull();
   });
 
+  it('is built without RegExp match indices, which Safari 15.4 lacks', () => {
+    // The `d` flag arrived in Safari 16.4, the same floor that already rules
+    // out lookbehind. Offsets come from summing capture lengths instead.
+    for (const compiled of compilePrompts([fable, plain])) {
+      expect((compiled as unknown as { pattern: RegExp }).pattern.flags).not.toContain('d');
+    }
+  });
+
   it('compiles once for many turns', () => {
     const compiled = compilePrompts([fable, plain]);
 
-    expect(
-      matchCompiledPrompt(['把这篇论文的方法与贡献讲清楚。', '不要写摘要。'], compiled)?.id,
-    ).toBe('plain');
-    expect(matchCompiledPrompt(['帮我看看这段代码'], compiled)).toBeNull();
-  });
-});
-
-describe('promptTextMatch across block markup', () => {
-  // Gemini renders a multi-line prompt as separate blocks, and `textContent`
-  // joins them with nothing at all. Collapsing the prompt's own newlines to a
-  // single space leaves a space on one side and nothing on the other, so a
-  // real multi-line prompt never matched.
-  const heading = {
-    id: 'heading',
-    name: '寓言写作',
-    text: '# 寓言写作 Prompt\n\n围绕 {{concept}} 这个概念，写一则寓言来完整地解释它。\n要像真正的寓言那样间接讲，不要直接点破。',
-  };
-
-  it('matches a multi-line prompt whose newlines the renderer dropped', () => {
-    const sent =
-      '# 寓言写作 Prompt围绕 FDE 这个概念，写一则寓言来完整地解释它。要像真正的寓言那样间接讲，不要直接点破。';
-
-    expect(matchSentPrompt(sent, [heading])?.name).toBe('寓言写作');
-  });
-
-  it('matches the same prompt when the renderer keeps the newlines', () => {
-    expect(matchSentPrompt(heading.text.replace('{{concept}}', 'FDE'), [heading])?.name).toBe(
-      '寓言写作',
+    expect(matchCompiledPrompt('把这篇论文的方法与贡献讲清楚。\n不要写摘要。', compiled)?.id).toBe(
+      'plain',
     );
-  });
-});
-
-describe('promptTextMatch when the person kept typing', () => {
-  // A slash token leaves the composer editable, so appending to the prompt is
-  // ordinary use. Anchoring both ends made any such turn unrecognisable, and
-  // collapsing all of it would have hidden the sentence the person wrote.
-  const fableLines = [
-    '# 寓言写作 Prompt',
-    '',
-    '围绕 hihi 这个概念，写一则寓言来完整地解释它。',
-    '要像真正的寓言那样间接讲，不要直接点破。',
-  ];
-  const prompt = {
-    id: 'fable',
-    name: '寓言写作',
-    text: '# 寓言写作 Prompt\n\n围绕 {{concept}} 这个概念，写一则寓言来完整地解释它。\n要像真正的寓言那样间接讲，不要直接点破。',
-  };
-
-  it('reports the whole turn when nothing was appended', () => {
-    const match = matchSentPrompt(fableLines, [prompt]);
-
-    expect(match?.name).toBe('寓言写作');
-    expect(match?.lineCount).toBe(fableLines.length);
-  });
-
-  it('recognises the prompt and stops where the person took over', () => {
-    const match = matchSentPrompt([...fableLines, '大大', '再补充一点要求'], [prompt]);
-
-    expect(match?.name).toBe('寓言写作');
-    // The appended lines are not the prompt's, and must stay visible.
-    expect(match?.lineCount).toBe(fableLines.length);
-    expect(match?.remainder).toBe('');
-  });
-
-  it('does not claim a turn that merely ends the same way', () => {
-    const tail = fableLines.slice(1);
-
-    expect(matchSentPrompt(['先说点别的', ...tail], [prompt])).toBeNull();
-  });
-
-  it('finds the boundary inside a line when the person typed straight on', () => {
-    // Measured on gemini.google.com: typing after the token appends to the
-    // prompt's own last line. Requiring a line boundary made every such turn
-    // unrecognisable, which is what this feature kept failing on.
-    const merged = [...fableLines.slice(0, -1), fableLines[fableLines.length - 1] + '大大'];
-    const match = matchSentPrompt(merged, [prompt]);
-
-    expect(match?.name).toBe('寓言写作');
-    expect(match?.lineCount).toBe(merged.length);
-    expect(match?.remainder).toBe('大大');
+    expect(matchCompiledPrompt('帮我看看这段代码', compiled)).toBeNull();
   });
 });

@@ -422,11 +422,13 @@ drop, or hover layout.
   all 956 characters are in the DOM, with `scrollHeight === clientHeight === 62` because
   `.query-text.collapsed` clamps the height. Designing around recovering text that is already there
   wastes a fix.
-- **Rule:** Read the text regardless of the clamp. To reveal it, press Gemini's own
-  `[data-test-id="luminous-expand-button"]` rather than removing `.collapsed`: Gemini owns that state
-  and re-applies it, which shows up as a grow-then-shrink flicker.
+- **Rule:** Read the text regardless of the clamp, and do not try to lift it. Removing `.collapsed`
+  makes Gemini put it straight back; pressing its own
+  `[data-test-id="luminous-expand-button"]` makes Gemini re-render the whole turn. Both land as a
+  grow-then-shrink flicker. A feature that needs the full text on screen should render its own copy
+  and keep Gemini's lines hidden, which is what `SentPromptChips` does.
 - **Guard:** `src/pages/content/prompt/__tests__/SentPromptChips.test.ts`
-  (`presses Gemini's own button instead of stripping its clamp`).
+  (`never presses Gemini's expand button`).
 
 ## Pressing Gemini's expand button re-renders the whole turn
 
@@ -447,7 +449,10 @@ drop, or hover layout.
   characters, the message to 751, diverging at 749 with `大大` appended — on the prompt's final line,
   with no newline between them. Splitting only on line boundaries missed it too.
 - **Rule:** Measure how far the prompt reaches in characters (`^pattern` with lazy wildcards, then
-  the match length), map that back to a line and an offset, and render the remainder as the feature's
-  own element. Collapsing the whole turn would hide the sentence the person actually wrote.
+  the match length) and render the remainder as the feature's own element. Collapsing the whole turn
+  would hide the sentence the person actually wrote. Note also that each rendered line carries its
+  own padding - the first comes back as `" # 寓言写作 Prompt "` - so the pattern has to absorb
+  leading whitespace, and that whitespace must be a counted capture group or every offset after it
+  is short by its length.
 - **Guard:** `src/features/prompt/model/__tests__/promptTextMatch.test.ts`
   (`finds the boundary inside a line when the person typed straight on`).

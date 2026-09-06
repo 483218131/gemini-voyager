@@ -2,14 +2,20 @@
  * Keeps a sent prompt looking like the token it was chosen as.
  *
  * `expandTokensForSend` replaces the composer token with the full body before
- * submit, so Gemini stores and re-renders the expanded text. This collapses the
- * rendered user turn back to the prompt's name, with a click to reveal what was
- * actually sent.
+ * submit, so the turn Gemini stores and re-renders is a wall of prompt text.
+ * This puts the prompt's name back in front of it, with the words the person
+ * typed themselves beside it, and the body one click away.
  *
- * Purely additive to Gemini's DOM: a class on the bubble and one inserted chip,
- * both removed on teardown. Nothing Gemini owns is moved or deleted, because
- * the bubble is re-rendered on navigation and its structure changes without
- * notice.
+ * The prompt is re-rendered here rather than revealed in place. Gemini's own
+ * lines stay hidden throughout, which buys three things: the body can be set
+ * apart as a quotation, the values that were filled in can be marked inside it,
+ * and Gemini's clamp and its show-more button are never touched - pressing that
+ * button makes Gemini re-render the whole turn, and stripping the clamp makes
+ * it put the clamp straight back.
+ *
+ * Additive only: one inserted container, one class on the lines it stands in
+ * for. Nothing Gemini owns is moved, rewritten or removed, because the bubble
+ * is re-rendered on navigation and its structure changes without notice.
  */
 
 import {
@@ -20,35 +26,32 @@ import {
 } from '@/features/prompt/model/promptTextMatch';
 import { getTranslationSync } from '@/utils/i18n';
 
-const COLLAPSED_CLASS = 'gv-pm-sent-collapsed';
+const ROOT_CLASS = 'gv-pm-sent';
 const CHIP_CLASS = 'gv-pm-sent-chip';
-const MARKED_ATTR = 'data-gv-pm-sent';
-const LINE_CLASS = 'gv-pm-sent-line';
+const BODY_CLASS = 'gv-pm-sent-body';
+const VALUE_CLASS = 'gv-pm-sent-value';
 const REST_CLASS = 'gv-pm-sent-rest';
+const LINE_CLASS = 'gv-pm-sent-line';
+const MARKED_ATTR = 'data-gv-pm-sent';
+
 /**
- * Gemini's own show-more control for a long turn. While this feature is
- * collapsed it governs content that is already hidden, so leaving it visible
- * offers a second, conflicting toggle over the same text.
+ * Gemini's own show-more control. It governs lines this feature keeps hidden,
+ * so leaving it visible offers a control that does nothing a reader can see.
  */
 const GEMINI_TOGGLE_SELECTOR = '.luminous-toggle-container';
-/** Gemini's own expand button, inside that container. */
-const GEMINI_EXPAND_SELECTOR =
-  '[data-test-id="luminous-expand-button"], .luminous-toggle-container button';
-/** The class Gemini puts on the text block while it is clamping it. */
-const GEMINI_CLAMP_SELECTOR = '.query-text.collapsed';
 const TOGGLE_HIDDEN_CLASS = 'gv-pm-sent-toggle-hidden';
 
 /**
  * Where Gemini keeps the message text itself, in preference order. Reading the
- * bubble wholesale instead picks up its copy, edit and expand controls, and
- * those render through a Material Symbols icon font whose glyph *is* the
- * element's text - so `textContent` gains literal words like `content_copy`
- * and no anchored pattern can ever match. `DOMContentExtractor` reads user
- * turns through the same selector.
+ * bubble wholesale instead picks up a `cdk-visually-hidden` "You said" prefix,
+ * the text a second time, and the copy, edit and expand controls - and those
+ * render through a Material Symbols icon font whose glyph *is* the element's
+ * text, so the string gains literal words like `content_copy`.
+ * `DOMContentExtractor` reads user turns through the same selector.
  */
 const TEXT_SELECTORS = ['.query-text-line', '.query-text'];
 
-/** Ordered by how specific each one is; the first that resolves wins. */
+/** Ordered by how tightly each wraps the text; the first that resolves wins. */
 const BUBBLE_SELECTORS = [
   '.user-query-bubble-with-background',
   '.user-query-bubble-container',
@@ -85,8 +88,7 @@ function detectTheme(): 'light' | 'dark' {
  * earlier version kept whichever match contained no other match, to land on the
  * innermost bubble - but Gemini nests these containers in an order this code
  * does not control, and one unexpected descendant made every candidate look
- * like an outer wrapper and skipped them all. Trying the selectors in order of
- * how tightly they wrap the text is the same intent without that failure mode.
+ * like an outer wrapper and skipped them all.
  */
 function bubblesIn(root: ParentNode): HTMLElement[] {
   for (const selector of BUBBLE_SELECTORS) {
@@ -96,27 +98,13 @@ function bubblesIn(root: ParentNode): HTMLElement[] {
   return [];
 }
 
-/**
- * The message as its rendered lines, without the controls Gemini draws beside
- * them and without this feature's own chip. Lines rather than one string
- * because the match reports where the prompt ends, and the split has to land
- * on a line boundary.
- */
-function messageLinesOf(bubble: HTMLElement): { lines: string[]; elements: HTMLElement[] } {
+/** The message's own line elements, or an empty list if this layout is new. */
+function lineElementsOf(bubble: HTMLElement): HTMLElement[] {
   for (const selector of TEXT_SELECTORS) {
     const found = [...bubble.querySelectorAll<HTMLElement>(selector)];
-    if (found.length > 0) {
-      return { lines: found.map((line) => line.textContent ?? ''), elements: found };
-    }
+    if (found.length > 0) return found;
   }
-  // A layout this code has not seen. Strip the controls on a copy rather than
-  // trusting the bubble's raw text; the live DOM is never touched. With no
-  // line elements to hide, such a turn is matched but never collapsed.
-  const copy = bubble.cloneNode(true) as HTMLElement;
-  copy.querySelectorAll(`button, [role="button"], mat-icon, .${CHIP_CLASS}`).forEach((node) => {
-    node.remove();
-  });
-  return { lines: [copy.textContent ?? ''], elements: [] };
+  return [];
 }
 
 export function startSentPromptChips(options: SentPromptChipsOptions): SentPromptChipsController {
@@ -124,143 +112,152 @@ export function startSentPromptChips(options: SentPromptChipsOptions): SentPromp
   let compiled = compilePrompts(options.prompts);
   let destroyed = false;
 
-  /**
-   * Chip to the bubble it belongs to. The chip is inserted beside the line it
-   * stands in for, not as a child of the bubble, so its parent is no longer a
-   * reliable way back to the element carrying the collapsed state.
-   */
-  const chips = new Map<HTMLElement, { bubble: HTMLElement; restore: () => void }>();
+  const mounted = new Map<HTMLElement, HTMLElement>();
 
   /**
    * Turns the reader has opened, keyed by their own text.
    *
-   * Pressing Gemini's expand button makes it re-render the whole turn: measured
-   * here, the bubble this code was holding went to zero height mid-click while
-   * Angular swapped the nodes. The chip and its classes go with them, the
-   * observer then sees a fresh matching turn and collapses it again - the
-   * grow-then-shrink flicker, arriving from the one direction that survives not
-   * fighting Gemini for its clamp. An element reference cannot outlive that, so
-   * the state hangs off the message instead.
+   * Gemini re-renders a turn for reasons this code does not control, and when
+   * it does the container below and every class it set are gone with it. An
+   * element reference cannot outlive that, so the open state hangs off the
+   * message rather than off the DOM.
    */
   const opened = new Set<string>();
 
-  function releaseBubble(bubble: HTMLElement): void {
-    bubble.classList.remove(COLLAPSED_CLASS);
+  function release(bubble: HTMLElement): void {
+    mounted.get(bubble)?.remove();
+    mounted.delete(bubble);
     bubble.removeAttribute(MARKED_ATTR);
     bubble.removeAttribute('data-gv-theme');
-    bubble.querySelectorAll(`.${LINE_CLASS}`).forEach((line) => line.classList.remove(LINE_CLASS));
-    bubble.querySelectorAll(`.${REST_CLASS}`).forEach((node) => node.remove());
+    bubble.querySelectorAll(`.${LINE_CLASS}`).forEach((el) => el.classList.remove(LINE_CLASS));
     bubble
       .querySelectorAll(`.${TOGGLE_HIDDEN_CLASS}`)
-      .forEach((node) => node.classList.remove(TOGGLE_HIDDEN_CLASS));
+      .forEach((el) => el.classList.remove(TOGGLE_HIDDEN_CLASS));
   }
 
-  function buildChip(name: string): HTMLElement {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = CHIP_CLASS;
-    chip.textContent = name;
-    chip.title = getTranslationSync('pm_sent_chip_hint');
-    chip.setAttribute('aria-label', name);
-    chip.setAttribute('aria-expanded', 'false');
-    return chip;
+  /**
+   * The prompt's own text, rebuilt line by line with the filled values marked.
+   * Built from the message rather than from the saved prompt, so what is shown
+   * is what was actually sent, even if the prompt has been edited since.
+   */
+  function buildBody(message: string, match: SentPromptMatch): HTMLElement {
+    const body = document.createElement('div');
+    body.className = BODY_CLASS;
+
+    const promptText = message.slice(0, match.end);
+    let line = document.createElement('p');
+    body.appendChild(line);
+
+    const emit = (text: string, isValue: boolean): void => {
+      const parts = text.split('\n');
+      parts.forEach((part, index) => {
+        if (index > 0) {
+          line = document.createElement('p');
+          body.appendChild(line);
+        }
+        if (!part) return;
+        if (!isValue) {
+          line.append(part);
+          return;
+        }
+        const mark = document.createElement('mark');
+        mark.className = VALUE_CLASS;
+        mark.textContent = part;
+        line.appendChild(mark);
+      });
+    };
+
+    let cursor = 0;
+    for (const [start, end] of match.values) {
+      if (start >= promptText.length) break;
+      emit(promptText.slice(cursor, start), false);
+      emit(promptText.slice(start, Math.min(end, promptText.length)), true);
+      cursor = Math.min(end, promptText.length);
+    }
+    emit(promptText.slice(cursor), false);
+
+    return body;
   }
 
-  function collapse(
+  function mount(
     bubble: HTMLElement,
+    anchor: HTMLElement,
+    message: string,
     match: SentPromptMatch,
     lineEls: HTMLElement[],
     key: string,
   ): void {
-    // Every line the prompt reaches into. The last of them may also hold the
-    // person's own words, which come back below as our own element rather than
-    // by editing Gemini's text - the bubble is re-rendered on navigation and
-    // nothing it owns is safe to rewrite.
-    const owned = lineEls.slice(0, match.lineCount);
-    const chip = buildChip(match.name);
+    const container = document.createElement('div');
+    container.className = ROOT_CLASS;
 
-    let rest: HTMLElement | null = null;
-    if (match.remainder.trim()) {
-      rest = document.createElement('span');
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = CHIP_CLASS;
+    chip.textContent = match.name;
+    chip.title = getTranslationSync('pm_sent_chip_hint');
+    chip.setAttribute('aria-label', match.name);
+
+    const body = buildBody(message, match);
+
+    // Everything past the prompt is the person's own, and stays visible in both
+    // states: it is the half of the turn worth reading at a glance.
+    const remainder = message.slice(match.end).trim();
+    const rest = remainder ? document.createElement('p') : null;
+    if (rest) {
       rest.className = REST_CLASS;
-      rest.textContent = match.remainder.trimEnd();
+      rest.textContent = remainder;
     }
 
-    // Gemini's own clamp is deliberately left alone. Removing it on expand
-    // looked right for a frame and then fought back: Gemini owns that state and
-    // re-applies it, which is the grow-then-shrink flicker. Expanding here means
-    // getting out of the way - the turn returns to exactly how Gemini would
-    // present it, with this chip as the way back.
-    const toggle = bubble.querySelector<HTMLElement>(GEMINI_TOGGLE_SELECTOR);
+    const head = document.createElement('div');
+    head.className = `${ROOT_CLASS}-head`;
+    head.appendChild(chip);
 
-    const setCollapsed = (collapsed: boolean): void => {
-      bubble.classList.toggle(COLLAPSED_CLASS, collapsed);
-      for (const line of owned) line.classList.toggle(LINE_CLASS, collapsed);
-      if (rest) rest.hidden = !collapsed;
-      toggle?.classList.toggle(TOGGLE_HIDDEN_CLASS, collapsed);
-      chip.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      // Revealing the lines is not enough on a long turn: Gemini still clamps
-      // them to a couple of visible rows. Press its own button rather than
-      // stripping the class, so the transition runs through Gemini's state
-      // machine instead of against it.
-      if (!collapsed && bubble.querySelector(GEMINI_CLAMP_SELECTOR)) {
-        bubble.querySelector<HTMLElement>(GEMINI_EXPAND_SELECTOR)?.click();
-      }
+    container.append(head, body);
+    if (rest) container.appendChild(rest);
+
+    const setOpen = (open: boolean): void => {
+      body.hidden = !open;
+      chip.setAttribute('aria-expanded', open ? 'true' : 'false');
+      container.classList.toggle(`${ROOT_CLASS}-open`, open);
     };
 
     chip.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const collapsed = !bubble.classList.contains(COLLAPSED_CLASS);
-      if (collapsed) opened.delete(key);
-      else opened.add(key);
-      setCollapsed(collapsed);
+      const open = body.hidden;
+      if (open) opened.add(key);
+      else opened.delete(key);
+      setOpen(open);
     });
 
+    for (const line of lineEls) line.classList.add(LINE_CLASS);
+    bubble.querySelector(GEMINI_TOGGLE_SELECTOR)?.classList.add(TOGGLE_HIDDEN_CLASS);
     bubble.setAttribute(MARKED_ATTR, match.name);
     bubble.setAttribute('data-gv-theme', detectTheme());
-    // In front of the first line it stands in for, so the chip reads as
-    // replacing that text rather than as a separate header.
-    const anchor = owned[0] ?? lineEls[0];
-    if (anchor) anchor.before(chip);
-    else bubble.prepend(chip);
-    if (rest) chip.after(rest);
-    // A re-render lands here again for a turn the reader had already opened.
-    setCollapsed(!opened.has(key));
-    chips.set(chip, {
-      bubble,
-      restore: () => toggle?.classList.remove(TOGGLE_HIDDEN_CLASS),
-    });
+    anchor.after(container);
+    setOpen(opened.has(key));
+    mounted.set(bubble, container);
   }
 
   function refresh(): void {
     if (destroyed) return;
     for (const bubble of bubblesIn(root)) {
+      const lineEls = lineElementsOf(bubble);
+      const message = lineEls.map((line) => line.textContent ?? '').join('\n');
+      const match = lineEls.length > 0 ? matchCompiledPrompt(message, compiled) : null;
       const already = bubble.getAttribute(MARKED_ATTR);
-      const chip = bubble.querySelector<HTMLElement>(`.${CHIP_CLASS}`);
-      const { lines, elements } = messageLinesOf(bubble);
-      const match = elements.length > 0 ? matchCompiledPrompt(lines, compiled) : null;
-      const key = lines.join('\n');
 
       if (!match) {
-        if (chip) {
-          chips.get(chip)?.restore();
-          chip.remove();
-          chips.delete(chip);
-          releaseBubble(bubble);
-        }
+        if (already !== null) release(bubble);
         continue;
       }
-      if (already === match.name) continue;
+      // Same prompt, same turn, and the container survived whatever the
+      // observer just reacted to.
+      if (already === match.name && mounted.get(bubble)?.isConnected) continue;
 
-      // The prompt list changed under a bubble that is already collapsed.
-      if (chip) {
-        chips.get(chip)?.restore();
-        chip.remove();
-        chips.delete(chip);
-        releaseBubble(bubble);
-      }
-      collapse(bubble, match, elements, key);
+      release(bubble);
+      const anchor = lineEls[0].closest<HTMLElement>('.query-text') ?? lineEls[0];
+      mount(bubble, anchor, message, match, lineEls, message);
     }
   }
 
@@ -281,6 +278,10 @@ export function startSentPromptChips(options: SentPromptChipsOptions): SentPromp
   return {
     setPrompts: (prompts: PromptIdentity[]) => {
       compiled = compilePrompts(prompts);
+      // A renamed or deleted prompt must stop labelling turns it no longer
+      // explains, so every mount is torn down before rescanning. Deleting the
+      // current key during Map iteration is well defined.
+      for (const bubble of mounted.keys()) release(bubble);
       refresh();
     },
     refresh,
@@ -290,12 +291,7 @@ export function startSentPromptChips(options: SentPromptChipsOptions): SentPromp
       observer.disconnect();
       if (scheduled !== null) window.clearTimeout(scheduled);
       scheduled = null;
-      for (const [chip, owner] of chips) {
-        chip.remove();
-        owner.restore();
-        releaseBubble(owner.bubble);
-      }
-      chips.clear();
+      for (const bubble of mounted.keys()) release(bubble);
     },
   };
 }

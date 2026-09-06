@@ -1,5 +1,6 @@
 /**
- * Recognising a sent message as one of the user's saved prompts.
+ * Recognising a sent message as one of the user's saved prompts, and saying
+ * which parts of it were filled in.
  *
  * The slash token in the composer is only a shell: `expandTokensForSend`
  * replaces it with the full body before submit, so Gemini stores and re-renders
@@ -21,6 +22,9 @@ export interface PromptIdentity {
   text: string;
 }
 
+/** Half-open `[start, end)` offsets into the message the match was run on. */
+export type TextRange = readonly [number, number];
+
 export interface SentPromptMatch {
   id: string;
   name: string;
@@ -31,19 +35,20 @@ export interface SentPromptMatch {
    */
   specificity: number;
   /**
-   * How many leading lines the prompt reaches into. A slash token can be
-   * followed by the user's own words - that is the point of inserting one into
-   * a composer you can still type in - so anything past the prompt belongs to
-   * the person, not the template, and must stay readable.
+   * Where the prompt's own text stops. A slash token leaves the composer
+   * editable and carrying on writing after it is ordinary use, so everything
+   * from here on belongs to the person, not the template. Measured on
+   * gemini.google.com: a prompt ending at 749 characters with `大大` typed onto
+   * its own final line, no newline between them.
    */
-  lineCount: number;
+  end: number;
   /**
-   * The person's own text from the final covered line, when they carried on
-   * writing without starting a new one. Measured on gemini.google.com: a
-   * 749-character prompt followed by two more characters on the same line, no
-   * newline between them, which is what typing after the token produces.
+   * What was typed into each placeholder, in source order. Marked in the
+   * rendered prompt so a reader can tell their own answer apart from the
+   * template around it — without it, a filled template reads as one
+   * undifferentiated wall.
    */
-  remainder: string;
+  values: TextRange[];
 }
 
 /**
@@ -55,38 +60,37 @@ export interface SentPromptMatch {
  */
 const MIN_TEMPLATE_LITERAL = 4;
 
-/**
- * Whitespace is removed outright, not flattened to a single space.
- *
- * Gemini re-renders a sent message as block markup and `textContent` joins the
- * blocks with nothing between them, so a body authored as
- * `heading\n\nparagraph` comes back as `headingparagraph`. Collapsing to a
- * space instead would leave one on the prompt's side and none on the message's,
- * and no multi-line prompt would ever match. The composer's own token spacer
- * and any trailing newline disappear here too.
- *
- * The cost is that two messages differing only in spacing compare equal. For
- * deciding "is this that saved prompt" they are the same message, and the
- * literal floor below keeps a thin template from exploiting the looser
- * comparison.
- */
-export function normalizeSentText(value: string): string {
-  return value.replace(/\s+/g, '');
-}
-
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * A literal run of the prompt, made tolerant of how the message was re-rendered.
+ *
+ * Gemini lays a turn out as block markup, and reading it back through
+ * `.query-text-line` joins the blocks with a single newline whatever the body
+ * was authored with — a blank line between paragraphs, a soft-wrapped
+ * continuation indented by two spaces, the composer's own token spacer. Every
+ * run of whitespace on either side therefore becomes "any whitespace, or none".
+ */
+function literalPattern(value: string): string {
+  return value.split(/\s+/).map(escapeRegExp).join('\\s*');
 }
 
 interface CompiledPrompt {
   id: string;
   name: string;
   specificity: number;
-  /** Absent for a prompt with no placeholders, which is compared literally. */
-  pattern: RegExp | null;
-  /** The same pattern without its end anchor: "the message opens with this". */
-  opensWith: RegExp | null;
-  exact: string;
+  /**
+   * Anchored at the start only, with *every* segment captured — the literal
+   * runs as well as the placeholders. Group lengths then add up to each
+   * placeholder's offset, which is how the fill positions are recovered
+   * without RegExp `d` flag: Safari gained match indices in 16.4 and this
+   * extension supports 15.4, the same floor that already rules out lookbehind.
+   */
+  pattern: RegExp;
+  /** Which capture groups, by index from 1, are placeholders. */
+  valueGroups: Set<number>;
 }
 
 function compile(prompt: PromptIdentity): CompiledPrompt | null {
@@ -101,33 +105,35 @@ function compile(prompt: PromptIdentity): CompiledPrompt | null {
     .join('');
   const specificity = literal.replace(/\s+/g, '').length;
   const hasVariable = segments.some((segment) => segment.kind === 'variable');
+  if (hasVariable && specificity < MIN_TEMPLATE_LITERAL) return null;
+  if (!hasVariable && specificity === 0) return null;
 
-  if (!hasVariable) {
-    const exact = normalizeSentText(prompt.text);
-    if (!exact) return null;
-    return { id: prompt.id, name, specificity, pattern: null, opensWith: null, exact };
-  }
-
-  if (specificity < MIN_TEMPLATE_LITERAL) return null;
-
+  const valueGroups = new Set<number>();
+  // Group 1 is the leading whitespace below; segment groups start after it.
+  let group = 1;
   const source = segments
-    .map((segment) =>
-      segment.kind === 'text'
-        ? escapeRegExp(normalizeSentText(segment.value))
-        : // A filled value, or the literal `{{name}}` that `fillPromptTemplate`
-          // leaves behind when the user sends a blank one. Both are just
-          // characters here, so one branch covers them.
-          '[\\s\\S]+?',
-    )
+    .map((segment) => {
+      group += 1;
+      if (segment.kind === 'text') return `(${literalPattern(segment.value)})`;
+      valueGroups.add(group);
+      // A filled value, or the literal `{{name}}` that `fillPromptTemplate`
+      // leaves behind when the user sends a blank one. Both are just
+      // characters here, so one branch covers them.
+      return '([\\s\\S]*?)';
+    })
     .join('');
 
+  // The leading `(\s*)` absorbs the padding a rendered line carries - read off
+  // gemini.google.com, the first comes back as `" # 寓言写作 Prompt "`, and
+  // anchoring hard against the prompt's first character missed every turn. It is
+  // a capture group like every other part, so its length counts toward the
+  // offsets the fill positions are summed from.
   return {
     id: prompt.id,
     name,
     specificity,
-    pattern: new RegExp(`^${source}$`),
-    opensWith: new RegExp(`^${source}`),
-    exact: '',
+    pattern: new RegExp(`^(\\s*)${source}`),
+    valueGroups,
   };
 }
 
@@ -143,80 +149,44 @@ export function compilePrompts(prompts: PromptIdentity[]): CompiledPrompt[] {
 }
 
 /**
- * Normalized characters of `value`, and the raw suffix holding the last `count`
- * of them. Used to hand back the person's own words with their original
- * spacing after the prompt's extent has been measured on normalized text.
- */
-function trailingRaw(value: string, count: number): string {
-  if (count <= 0) return '';
-  let seen = 0;
-  for (let index = value.length - 1; index >= 0; index--) {
-    if (!/\s/.test(value[index])) seen++;
-    if (seen === count) return value.slice(index);
-  }
-  return value;
-}
-
-/**
- * The saved prompt a sent message came from, or `null`.
- *
- * Takes the message as its rendered lines rather than one string, because a
- * match has to report where the prompt *ends*. Inserting a slash token leaves
- * the composer editable, and carrying on writing after it is ordinary use -
- * collapsing the whole turn would then hide the sentence the person actually
- * wrote, which is the part worth reading. Prompts are tried most-specific
- * first, so the first hit is already the best explanation.
+ * The saved prompt a message came from, or `null`. Prompts are tried
+ * most-specific first, so the first hit is already the best explanation.
  */
 export function matchCompiledPrompt(
-  lines: string[],
+  message: string,
   compiled: CompiledPrompt[],
 ): SentPromptMatch | null {
-  const whole = normalizeSentText(lines.join(''));
-  if (!whole) return null;
+  if (!message.trim()) return null;
 
   for (const candidate of compiled) {
-    // How much of the message the prompt accounts for, in normalized
-    // characters. The pattern's wildcards are lazy, so the match stops at the
-    // prompt's own end rather than reaching into what follows.
-    let covered = 0;
-    if (candidate.pattern) {
-      const hit = candidate.opensWith?.exec(whole);
-      if (!hit) continue;
-      covered = hit[0].length;
-    } else {
-      if (!whole.startsWith(candidate.exact)) continue;
-      covered = candidate.exact.length;
+    const hit = candidate.pattern.exec(message);
+    if (!hit) continue;
+
+    const values: TextRange[] = [];
+    let offset = 0;
+    for (let group = 1; group < hit.length; group++) {
+      const captured = hit[group] ?? '';
+      if (candidate.valueGroups.has(group) && captured.length > 0) {
+        values.push([offset, offset + captured.length]);
+      }
+      offset += captured.length;
     }
 
-    // Walk the rendered lines until the prompt is used up. The boundary may
-    // fall inside a line, which is the common case: typing after the token
-    // adds to that line rather than starting a new one.
-    let consumed = 0;
-    for (let index = 0; index < lines.length; index++) {
-      const lineLength = normalizeSentText(lines[index]).length;
-      if (consumed + lineLength < covered) {
-        consumed += lineLength;
-        continue;
-      }
-      return {
-        id: candidate.id,
-        name: candidate.name,
-        specificity: candidate.specificity,
-        lineCount: index + 1,
-        remainder: trailingRaw(lines[index], consumed + lineLength - covered),
-      };
-    }
+    return {
+      id: candidate.id,
+      name: candidate.name,
+      specificity: candidate.specificity,
+      end: hit[0].length,
+      values,
+    };
   }
   return null;
 }
 
 /** Convenience for a one-off match; compile once when matching many turns. */
 export function matchSentPrompt(
-  lines: string[] | string,
+  message: string,
   prompts: PromptIdentity[],
 ): SentPromptMatch | null {
-  return matchCompiledPrompt(
-    Array.isArray(lines) ? lines : lines.split('\n'),
-    compilePrompts(prompts),
-  );
+  return matchCompiledPrompt(message, compilePrompts(prompts));
 }
