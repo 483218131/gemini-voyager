@@ -69,6 +69,23 @@ describe('SentPromptChips', () => {
     expect(bodyOf(turn)?.hidden).toBe(true);
   });
 
+  it('marks the chip as a prompt with an icon, before the name', () => {
+    // A name on its own leaves the chip ambiguous in a conversation - it could
+    // be anything the extension put there.
+    const turn = mountTurn(FABLE_LINES);
+
+    start();
+
+    const chip = chipOf(turn)!;
+    const icon = chip.querySelector('svg');
+    expect(icon?.classList.contains('lucide-package')).toBe(true);
+    expect(icon?.getAttribute('width')).toBe('14');
+    // Before the name, and hidden from screen readers - the chip already has
+    // an `aria-label`.
+    expect(chip.firstElementChild).toBe(icon);
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it("hides Gemini's own copy of the text rather than removing it", () => {
     // The bubble is re-rendered on navigation, so nothing Gemini owns is safe
     // to delete or rewrite.

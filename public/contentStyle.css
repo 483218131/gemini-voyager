@@ -15149,6 +15149,9 @@ body.gv-rtl .gv-ph-panel {
 .gv-pm-sent-chip {
   display: inline-flex;
   align-items: center;
+  /* Room for the icon, sized so it reads as a label rather than a button with
+     a picture on it. */
+  gap: 6px;
   max-width: 100%;
   /* `font: inherit` so the chip sits on the bubble's own type, not the
      browser's form font. */
@@ -15169,6 +15172,13 @@ body.gv-rtl .gv-ph-panel {
   transition-property: background-color, box-shadow, scale;
   transition-duration: 150ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.gv-pm-sent-chip .lucide {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  opacity: 0.9;
 }
 
 .gv-pm-sent-chip::after {

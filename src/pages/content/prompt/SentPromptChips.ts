@@ -18,6 +18,7 @@
  * is re-rendered on navigation and its structure changes without notice.
  */
 
+import { createPackageIcon } from '@/core/icons/promptManagerIcons';
 import {
   type PromptIdentity,
   type SentPromptMatch,
@@ -193,7 +194,9 @@ export function startSentPromptChips(options: SentPromptChipsOptions): SentPromp
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = CHIP_CLASS;
-    chip.textContent = match.name;
+    // The name alone leaves a chip in a conversation ambiguous - it could be
+    // anything the extension put there. The icon says which kind of thing.
+    chip.append(createPackageIcon(14), match.name);
     chip.title = getTranslationSync('pm_sent_chip_hint');
     chip.setAttribute('aria-label', match.name);
 
