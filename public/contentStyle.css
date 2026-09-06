@@ -11255,7 +11255,22 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
 
 /* The slot is a blank in a sentence, so it is drawn as a rule under the words
    rather than as another boxed field. */
+/* Off-screen ruler for slot auto-sizing: same font and padding as the slot, so
+   its measured width is the width the slot needs. */
+.gv-pm-slot-sizer {
+  position: absolute;
+  top: 0;
+  left: -9999px;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0 5px 1px;
+}
+
 .gv-pm-slot {
+  box-sizing: border-box;
   font: inherit;
   color: inherit;
   background: none;

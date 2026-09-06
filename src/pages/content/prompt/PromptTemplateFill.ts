@@ -126,12 +126,27 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
     slot.placeholder = segment.name;
     slot.setAttribute('aria-label', segment.name);
     slot.dataset.gvVar = segment.name;
-    // Sizing follows the placeholder so a slot looks like the blank it is.
-    slot.size = Math.max(segment.name.length, 4);
     doc.appendChild(slot);
     slots.push(slot);
   }
   surface.appendChild(doc);
+
+  /**
+   * An inline slot has to be as wide as what it holds, and the `size` attribute
+   * cannot do it: it is fixed at creation and counts characters against an
+   * average Latin advance, so a CJK value is roughly twice as wide as `size`
+   * claims. A hidden span carrying the slot's own font and padding measures the
+   * real run instead, and the slot is set to that.
+   */
+  const sizer = document.createElement('span');
+  sizer.className = 'gv-pm-slot-sizer';
+  sizer.setAttribute('aria-hidden', 'true');
+  surface.appendChild(sizer);
+
+  const fitSlot = (slot: HTMLInputElement): void => {
+    sizer.textContent = slot.value || slot.placeholder;
+    slot.style.width = `${Math.ceil(sizer.getBoundingClientRect().width)}px`;
+  };
 
   const actions = document.createElement('div');
   actions.className = 'gv-pm-fill-actions';
@@ -206,9 +221,11 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
     const slot = event.target as HTMLInputElement | null;
     const key = slot?.dataset?.gvVar;
     if (!slot || !key) return;
+    fitSlot(slot);
     for (const peer of slots) {
       if (peer === slot || peer.dataset.gvVar !== key) continue;
       peer.value = slot.value;
+      fitSlot(peer);
     }
   });
 
@@ -219,6 +236,9 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
   window.addEventListener('keydown', onKeyDown, true);
 
   document.body.appendChild(surface);
+  // Only measurable once the surface is in the document and has inherited its
+  // font, so the first fit happens here rather than at slot creation.
+  for (const slot of slots) fitSlot(slot);
   positionAgainst(surface, anchor);
   slots[0]?.focus();
 

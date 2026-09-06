@@ -66,6 +66,39 @@ describe('openTemplateFill', () => {
     expect(onSubmit).toHaveBeenCalledWith('围绕 沉没成本 用 {{tone}} 的语气');
   });
 
+  it('grows a slot to fit what is typed into it, and its repeats too', () => {
+    // jsdom has no layout, so stand the ruler in for one: report a width per
+    // character of whatever text it is asked to measure.
+    const measured = vi
+      .spyOn(HTMLSpanElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLSpanElement) {
+        return { width: (this.textContent ?? '').length * 10 } as DOMRect;
+      });
+
+    const handle = openTemplateFill({
+      text: '把 {{topic}} 讲给 {{topic}} 听',
+      anchor: anchor(),
+      theme: 'dark',
+      labels,
+      onSubmit: vi.fn(),
+    });
+
+    // Mounted empty, both slots are sized from the placeholder.
+    expect(handle.slots.map((slot) => slot.style.width)).toEqual(['50px', '50px']);
+
+    handle.slots[0].value = '一个 AI 的可解释性研究方向';
+    handle.slots[0].dispatchEvent(new Event('input', { bubbles: true }));
+
+    // The typed slot grows, and so does the repeat that mirrors its value —
+    // a fixed `size` attribute would have left both at the placeholder width.
+    expect(handle.slots[0].style.width).toBe('150px');
+    expect(handle.slots[1].value).toBe('一个 AI 的可解释性研究方向');
+    expect(handle.slots[1].style.width).toBe('150px');
+
+    measured.mockRestore();
+    handle.close();
+  });
+
   it('treats a repeated variable as one question', () => {
     const onSubmit = vi.fn();
     const handle = openTemplateFill({

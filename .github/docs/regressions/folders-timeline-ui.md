@@ -365,3 +365,18 @@ drop, or hover layout.
   stranded at stale coordinates against a rebuilt list, so those must still close.
 - **Guard:** `src/pages/content/folder/folderDialogs.test.ts`
   (`keeps the input-bearing modals across a panel remount and drops the anchored ones`).
+
+## Template fill slots must be measured, not sized by the `size` attribute
+
+- **Trap:** `openTemplateFill` created each inline slot as `<input type="text">` with
+  `slot.size = Math.max(variableName.length, 4)`, set once at creation and never updated. Typing a
+  value longer than the variable name left the box at its original width with the text scrolling
+  horizontally inside it, so the sentence the slots sit in visibly broke apart. Measured live on
+  gemini.google.com: a slot for `{{topic}}` stayed 68.5 px wide while `一个 AI 的可解释性研究方向`
+  needed 171 px. `size` could not have fixed it either — it counts characters against an average
+  Latin advance, so a CJK value is about twice as wide as the attribute claims.
+- **Rule:** Size an inline slot from a hidden sizer span that inherits the slot's font and padding,
+  and re-fit on every `input` — including the peer slots that mirror a repeated variable. Fit after
+  the surface is in the document, since nothing is measurable before it inherits its font.
+- **Guard:** `src/pages/content/prompt/__tests__/PromptTemplateFill.test.ts`
+  (`grows a slot to fit what is typed into it, and its repeats too`).
