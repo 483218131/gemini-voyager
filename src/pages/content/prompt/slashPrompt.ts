@@ -27,6 +27,7 @@ const MAX_RESULTS = 8;
 const TOKEN_SPACER = '\u00a0';
 const TOOLTIP_HIDE_GRACE_MS = 150;
 const TOOLTIP_VALUE_CLASS = 'gv-pm-slash-tooltip-value';
+const GHOST_ID = 'gv-pm-slash-ghost';
 
 const CHAT_INPUT_SELECTOR =
   '[data-testid="chat-input"][contenteditable="true"], #prompt-textarea[contenteditable="true"], ' +
@@ -547,6 +548,62 @@ function paintTooltipBody(tooltip: HTMLElement, text: string, source?: string): 
     cursor = end;
   }
   if (cursor < text.length) tooltip.append(text.slice(cursor));
+}
+
+/**
+ * The rest of the selected name, drawn past the caret while the query is still
+ * being typed.
+ *
+ * A composer showing `/a` says nothing about which prompt that will become. The
+ * completion is painted as its own fixed element rather than inserted into the
+ * composer: the text there stays exactly what the person typed, so a backspace,
+ * a caret move or an IME composition behaves as it always did, and nothing has
+ * to be unwound if the query stops matching.
+ */
+function ghostElement(): HTMLElement {
+  const existing = document.getElementById(GHOST_ID);
+  if (existing) return existing;
+  const ghost = document.createElement('span');
+  ghost.id = GHOST_ID;
+  ghost.className = GHOST_ID;
+  ghost.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function hideGhost(): void {
+  document.getElementById(GHOST_ID)?.classList.remove('gv-pm-slash-ghost-visible');
+}
+
+/** The completion `name` adds to what has been typed, or '' when it adds none. */
+export function ghostSuffix(typed: string, name: string): string {
+  const trimmed = name.trim();
+  if (!typed || typed.length >= trimmed.length) return '';
+  return trimmed.toLowerCase().startsWith(typed.toLowerCase()) ? trimmed.slice(typed.length) : '';
+}
+
+function showGhost(query: PromptQuery, name: string): void {
+  const suffix = ghostSuffix(query.query, name);
+  const range = createQueryRange(query);
+  // A textarea has no range to measure against, and the query may be scrolled
+  // out of view inside the composer.
+  if (!suffix || !range || typeof range.getBoundingClientRect !== 'function') {
+    hideGhost();
+    return;
+  }
+  const rect = range.getBoundingClientRect();
+  if (rect.height <= 0) {
+    hideGhost();
+    return;
+  }
+  const ghost = ghostElement();
+  ghost.textContent = suffix;
+  ghost.dataset.gvTheme = detectTheme();
+  syncMarkerTypography(ghost, query.input, null);
+  ghost.style.left = `${Math.round(rect.right)}px`;
+  ghost.style.top = `${Math.round(rect.top)}px`;
+  ghost.style.height = `${Math.round(rect.height)}px`;
+  ghost.classList.add('gv-pm-slash-ghost-visible');
 }
 
 function bindPromptTooltip(target: HTMLElement, text: string): void {
@@ -1175,6 +1232,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     activeQuery = null;
     results = [];
     hideTooltip();
+    hideGhost();
   }
 
   function syncPromptSelectionVisuals(): void {
@@ -1397,6 +1455,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
       return;
     }
     root.hidden = false;
+    syncGhost();
     results.forEach((prompt, index) => {
       const row = document.createElement('button');
       row.type = 'button';
@@ -1438,6 +1497,17 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     list.querySelectorAll<HTMLElement>('.gv-pm-slash-option').forEach((option, index) => {
       option.setAttribute('aria-selected', index === selectedIndex ? 'true' : 'false');
     });
+    syncGhost();
+  }
+
+  /** Keep the completion showing the row that Enter would actually take. */
+  function syncGhost(): void {
+    const prompt = results[selectedIndex];
+    if (!activeQuery || root.hidden || !prompt?.name) {
+      hideGhost();
+      return;
+    }
+    showGhost(activeQuery, prompt.name);
   }
 
   function refresh(target: EventTarget | null): void {
@@ -1738,6 +1808,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
       root.remove();
       textareaTokens.remove();
       document.getElementById(TOOLTIP_ID)?.remove();
+      document.getElementById(GHOST_ID)?.remove();
     },
   };
 }

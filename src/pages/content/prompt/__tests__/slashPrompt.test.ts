@@ -5,6 +5,7 @@ import { StorageKeys } from '@/core/types/common';
 import type { PromptItem } from '@/core/types/sync';
 
 import {
+  ghostSuffix,
   hasSlashEligiblePrompts,
   isGeminiSlashPromptSurface,
   matchSlashPrompts,
@@ -48,6 +49,34 @@ function setRect(element: HTMLElement, rect: Partial<DOMRect> = {}): void {
       toJSON: () => ({}),
       ...rect,
     }) as DOMRect;
+}
+
+/**
+ * jsdom gives a Range a zero rect, and the completion is placed from the end of
+ * the typed query, so it needs a real one to measure against.
+ */
+function withQueryRect(run: () => void): void {
+  const original = Object.getOwnPropertyDescriptor(Range.prototype, 'getBoundingClientRect');
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      left: 52,
+      top: 80,
+      right: 60,
+      bottom: 102,
+      width: 8,
+      height: 22,
+      x: 52,
+      y: 80,
+      toJSON: () => ({}),
+    }),
+  });
+  try {
+    run();
+  } finally {
+    if (original) Object.defineProperty(Range.prototype, 'getBoundingClientRect', original);
+    else Reflect.deleteProperty(Range.prototype, 'getBoundingClientRect');
+  }
 }
 
 function createContentEditable(text: string): HTMLElement {
@@ -336,6 +365,57 @@ describe('slash prompt completion', () => {
     token.dispatchEvent(new MouseEvent('mouseenter'));
 
     expect(Number.parseInt(tooltip.style.left, 10)).toBe(window.innerWidth - 8 - 420);
+  });
+
+  it('completes the rest of the selected name past what was typed', () => {
+    expect(ghostSuffix('Trans', 'Translator')).toBe('lator');
+    // Matching is case-insensitive; the completion keeps the saved casing.
+    expect(ghostSuffix('trans', 'Translator')).toBe('lator');
+    // Nothing to add once the name is fully typed.
+    expect(ghostSuffix('Translator', 'Translator')).toBe('');
+    // A row reached with the arrow keys need not start with the query.
+    expect(ghostSuffix('rev', 'Translator')).toBe('');
+    expect(ghostSuffix('', 'Translator')).toBe('');
+  });
+
+  it('shows the completion while the query is still being typed', () => {
+    withQueryRect(() => {
+      const input = createContentEditable('/trans');
+      destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+      typeInto(input);
+
+      const ghost = document.getElementById('gv-pm-slash-ghost')!;
+      expect(ghost.textContent).toBe('lator');
+      expect(ghost.classList.contains('gv-pm-slash-ghost-visible')).toBe(true);
+      // Drawn past the end of what was typed.
+      expect(ghost.style.left).toBe('60px');
+      expect(ghost.style.top).toBe('80px');
+    });
+  });
+
+  it('takes the completion down with the list', () => {
+    withQueryRect(() => {
+      const input = createContentEditable('/trans');
+      destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+      typeInto(input);
+      const ghost = document.getElementById('gv-pm-slash-ghost')!;
+      expect(ghost.classList.contains('gv-pm-slash-ghost-visible')).toBe(true);
+
+      press(input, 'Escape');
+
+      expect(ghost.classList.contains('gv-pm-slash-ghost-visible')).toBe(false);
+    });
+  });
+
+  it('never puts the completion into the composer text', () => {
+    // It is a separate fixed element on purpose: backspace, caret movement and
+    // IME composition all have to behave exactly as they did.
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+
+    expect(input.textContent).toBe('/trans');
+    expect(input.querySelector('#gv-pm-slash-ghost')).toBeNull();
   });
 
   it('anchors completion beside the slash inside a fullscreen composer', () => {

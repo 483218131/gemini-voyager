@@ -15259,6 +15259,24 @@ body.gv-rtl .gv-ph-panel {
   }
 }
 
+/* The rest of the selected name, drawn past the caret while the query is still
+   being typed. It is a separate fixed element, never text inside the composer,
+   so backspace, caret movement and IME composition all behave as they did. */
+.gv-pm-slash-ghost {
+  position: fixed;
+  z-index: 2147483646;
+  display: none;
+  align-items: center;
+  color: color-mix(in srgb, currentcolor 42%, transparent);
+  pointer-events: none;
+  user-select: none;
+  white-space: pre;
+}
+
+.gv-pm-slash-ghost-visible {
+  display: inline-flex;
+}
+
 /* What was typed into a placeholder, inside a composer token's preview. The
    token carries an already-resolved body, so without this the preview is a wall
    of template text with the reader's own answers buried in it. Same accent the
