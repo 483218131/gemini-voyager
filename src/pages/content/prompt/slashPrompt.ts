@@ -574,12 +574,13 @@ function paintTooltipBody(tooltip: HTMLElement, text: string, target?: HTMLEleme
 
   const commit = (): void => {
     if (!target) return;
+    const previous = target.dataset.gvPromptText ?? text;
     const next = rebuildFromValues(
       source,
       fields.map((field) => field.textContent ?? ''),
     );
+    syncEditedPromptText(previous, next);
     target.dataset.gvPromptText = next;
-    syncSelectedPromptText(target, next);
   };
 
   let cursor = 0;
@@ -624,38 +625,35 @@ export function rebuildFromValues(source: string, values: string[]): string {
 }
 
 /**
- * Keep the record `expandPromptTokens` falls back on in step with the token.
+ * Carry an edit to every place the send path might read it from.
  *
- * Expansion prefers a live token's own dataset, but a token Gemini rebuilt as
- * plain text is expanded from this record instead, and an edit that reached
- * only one of the two would send whichever the editor happened to leave behind.
- * Records are pushed in insertion order and tokens read in document order, the
- * same correspondence `removeSelectedPromptRecords` already relies on.
+ * A placed prompt exists in up to three: the inline token's dataset, the
+ * overlay chip's dataset, and the record `expandPromptTokens` and
+ * `expandTextareaPromptTokens` fall back on. Which one is read depends on the
+ * composer and on whether the host rebuilt the token as plain text, so an edit
+ * that reached only one would send whichever the editor happened to leave
+ * behind. The overlay chip in particular is not inside the composer at all -
+ * it lives in a fixed container on `body`, so it cannot be found from the
+ * input, which is how the first version of this missed it entirely.
+ *
+ * Matching on the previous body rather than on identity is deliberate: two
+ * tokens of the same prompt with the same values are indistinguishable to the
+ * reader, so moving them together is the predictable behaviour.
  */
-function syncSelectedPromptText(token: HTMLElement, text: string): void {
-  const input = token.closest<HTMLElement>(CHAT_INPUT_SELECTOR);
-  if (!input) return;
-  const records = selectedPrompts.get(input);
-  if (!records) return;
-  const tokens = [
-    ...input.querySelectorAll<HTMLElement>(`.${TOKEN_CLASS}`),
-    ...document.querySelectorAll<HTMLElement>(`.${TEXTAREA_TOKEN_CLASS}`),
-  ];
-  const index = tokens.indexOf(token);
-  const record = index >= 0 ? records[index] : undefined;
-  if (record) record.text = text;
+function syncEditedPromptText(previous: string, next: string): void {
+  if (previous === next) return;
+  document
+    .querySelectorAll<HTMLElement>(`.${TOKEN_CLASS}, .${TEXTAREA_TOKEN_CLASS}`)
+    .forEach((element) => {
+      if (element.dataset.gvPromptText === previous) element.dataset.gvPromptText = next;
+    });
+  for (const records of selectedPrompts.values()) {
+    for (const record of records) {
+      if (record.text === previous) record.text = next;
+    }
+  }
 }
 
-/**
- * The rest of the selected name, drawn past the caret while the query is still
- * being typed.
- *
- * A composer showing `/a` says nothing about which prompt that will become. The
- * completion is painted as its own fixed element rather than inserted into the
- * composer: the text there stays exactly what the person typed, so a backspace,
- * a caret move or an IME composition behaves as it always did, and nothing has
- * to be unwound if the query stops matching.
- */
 function ghostElement(): HTMLElement {
   const existing = document.getElementById(GHOST_ID);
   if (existing) return existing;

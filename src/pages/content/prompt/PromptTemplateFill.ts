@@ -45,7 +45,7 @@ export interface TemplateFillOptions {
 export interface TemplateFillHandle {
   close: () => void;
   /** Test seam: the live inputs, in document order. */
-  readonly slots: HTMLInputElement[];
+  readonly slots: HTMLElement[];
 }
 
 const SURFACE_CLASS = 'gv-pm-fill';
@@ -114,39 +114,28 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
   const doc = document.createElement('div');
   doc.className = 'gv-pm-fill-doc';
 
-  const slots: HTMLInputElement[] = [];
+  const slots: HTMLElement[] = [];
   for (const segment of parsePromptTemplate(text)) {
     if (segment.kind === 'text') {
       doc.append(segment.value);
       continue;
     }
-    const slot = document.createElement('input');
-    slot.type = 'text';
+    // An editable span rather than an `<input>`. An input cannot wrap, so a
+    // long value grew the slot past the surface that holds it - measured on
+    // gemini.google.com, a 45-character value made a 465px slot inside a 460px
+    // card, which then scrolled sideways and clipped its own text. A span flows
+    // with the sentence it sits in, and needs no width of its own.
+    const slot = document.createElement('span');
     slot.className = SLOT_CLASS;
-    slot.placeholder = segment.name;
+    slot.setAttribute('contenteditable', 'true');
+    slot.setAttribute('role', 'textbox');
     slot.setAttribute('aria-label', segment.name);
     slot.dataset.gvVar = segment.name;
+    slot.dataset.gvPlaceholder = segment.name;
     doc.appendChild(slot);
     slots.push(slot);
   }
   surface.appendChild(doc);
-
-  /**
-   * An inline slot has to be as wide as what it holds, and the `size` attribute
-   * cannot do it: it is fixed at creation and counts characters against an
-   * average Latin advance, so a CJK value is roughly twice as wide as `size`
-   * claims. A hidden span carrying the slot's own font and padding measures the
-   * real run instead, and the slot is set to that.
-   */
-  const sizer = document.createElement('span');
-  sizer.className = 'gv-pm-slot-sizer';
-  sizer.setAttribute('aria-hidden', 'true');
-  surface.appendChild(sizer);
-
-  const fitSlot = (slot: HTMLInputElement): void => {
-    sizer.textContent = slot.value || slot.placeholder;
-    slot.style.width = `${Math.ceil(sizer.getBoundingClientRect().width)}px`;
-  };
 
   const actions = document.createElement('div');
   actions.className = 'gv-pm-fill-actions';
@@ -167,7 +156,7 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
       const key = slot.dataset.gvVar;
       if (!key) continue;
       // A repeated name is one question; the first slot carrying a value wins.
-      if (!values[key] || !values[key].trim()) values[key] = slot.value;
+      if (!values[key] || !values[key].trim()) values[key] = slot.textContent ?? '';
     }
     return values;
   };
@@ -251,15 +240,22 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
   // Typing in one slot fills every slot that shares its name, so a repeated
   // variable stays one question rather than several.
   doc.addEventListener('input', (event) => {
-    const slot = event.target as HTMLInputElement | null;
+    const slot = event.target as HTMLElement | null;
     const key = slot?.dataset?.gvVar;
     if (!slot || !key) return;
-    fitSlot(slot);
     for (const peer of slots) {
       if (peer === slot || peer.dataset.gvVar !== key) continue;
-      peer.value = slot.value;
-      fitSlot(peer);
+      peer.textContent = slot.textContent;
     }
+  });
+
+  // A span keeps whatever markup a paste carries; an input never did.
+  doc.addEventListener('paste', (event) => {
+    const slot = (event.target as HTMLElement | null)?.closest?.(`.${SLOT_CLASS}`);
+    if (!slot) return;
+    event.preventDefault();
+    const plain = (event as ClipboardEvent).clipboardData?.getData('text/plain') ?? '';
+    document.execCommand('insertText', false, plain.replace(/\s+/g, ' '));
   });
 
   submit.addEventListener('click', () => commit(fillPromptTemplate(text, readValues())));
@@ -269,9 +265,6 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
   window.addEventListener('keydown', onKeyDown, true);
 
   document.body.appendChild(surface);
-  // Only measurable once the surface is in the document and has inherited its
-  // font, so the first fit happens here rather than at slot creation.
-  for (const slot of slots) fitSlot(slot);
   positionAgainst(surface, anchor);
   slots[0]?.focus();
 

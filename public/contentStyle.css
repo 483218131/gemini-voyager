@@ -11309,20 +11309,11 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
    contributes to no ancestor's scrollable overflow at all. Its containing block
    is the viewport, exactly like the surface itself, so this adds no dependency
    the surface does not already have. */
-.gv-pm-slot-sizer {
-  position: fixed;
-  top: 0;
-  left: -9999px;
-  visibility: hidden;
-  white-space: pre;
-  pointer-events: none;
-  box-sizing: border-box;
-  font: inherit;
-  padding: 0 5px 1px;
-}
-
 .gv-pm-slot {
-  box-sizing: border-box;
+  /* An editable span, so a long value wraps with the sentence instead of
+     growing the slot past the card that holds it. Nothing here sets a width:
+     the line decides. */
+  display: inline;
   font: inherit;
   color: inherit;
   background: none;
@@ -11331,9 +11322,17 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
   border-radius: 0;
   padding: 0 5px 1px;
   margin: 0 1px;
-  text-align: center;
   min-width: 4.5em;
   outline: none;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* The variable's name, shown until something is typed. An input carried this
+   as `placeholder`; a span has to draw it. */
+.gv-pm-slot:empty::before {
+  content: attr(data-gv-placeholder);
+  opacity: 0.45;
 }
 
 .gv-pm-slot::placeholder {

@@ -40,6 +40,8 @@ yarn-error.log*
 .vscode/
 .idea/
 .claude/settings.local.json
+# Backups the settings tooling writes beside it.
+.claude/settings.local.json.bak-*
 .claude/worktrees/
 .DS_Store
 

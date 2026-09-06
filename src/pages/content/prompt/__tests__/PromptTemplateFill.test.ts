@@ -30,7 +30,7 @@ describe('openTemplateFill', () => {
     expect(surface.querySelector('.gv-pm-fill-doc')?.textContent).toContain('围绕');
     expect(surface.querySelector('.gv-pm-fill-doc')?.textContent).toContain('的语气写');
     expect(handle.slots.map((s) => s.dataset.gvVar)).toEqual(['concept', 'tone']);
-    expect(handle.slots[0].placeholder).toBe('concept');
+    expect(handle.slots[0].dataset.gvPlaceholder).toBe('concept');
   });
 
   it('submits the body with the supplied values substituted', () => {
@@ -43,7 +43,7 @@ describe('openTemplateFill', () => {
       onSubmit,
     });
 
-    handle.slots[0].value = '沉没成本';
+    handle.slots[0].textContent = '沉没成本';
     (document.querySelector('.gv-pm-fill .gv-pm-save') as HTMLButtonElement).click();
 
     expect(onSubmit).toHaveBeenCalledWith('围绕 沉没成本 写');
@@ -60,21 +60,13 @@ describe('openTemplateFill', () => {
       onSubmit,
     });
 
-    handle.slots[0].value = '沉没成本';
+    handle.slots[0].textContent = '沉没成本';
     (document.querySelector('.gv-pm-fill .gv-pm-save') as HTMLButtonElement).click();
 
     expect(onSubmit).toHaveBeenCalledWith('围绕 沉没成本 用 {{tone}} 的语气');
   });
 
-  it('grows a slot to fit what is typed into it, and its repeats too', () => {
-    // jsdom has no layout, so stand the ruler in for one: report a width per
-    // character of whatever text it is asked to measure.
-    const measured = vi
-      .spyOn(HTMLSpanElement.prototype, 'getBoundingClientRect')
-      .mockImplementation(function (this: HTMLSpanElement) {
-        return { width: (this.textContent ?? '').length * 10 } as DOMRect;
-      });
-
+  it('mirrors a value into every slot that repeats its name', () => {
     const handle = openTemplateFill({
       text: '把 {{topic}} 讲给 {{topic}} 听',
       anchor: anchor(),
@@ -83,19 +75,31 @@ describe('openTemplateFill', () => {
       onSubmit: vi.fn(),
     });
 
-    // Mounted empty, both slots are sized from the placeholder.
-    expect(handle.slots.map((slot) => slot.style.width)).toEqual(['50px', '50px']);
-
-    handle.slots[0].value = '一个 AI 的可解释性研究方向';
+    handle.slots[0].textContent = '一个 AI 的可解释性研究方向';
     handle.slots[0].dispatchEvent(new Event('input', { bubbles: true }));
 
-    // The typed slot grows, and so does the repeat that mirrors its value —
-    // a fixed `size` attribute would have left both at the placeholder width.
-    expect(handle.slots[0].style.width).toBe('150px');
-    expect(handle.slots[1].value).toBe('一个 AI 的可解释性研究方向');
-    expect(handle.slots[1].style.width).toBe('150px');
+    expect(handle.slots[1].textContent).toBe('一个 AI 的可解释性研究方向');
+    handle.close();
+  });
 
-    measured.mockRestore();
+  it('lets a slot wrap instead of growing past the card that holds it', () => {
+    // An `<input>` cannot wrap. Measured on gemini.google.com, a 45-character
+    // value made a 465px slot inside a 460px card, which then scrolled
+    // sideways and clipped its own text.
+    const handle = openTemplateFill({
+      text: '把 {{topic}} 讲清楚',
+      anchor: anchor(),
+      theme: 'dark',
+      labels,
+      onSubmit: vi.fn(),
+    });
+
+    const slot = handle.slots[0];
+    expect(slot.tagName).toBe('SPAN');
+    expect(slot.getAttribute('contenteditable')).toBe('true');
+    // Nothing sets a width, so the slot can only ever be as wide as the line
+    // it sits on allows.
+    expect(slot.style.width).toBe('');
     handle.close();
   });
 
@@ -109,10 +113,10 @@ describe('openTemplateFill', () => {
       onSubmit,
     });
 
-    handle.slots[0].value = '甲';
+    handle.slots[0].textContent = '甲';
     handle.slots[0].dispatchEvent(new Event('input', { bubbles: true }));
 
-    expect(handle.slots[1].value).toBe('甲');
+    expect(handle.slots[1].textContent).toBe('甲');
     (document.querySelector('.gv-pm-fill .gv-pm-save') as HTMLButtonElement).click();
     expect(onSubmit).toHaveBeenCalledWith('甲 与 甲');
   });
@@ -143,7 +147,7 @@ describe('openTemplateFill', () => {
       onCancel: cancelled,
     });
 
-    handle.slots[0].value = '沉没成本';
+    handle.slots[0].textContent = '沉没成本';
     handle.slots[0].dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
     );
@@ -227,7 +231,7 @@ describe('template fill keystroke containment', () => {
       onSubmit: submitted,
     });
 
-    handle.slots[0].value = '沉没';
+    handle.slots[0].textContent = '沉没';
     handle.slots[0].dispatchEvent(
       new KeyboardEvent('keydown', {
         key: 'Enter',
@@ -240,7 +244,7 @@ describe('template fill keystroke containment', () => {
     expect(submitted).not.toHaveBeenCalled();
 
     // The Enter that follows the composition does commit.
-    handle.slots[0].value = '沉没成本';
+    handle.slots[0].textContent = '沉没成本';
     handle.slots[0].dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
     );
@@ -260,7 +264,7 @@ describe('template fill keystroke containment', () => {
     });
 
     document.addEventListener('keyup', composer);
-    handle.slots[0].value = '沉没成本';
+    handle.slots[0].textContent = '沉没成本';
     handle.slots[0].dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
     );

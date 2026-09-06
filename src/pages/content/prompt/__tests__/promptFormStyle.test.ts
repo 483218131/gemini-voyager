@@ -73,26 +73,21 @@ describe('prompt form accent', () => {
     expect(body).not.toMatch(/#[0-9a-f]{3,6}\b/i);
   });
 
-  it('keeps the slot sizer out of the fill surface scroll region', () => {
+  it('lets a fill slot wrap rather than set itself a width', () => {
     const css = readContentStyle();
-    const sizer = blocksFor(css, '.gv-pm-slot-sizer').find(([, body]) => body.includes('position'));
-    expect(sizer).toBeDefined();
-    const body = (sizer as [string, string])[1];
+    const slot = blocksFor(css, '.gv-pm-slot').find(([, body]) => body.includes('border-bottom'));
+    expect(slot).toBeDefined();
+    const body = (slot as [string, string])[1];
 
-    // The sizer parks itself off-canvas inside `.gv-pm-fill`, which scrolls.
-    // An absolutely positioned child is measured into that box's scrollable
-    // overflow, and `left: -9999px` only escapes it while the surface is LTR;
-    // on an RTL host page it becomes end-side overflow and the fill card grows
-    // a horizontal scrollbar that pans the sentence away. A fixed box
-    // contributes to no ancestor's scrollable overflow.
-    expect(body).toMatch(/position:\s*fixed/);
-    expect(body).not.toMatch(/position:\s*absolute/);
-
-    const fill = blocksFor(css, '.gv-pm-fill').find(([selector]) => selector === '.gv-pm-fill');
-    expect(fill).toBeDefined();
-    // Pins the premise: a transformed ancestor would make `fixed` contained
-    // again, and would already be mispositioning the surface itself.
-    expect((fill as [string, string])[1]).not.toMatch(/\b(?:transform|filter|contain)\s*:/);
+    // An `<input>` cannot wrap, so a long value grew the slot past the card
+    // that held it: measured on gemini.google.com, a 45-character value made a
+    // 465px slot inside a 460px card, which then scrolled sideways and clipped
+    // its own text. The slot is an editable span now and takes no width.
+    expect(body).toMatch(/white-space:\s*pre-wrap/);
+    expect(body).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(body).not.toMatch(/^\s*width\s*:/m);
+    // The name it stands for, which an input carried as `placeholder`.
+    expect(css).toContain('.gv-pm-slot:empty::before');
   });
 
   it('dims the quoted prompt with colour, never opacity', () => {

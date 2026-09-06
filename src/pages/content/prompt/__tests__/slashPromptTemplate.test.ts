@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { PromptItem } from '@/core/types/sync';
 
-import { startPromptSlashCommand } from '../slashPrompt';
+import { expandAllPromptTokens, startPromptSlashCommand } from '../slashPrompt';
 
 const prompts: PromptItem[] = [
   {
@@ -63,8 +63,8 @@ function fillSurface(): HTMLElement | null {
   return document.querySelector('.gv-pm-fill');
 }
 
-function slots(): HTMLInputElement[] {
-  return [...document.querySelectorAll<HTMLInputElement>('.gv-pm-fill .gv-pm-slot')];
+function slots(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('.gv-pm-fill .gv-pm-slot')];
 }
 
 function token(input: HTMLElement): HTMLElement | null {
@@ -105,8 +105,8 @@ describe('slash completion with template prompts', () => {
     press(input, 'Enter');
 
     const [concept, tone] = slots();
-    concept.value = '沉没成本';
-    tone.value = '克制';
+    concept.textContent = '沉没成本';
+    tone.textContent = '克制';
     (document.querySelector('.gv-pm-fill .gv-pm-save') as HTMLButtonElement).click();
 
     const placed = token(input);
@@ -128,8 +128,8 @@ describe('slash completion with template prompts', () => {
     press(input, 'Enter');
 
     const [concept, tone] = slots();
-    concept.value = '沉没成本';
-    tone.value = '克制';
+    concept.textContent = '沉没成本';
+    tone.textContent = '克制';
     concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
     const placed = token(input)!;
@@ -158,8 +158,8 @@ describe('slash completion with template prompts', () => {
     press(input, 'Enter');
 
     const [concept, tone] = slots();
-    concept.value = '沉没成本';
-    tone.value = '克制';
+    concept.textContent = '沉没成本';
+    tone.textContent = '克制';
     concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
     const placed = token(input)!;
@@ -169,7 +169,41 @@ describe('slash completion with template prompts', () => {
     field.dispatchEvent(new Event('input', { bubbles: true }));
 
     // Expansion reads the token's own body first, so the edit has to land there.
-    expect(placed.dataset.gvPromptText).toBe('围绕 锚定效应 这个概念,用 克制 的语气写一则寓言。');
+    const edited = '围绕 锚定效应 这个概念,用 克制 的语气写一则寓言。';
+    expect(placed.dataset.gvPromptText).toBe(edited);
+    // The overlay chip lives in a fixed container on `body`, outside the
+    // composer, and carries its own copy of the body - the first version of
+    // this sync looked the token up through the input and missed it entirely.
+    const overlay = document.querySelector<HTMLElement>('.gv-pm-slash-textarea-token');
+    if (overlay) expect(overlay.dataset.gvPromptText).toBe(edited);
+  });
+
+  it('sends the edit even when the host rebuilt the token as plain text', () => {
+    // Expansion then falls back on the remembered record instead of the
+    // token's dataset, so the edit has to reach that too.
+    const input = createContentEditable('/fable');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const [concept, tone] = slots();
+    concept.textContent = '沉没成本';
+    tone.textContent = '克制';
+    concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    const placed = token(input)!;
+    placed.dispatchEvent(new MouseEvent('mouseenter'));
+    const field = document.querySelector<HTMLElement>('.gv-pm-slash-tooltip-value')!;
+    field.textContent = '锚定效应';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Strip the live token the way Gemini does when it rebuilds the turn, then
+    // expand: what is sent has to be the edited body.
+    placed.replaceWith(document.createTextNode('Fable'));
+    expandAllPromptTokens();
+
+    expect(input.textContent).toContain('锚定效应');
+    expect(input.textContent).not.toContain('沉没成本');
   });
 
   it('leaves the list keys alone while a preview field has focus', () => {
@@ -179,8 +213,8 @@ describe('slash completion with template prompts', () => {
     press(input, 'Enter');
 
     const [concept, tone] = slots();
-    concept.value = '沉没成本';
-    tone.value = '克制';
+    concept.textContent = '沉没成本';
+    tone.textContent = '克制';
     concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
     const placed = token(input)!;
