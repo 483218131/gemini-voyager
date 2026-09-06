@@ -192,19 +192,52 @@ export function openTemplateFill(options: TemplateFillOptions): TemplateFillHand
     onCancel?.();
   }
 
+  /**
+   * The composer takes focus the moment this surface commits, so anything left
+   * of the physical keypress lands there instead. `preventDefault` on the
+   * keydown suppresses `keypress` but never `keyup`, and Gemini sends on a bare
+   * Enter - so the trailing half of the very keystroke that filled the template
+   * would send the message the user had not finished reviewing. Swallow the
+   * rest of this keystroke, then stand down on the next task.
+   */
+  function swallowRestOfKeystroke(): void {
+    const swallow = (event: Event): void => {
+      if ((event as KeyboardEvent).key !== 'Enter') return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    };
+    window.addEventListener('keyup', swallow, true);
+    window.addEventListener('keypress', swallow, true);
+    window.setTimeout(() => {
+      window.removeEventListener('keyup', swallow, true);
+      window.removeEventListener('keypress', swallow, true);
+    }, 0);
+  }
+
   function onKeyDown(event: KeyboardEvent): void {
     if (!surface.isConnected) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       cancel();
       return;
     }
     // Enter commits from anywhere inside the surface. Shift+Enter is left alone
     // so a slot can still hold a newline if the user pastes one.
     if (event.key === 'Enter' && !event.shiftKey && surface.contains(event.target as Node)) {
+      // An IME sends Enter to accept its candidate list, which is the common
+      // way to type a CJK value into a slot. Committing there would submit a
+      // half-typed word and hand the rest of the keystroke to the composer.
+      // `isSendKeyboardEvent` guards the send path the same way.
+      if (event.isComposing || event.keyCode === 229) return;
       event.preventDefault();
       event.stopPropagation();
+      // Nothing else may act on this keystroke: `stopPropagation` alone still
+      // lets another window-level capture listener run.
+      event.stopImmediatePropagation();
+      swallowRestOfKeystroke();
       commit(fillPromptTemplate(text, readValues()));
     }
   }

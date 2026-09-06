@@ -213,3 +213,64 @@ describe('highlightTemplateVariables', () => {
     expect(root.querySelectorAll('.gv-pm-var').length).toBe(1);
   });
 });
+
+describe('template fill keystroke containment', () => {
+  it('ignores the Enter an IME uses to accept its candidate', () => {
+    // Typing a CJK value into a slot ends with an Enter that belongs to the
+    // input method, not to us. Committing there submits a half-typed word.
+    const submitted = vi.fn();
+    const handle = openTemplateFill({
+      text: '围绕 {{concept}} 写',
+      anchor: anchor(),
+      theme: 'dark',
+      labels,
+      onSubmit: submitted,
+    });
+
+    handle.slots[0].value = '沉没';
+    handle.slots[0].dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+        isComposing: true,
+      }),
+    );
+
+    expect(submitted).not.toHaveBeenCalled();
+
+    // The Enter that follows the composition does commit.
+    handle.slots[0].value = '沉没成本';
+    handle.slots[0].dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+    expect(submitted).toHaveBeenCalledWith('围绕 沉没成本 写');
+  });
+
+  it('swallows the rest of the keystroke that committed it', () => {
+    // The composer takes focus inside `onSubmit`, so the keyup of this very
+    // keystroke would otherwise land there and send the message.
+    const composer = vi.fn();
+    const handle = openTemplateFill({
+      text: '围绕 {{concept}} 写',
+      anchor: anchor(),
+      theme: 'dark',
+      labels,
+      onSubmit: () => {},
+    });
+
+    document.addEventListener('keyup', composer);
+    handle.slots[0].value = '沉没成本';
+    handle.slots[0].dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
+
+    expect(composer).not.toHaveBeenCalled();
+
+    // An unrelated key is not affected.
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
+    expect(composer).toHaveBeenCalledTimes(1);
+    document.removeEventListener('keyup', composer);
+  });
+});
