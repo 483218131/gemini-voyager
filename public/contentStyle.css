@@ -15238,6 +15238,22 @@ body.gv-rtl .gv-ph-panel {
   }
 }
 
+/* What was typed into a placeholder, inside a composer token's preview. The
+   token carries an already-resolved body, so without this the preview is a wall
+   of template text with the reader's own answers buried in it. Same accent the
+   sent-prompt body uses, so a filled value looks the same wherever it appears. */
+.gv-pm-slash-tooltip-value {
+  background: color-mix(in srgb, var(--gv-pm-brand, var(--gv-pm-brand-default)) 20%, transparent);
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 500;
+}
+
+.gv-pm-slash-tooltip[data-gv-theme='light'] .gv-pm-slash-tooltip-value {
+  color: var(--gv-pm-brand-hover);
+}
+
 /* Shown only while content remains below the fold, set from the scroll
    position rather than always-on: a permanent fade would wash out the last
    line of a prompt the user has already scrolled to the end of. Sticky, so it

@@ -308,9 +308,9 @@ describe('slash prompt completion', () => {
     setRect(token, { left: 200, right: 280, top: 700, bottom: 730, width: 80, height: 30 });
     token.dispatchEvent(new MouseEvent('mouseenter'));
 
-    // Left edges meet, and the card sits above the token rather than below it:
-    // the composer is pinned to the bottom, so below never fits.
-    expect(tooltip.style.left).toBe('200px');
+    // Centred over the token, and above it rather than below: the composer is
+    // pinned to the bottom of the viewport, so below never fits.
+    expect(tooltip.style.left).toBe('30px');
     expect(tooltip.style.top).toBe('374px');
   });
 

@@ -118,6 +118,44 @@ describe('slash completion with template prompts', () => {
     expect(fillSurface()).toBeNull();
   });
 
+  it('marks what was filled in when the token preview is hovered', () => {
+    // The token carries an already-resolved body, so without this the preview
+    // is a wall of template text with the reader's own answers buried in it.
+    const input = createContentEditable('/fable');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const [concept, tone] = slots();
+    concept.value = '沉没成本';
+    tone.value = '克制';
+    concept.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    const placed = token(input)!;
+    placed.dispatchEvent(new MouseEvent('mouseenter'));
+    const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
+
+    expect(
+      [...tooltip.querySelectorAll('.gv-pm-slash-tooltip-value')].map((m) => m.textContent),
+    ).toEqual(['沉没成本', '克制']);
+    // The body itself is unchanged; only the answers inside it are marked.
+    expect(tooltip.textContent).toBe('围绕 沉没成本 这个概念,用 克制 的语气写一则寓言。');
+  });
+
+  it('leaves a preview unmarked when no template was filled', () => {
+    const input = createContentEditable('/plain');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+
+    const placed = token(input)!;
+    placed.dispatchEvent(new MouseEvent('mouseenter'));
+    const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
+
+    expect(tooltip.querySelector('.gv-pm-slash-tooltip-value')).toBeNull();
+    expect(tooltip.textContent).toBe('Review this code and report correctness issues.');
+  });
+
   it('keeps the placeholders when the user defers filling', () => {
     const input = createContentEditable('/fable');
     destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;

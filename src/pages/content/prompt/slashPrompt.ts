@@ -5,6 +5,7 @@ import { StorageKeys } from '@/core/types/common';
 import { type PromptItem } from '@/core/types/sync';
 import { getPromptNameComparisonKey, getPromptNameConflictIds } from '@/core/utils/promptName';
 import { isPromptTemplate } from '@/features/prompt/model/promptTemplate';
+import { matchSentPrompt } from '@/features/prompt/model/promptTextMatch';
 import { getTranslationSync } from '@/utils/i18n';
 
 import { findChatInput, insertTextIntoChatInput } from '../chatInput/index';
@@ -25,6 +26,7 @@ const TEXTAREA_HIDE_VALUE_CLASS = 'gv-pm-slash-textarea-hide-value';
 const MAX_RESULTS = 8;
 const TOKEN_SPACER = '\u00a0';
 const TOOLTIP_HIDE_GRACE_MS = 150;
+const TOOLTIP_VALUE_CLASS = 'gv-pm-slash-tooltip-value';
 
 const CHAT_INPUT_SELECTOR =
   '[data-testid="chat-input"][contenteditable="true"], #prompt-textarea[contenteditable="true"], ' +
@@ -417,13 +419,21 @@ function isTextareaPromptOnlyValue(inputText: string, selected: SelectedPrompt[]
   );
 }
 
-function createPromptToken(prompt: PromptItem): HTMLSpanElement {
+/**
+ * A prompt as it reaches a token: `text` is already resolved, and
+ * `gvSourceText` is the body it was resolved from, present only when a template
+ * was filled. The preview needs both to say which words the reader supplied.
+ */
+type TokenPrompt = PromptItem & { gvSourceText?: string };
+
+function createPromptToken(prompt: TokenPrompt): HTMLSpanElement {
   const token = document.createElement('span');
   token.className = TOKEN_CLASS;
   token.contentEditable = 'false';
   token.dataset.gvPromptId = prompt.id;
   token.dataset.gvPromptName = prompt.name!.trim();
   token.dataset.gvPromptText = prompt.text;
+  if (prompt.gvSourceText) token.dataset.gvPromptSource = prompt.gvSourceText;
   token.dataset.gvTheme = detectTheme();
   token.setAttribute('role', 'button');
   token.setAttribute('aria-label', prompt.name!.trim());
@@ -433,7 +443,7 @@ function createPromptToken(prompt: PromptItem): HTMLSpanElement {
   return token;
 }
 
-function replaceContentEditableQuery(query: PromptQuery, prompt: PromptItem): boolean {
+function replaceContentEditableQuery(query: PromptQuery, prompt: TokenPrompt): boolean {
   const range = createQueryRange(query);
   if (!range) return false;
   range.deleteContents();
@@ -510,6 +520,35 @@ function applyPromptTokenColor(token: HTMLElement): void {
   );
 }
 
+/**
+ * The tooltip body, with what was typed into each placeholder marked.
+ *
+ * A token carries an already-resolved body, so on its own the preview is a wall
+ * of template text with the reader's own answers buried in it. The original
+ * body rides along on `data-gv-prompt-source`, which is enough to locate them.
+ */
+function paintTooltipBody(tooltip: HTMLElement, text: string, source?: string): void {
+  tooltip.textContent = '';
+  const match = source
+    ? matchSentPrompt(text, [{ id: 'token', name: 'token', text: source }])
+    : null;
+  if (!match || match.values.length === 0) {
+    tooltip.textContent = text;
+    return;
+  }
+
+  let cursor = 0;
+  for (const [start, end] of match.values) {
+    if (start > cursor) tooltip.append(text.slice(cursor, start));
+    const mark = document.createElement('mark');
+    mark.className = TOOLTIP_VALUE_CLASS;
+    mark.textContent = text.slice(start, end);
+    tooltip.appendChild(mark);
+    cursor = end;
+  }
+  if (cursor < text.length) tooltip.append(text.slice(cursor));
+}
+
 function bindPromptTooltip(target: HTMLElement, text: string): void {
   target.addEventListener('mouseenter', () => showTooltip(target, text));
   target.addEventListener('mouseleave', scheduleTooltipHide);
@@ -519,7 +558,7 @@ function showTooltip(target: HTMLElement, text: string): void {
   cancelTooltipHide();
   const tooltip = createTooltip();
   tooltip.scrollTop = 0;
-  tooltip.textContent = text;
+  paintTooltipBody(tooltip, text, target.dataset.gvPromptSource);
   tooltip.dataset.gvTheme = detectTheme();
   tooltip.style.left = '0px';
   tooltip.style.top = '0px';
@@ -543,12 +582,12 @@ function showTooltip(target: HTMLElement, text: string): void {
     if (top < padding) top = listRect.bottom + 6;
     top = Math.max(padding, Math.min(top, window.innerHeight - tooltipRect.height - padding));
   } else {
-    // A token sitting in the composer. Align the card's left edge to the
-    // token's, not its right: the card is up to 420px wide and the token is a
-    // short name, so right-aligning hung the whole card off to the left with
-    // only its bottom-right corner near the thing it describes - it read as
-    // floating loose over the sidebar rather than as belonging to the token.
-    left = targetRect.left;
+    // A token sitting in the composer. Centre the card over it: the card is up
+    // to 420px wide and the token is a short name, so aligning either edge puts
+    // the whole card off to one side with only a corner near the thing it
+    // describes, reading as loose over the page rather than as belonging to the
+    // token.
+    left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
     if (left + tooltipRect.width > window.innerWidth - padding) {
       left = window.innerWidth - padding - tooltipRect.width;
     }
@@ -1245,6 +1284,9 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     chip.appendChild(name);
     syncMarkerTypography(chip, input, null);
     chip.dataset.gvPromptText = prompt.text;
+    if ((prompt as TokenPrompt).gvSourceText) {
+      chip.dataset.gvPromptSource = (prompt as TokenPrompt).gvSourceText as string;
+    }
     chip.setAttribute('role', 'button');
     chip.setAttribute('aria-label', prompt.name!.trim());
     bindPromptTooltip(chip, prompt.text);
@@ -1280,7 +1322,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
     syncPromptSelectionVisuals();
   }
 
-  function applyPrompt(query: PromptQuery, prompt: PromptItem, hideInputValue: boolean): boolean {
+  function applyPrompt(query: PromptQuery, prompt: TokenPrompt, hideInputValue: boolean): boolean {
     const inserted =
       query.input instanceof HTMLTextAreaElement
         ? replaceTextareaQuery(query, prompt)
@@ -1321,7 +1363,7 @@ export function startPromptSlashCommand(options: SlashPromptOptions = {}): Slash
         try {
           query.input.focus?.();
         } catch {}
-        applyPrompt(query, { ...prompt, text: filled }, hideInputValue);
+        applyPrompt(query, { ...prompt, text: filled, gvSourceText: prompt.text }, hideInputValue);
       },
       onCancel: () => {
         templateFill = null;

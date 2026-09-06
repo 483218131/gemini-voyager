@@ -43,6 +43,21 @@ Without that server, `chrome://` pages are unreachable from browser automation:
 ask the user to reload from `chrome://extensions` and to hard-refresh the tab.
 Say which build they need and why, rather than asking them to "try again".
 
+**Close the loop yourself.** Reloading the extension is not enough — an open tab
+keeps running the content script it loaded at navigation, so the person looking
+at it still sees the old build. After every fix, run the whole sequence before
+saying anything:
+
+```text
+bun run build:chrome        # or build:all when public/ entries changed
+reload_extension            # the Voyager id from list_extensions
+navigate_page  type=reload  ignoreCache=true   # every tab on the affected site
+```
+
+Then read the page and report what you measured. Handing back "reload and try
+again" spends a round trip on something you can do, and the reply that comes
+back is usually a screenshot of the build you already replaced.
+
 ## Reading the page
 
 `claude-in-chrome` drives any normal page. Confirm the build under test is the
