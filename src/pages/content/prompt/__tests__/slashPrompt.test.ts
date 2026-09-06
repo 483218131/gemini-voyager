@@ -289,6 +289,55 @@ describe('slash prompt completion', () => {
     expect(tooltip.style.top).toBe('274px');
   });
 
+  it('hangs a composer token preview from the token, above it', () => {
+    // The card is up to 420px wide and the token is a short name. Aligning the
+    // card's right edge to the token's put the whole card off to the left with
+    // only its bottom-right corner near the thing it described, reading as
+    // loose over the sidebar rather than as belonging to the token.
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+    const token = input.querySelector<HTMLElement>('.gv-pm-slash-token')!;
+
+    // The first hover creates the shared tooltip; the second uses its size.
+    token.dispatchEvent(new MouseEvent('mouseenter'));
+    const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
+    setRect(tooltip, { width: 420, height: 320 });
+    // A token sitting in the composer, near the bottom of the viewport.
+    setRect(token, { left: 200, right: 280, top: 700, bottom: 730, width: 80, height: 30 });
+    token.dispatchEvent(new MouseEvent('mouseenter'));
+
+    // Left edges meet, and the card sits above the token rather than below it:
+    // the composer is pinned to the bottom, so below never fits.
+    expect(tooltip.style.left).toBe('200px');
+    expect(tooltip.style.top).toBe('374px');
+  });
+
+  it('keeps a composer token preview inside the viewport', () => {
+    const input = createContentEditable('/trans');
+    destroy = startPromptSlashCommand({ initialItems: prompts }).destroy;
+    typeInto(input);
+    press(input, 'Enter');
+    const token = input.querySelector<HTMLElement>('.gv-pm-slash-token')!;
+
+    token.dispatchEvent(new MouseEvent('mouseenter'));
+    const tooltip = document.getElementById('gv-pm-slash-tooltip')!;
+    setRect(tooltip, { width: 420, height: 320 });
+    // Far enough right that left-aligning would run the card off the edge.
+    setRect(token, {
+      left: window.innerWidth - 60,
+      right: window.innerWidth,
+      top: 700,
+      bottom: 730,
+      width: 60,
+      height: 30,
+    });
+    token.dispatchEvent(new MouseEvent('mouseenter'));
+
+    expect(Number.parseInt(tooltip.style.left, 10)).toBe(window.innerWidth - 8 - 420);
+  });
+
   it('anchors completion beside the slash inside a fullscreen composer', () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(
       Range.prototype,

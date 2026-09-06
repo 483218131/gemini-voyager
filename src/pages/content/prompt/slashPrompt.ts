@@ -543,16 +543,26 @@ function showTooltip(target: HTMLElement, text: string): void {
     if (top < padding) top = listRect.bottom + 6;
     top = Math.max(padding, Math.min(top, window.innerHeight - tooltipRect.height - padding));
   } else {
-    left = Math.max(
-      padding,
-      Math.min(
-        targetRect.right - tooltipRect.width,
-        window.innerWidth - tooltipRect.width - padding,
-      ),
-    );
-    top = targetRect.bottom + 6;
-    if (top + tooltipRect.height > window.innerHeight - padding) {
-      top = Math.max(padding, targetRect.top - tooltipRect.height - 6);
+    // A token sitting in the composer. Align the card's left edge to the
+    // token's, not its right: the card is up to 420px wide and the token is a
+    // short name, so right-aligning hung the whole card off to the left with
+    // only its bottom-right corner near the thing it describes - it read as
+    // floating loose over the sidebar rather than as belonging to the token.
+    left = targetRect.left;
+    if (left + tooltipRect.width > window.innerWidth - padding) {
+      left = window.innerWidth - padding - tooltipRect.width;
+    }
+    if (left < padding) left = padding;
+
+    // Above by preference. The composer is pinned to the bottom of the
+    // viewport, so below never fits and trying it first only ever produced the
+    // fallback anyway.
+    top = targetRect.top - tooltipRect.height - 6;
+    if (top < padding) {
+      top = targetRect.bottom + 6;
+      if (top + tooltipRect.height > window.innerHeight - padding) {
+        top = Math.max(padding, window.innerHeight - padding - tooltipRect.height);
+      }
     }
   }
   tooltip.style.left = `${Math.round(left)}px`;
