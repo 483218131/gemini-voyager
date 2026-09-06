@@ -51,12 +51,17 @@ saying anything:
 ```text
 bun run build:chrome        # or build:all when public/ entries changed
 reload_extension            # the Voyager id from list_extensions
-navigate_page  type=reload  ignoreCache=true   # every tab on the affected site
+list_pages                  # find every tab on the affected site
+navigate_page  type=reload  ignoreCache=true   # each one of them
 ```
 
+`list_pages` is not optional. Reloading only the tab you opened to test in
+leaves the person looking at the build you already replaced — which is exactly
+what a screenshot of "it still does the old thing" turns out to be. Their tabs
+are the ones that matter; yours is the one you close afterwards.
+
 Then read the page and report what you measured. Handing back "reload and try
-again" spends a round trip on something you can do, and the reply that comes
-back is usually a screenshot of the build you already replaced.
+again" spends a round trip on something you can do.
 
 ## Reading the page
 

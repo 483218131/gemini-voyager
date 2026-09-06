@@ -15293,6 +15293,8 @@ body.gv-rtl .gv-ph-panel {
   font: inherit;
   font-weight: 500;
   border: 0;
+  /* The measured width is the whole box, padding included. */
+  box-sizing: border-box;
   min-width: 2ch;
   vertical-align: baseline;
 }
@@ -15300,6 +15302,7 @@ body.gv-rtl .gv-ph-panel {
 /* Measures a field's value in the tooltip's own type, since `ch` is the advance
    of `0` and a CJK value is about twice as wide as its length claims. */
 .gv-pm-slash-tooltip-sizer {
+  box-sizing: border-box;
   position: fixed;
   top: 0;
   left: -9999px;

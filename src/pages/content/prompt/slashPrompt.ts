@@ -596,10 +596,13 @@ function paintTooltipBody(tooltip: HTMLElement, text: string, target?: HTMLEleme
     field.setAttribute('aria-label', values[index] || 'value');
     // Measured, not counted. `ch` is the advance of `0`, so a CJK value is
     // about twice as wide as its length claims and gets clipped - the same trap
-    // the template fill slots hit with the `size` attribute.
+    // the template fill slots hit with the `size` attribute. The sizer carries
+    // the field's own padding, so its width is the whole box; only the caret
+    // needs a pixel on top, and adding the padding again left every field
+    // visibly wider than what it held.
     const fit = (): void => {
       sizer.textContent = field.value || ' ';
-      field.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 6}px`;
+      field.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 1}px`;
     };
     field.addEventListener('input', () => {
       fit();
