@@ -38,6 +38,8 @@ import { isExtensionContextInvalidatedError } from '@/core/utils/extensionContex
 import { migrateFromLocalStorage } from '@/core/utils/storageMigration';
 import { shouldShowUpdateReminderForCurrentVersion } from '@/core/utils/updateReminder';
 import { compareVersions } from '@/core/utils/version';
+import { renderPromptHtmlAsText } from '@/features/prompt/model/promptMarkdown';
+import { convertLegacyBraces, isPromptTemplate } from '@/features/prompt/model/promptTemplate';
 import {
   type SavedLibraryFilter,
   type SavedLibraryItem,
@@ -60,6 +62,11 @@ import { insertTextIntoChatInput } from '../chatInput/index';
 import { expandInputCollapseIfNeeded } from '../inputCollapse/index';
 import { StarredMessagesService } from '../timeline/StarredMessagesService';
 import type { StarredMessage } from '../timeline/starredTypes';
+import {
+  highlightTemplateVariables,
+  openTemplateFill,
+  type TemplateFillHandle,
+} from './PromptTemplateFill';
 import { extractPlainTitle } from './compactTitle';
 import { activatePromptText } from './promptClickAction';
 import { getPromptNameConflictIds, isPromptNameTaken, normalizePromptName } from './promptName';
@@ -465,6 +472,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
               strict: false, // Disable strict mode checks including quirks mode detection
             }),
           );
+          renderPromptHtmlAsText(marked);
           marked.setOptions({ breaks: true });
         } catch {}
       })();
@@ -972,6 +980,9 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
         <textarea class="gv-pm-input-text" placeholder="${escapeHtml(
           i18n.t('pm_prompt_placeholder') || 'Prompt text',
         )}" rows="3"></textarea>
+        <button type="button" class="gv-pm-convert-braces gv-hidden">${escapeHtml(
+          i18n.t('pm_convert_braces') || 'Turn {name} into {{name}}',
+        )}</button>
         <input class="gv-pm-input-tags" type="text" placeholder="${escapeHtml(
           i18n.t('pm_tags_placeholder') || 'Tags (comma separated)',
         )}" />
@@ -984,6 +995,28 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
         </div>
       </form>`,
     );
+
+    /*
+     * Prompts written before double braces keep working as plain text; this
+     * offers the rewrite rather than guessing. Only the author knows whether a
+     * given `{x}` is a placeholder or part of the prose, so the button appears
+     * only when the body would actually change, and never fires on its own.
+     */
+    const promptTextArea = addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement;
+    const convertBracesBtn = addForm.querySelector('.gv-pm-convert-braces') as HTMLButtonElement;
+
+    function syncConvertBracesVisibility(): void {
+      const value = promptTextArea.value;
+      const changes = value.length > 0 && convertLegacyBraces(value) !== value;
+      convertBracesBtn.classList.toggle('gv-hidden', !changes);
+    }
+
+    promptTextArea.addEventListener('input', syncConvertBracesVisibility);
+    convertBracesBtn.addEventListener('click', () => {
+      promptTextArea.value = convertLegacyBraces(promptTextArea.value);
+      syncConvertBracesVisibility();
+      promptTextArea.focus();
+    });
 
     // Notice as floating toast (not in footer layout)
     const notice = createEl('div', 'gv-pm-notice');
@@ -1066,6 +1099,9 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
      * A singleton element is reused across rows. */
     const TOOLTIP_OPEN_DELAY_MS = 250;
     const TOOLTIP_HIDE_GRACE_MS = 150;
+    /* The template fill surface is modal-ish but not a modal: at most one is
+     * open, and closing the panel must take it with it. */
+    let templateFill: TemplateFillHandle | null = null;
     let tooltipEl: HTMLDivElement | null = null;
     let tooltipBody: HTMLDivElement | null = null;
     /* Bumped on every open and every hide. A Markdown render started for one
@@ -1196,6 +1232,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
         if (token !== tooltipRenderToken || !tooltipEl) return;
         body.innerHTML = DOMPurify.sanitize(html);
         body.classList.remove('gv-pm-tooltip-raw');
+        highlightTemplateVariables(body);
         positionTooltip(target);
       };
       void ensureMarkdown()
@@ -1736,9 +1773,13 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
                 const out = marked.parse(it.text as string);
                 if (typeof out === 'string') {
                   md.innerHTML = DOMPurify.sanitize(out);
+                  // Placeholders become chips so the list shows which prompts
+                  // are templates, and where their variables sit.
+                  highlightTemplateVariables(md);
                 } else {
                   return out.then((html: string) => {
                     md.innerHTML = DOMPurify.sanitize(html);
+                    highlightTemplateVariables(md);
                   });
                 }
               })
@@ -1748,11 +1789,8 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
           });
         }
 
-        textBtn.addEventListener('mousedown', (e) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          e.stopPropagation();
-          void activatePromptText(it.text, promptInsertOnClick, {
+        const deliverPromptText = (body: string): void => {
+          void activatePromptText(body, promptInsertOnClick, {
             copyText,
             expandInputCollapseIfNeeded,
             insertTextIntoChatInput,
@@ -1764,23 +1802,49 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
               'ok',
             );
           });
+        };
+
+        // A prompt carrying `{{name}}` placeholders asks for their values first,
+        // so whatever reaches the composer is already resolved. A prompt with
+        // no placeholders keeps today's behaviour exactly.
+        const activateRow = (): void => {
+          hideTooltip();
+          if (!isPromptTemplate(it.text)) {
+            deliverPromptText(it.text);
+            return;
+          }
+          templateFill?.close();
+          templateFill = openTemplateFill({
+            text: it.text,
+            name: it.name,
+            anchor: textBtn,
+            theme: panel.getAttribute('data-gv-theme') || '',
+            labels: {
+              insert: i18n.t('pm_fill_insert') || 'Insert',
+              keepRaw: i18n.t('pm_fill_keep_raw') || 'Keep as is',
+              title: i18n.t('pm_fill_title') || 'Fill in the variables',
+            },
+            onSubmit: (filled) => {
+              templateFill = null;
+              deliverPromptText(filled);
+            },
+            onCancel: () => {
+              templateFill = null;
+            },
+          });
+        };
+
+        textBtn.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+          activateRow();
         });
         textBtn.addEventListener('keydown', (e) => {
           if (e.key !== 'Enter' && e.key !== ' ') return;
           e.preventDefault();
           e.stopPropagation();
-          void activatePromptText(it.text, promptInsertOnClick, {
-            copyText,
-            expandInputCollapseIfNeeded,
-            insertTextIntoChatInput,
-          }).then((result) => {
-            setNotice(
-              result === 'inserted'
-                ? i18n.t('pm_inserted') || 'Inserted'
-                : i18n.t('pm_copied') || 'Copied',
-              'ok',
-            );
-          });
+          activateRow();
         });
 
         // Add expand/collapse button
@@ -1817,6 +1881,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
           // Start inline edit using the add form fields
           (addForm.querySelector('.gv-pm-input-name') as HTMLInputElement).value = it.name ?? '';
           (addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement).value = it.text;
+          syncConvertBracesVisibility();
           (addForm.querySelector('.gv-pm-input-tags') as HTMLInputElement).value = (
             it.tags || []
           ).join(', ');
@@ -1962,6 +2027,9 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
       panel.classList.add('gv-hidden');
       setSavedExportMenuOpen(false);
       hideTooltip();
+      // The fill surface is anchored to a row that is about to be hidden.
+      templateFill?.close();
+      templateFill = null;
     }
 
     function applyLockUI(): void {
@@ -2124,6 +2192,8 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
       // exclusion, clicking its scrollbar would be treated as an outside
       // click and close the whole panel.
       if (target.closest('.gv-pm-tooltip')) return;
+      // The fill surface also lives on document.body and owns its own dismissal.
+      if (target.closest('.gv-pm-fill')) return;
       closePanel();
     };
     window.addEventListener('pointerdown', onWindowPointerDown, { capture: true });
@@ -2323,6 +2393,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
       // leak into a new prompt.
       (addForm.querySelector('.gv-pm-input-name') as HTMLInputElement).value = '';
       (addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement).value = '';
+      syncConvertBracesVisibility();
       (addForm.querySelector('.gv-pm-input-tags') as HTMLInputElement).value = '';
       setInlineHint('');
       addForm.classList.remove('gv-hidden');
@@ -2429,6 +2500,7 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
       }
       (addForm.querySelector('.gv-pm-input-name') as HTMLInputElement).value = '';
       (addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement).value = '';
+      syncConvertBracesVisibility();
       (addForm.querySelector('.gv-pm-input-tags') as HTMLInputElement).value = '';
       setInlineHint('');
       addForm.classList.add('gv-hidden');
@@ -2490,6 +2562,8 @@ export async function startPromptManager(): Promise<{ destroy: () => void }> {
           // attached to `list` and `window`. Without this, every re-init (SPA
           // nav / extension reload) would leak an orphan tooltip + listener.
           hideTooltip();
+          templateFill?.close();
+          templateFill = null;
           if (tooltipEl) {
             try {
               tooltipEl.remove();

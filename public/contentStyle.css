@@ -11182,6 +11182,135 @@ body.gv-rtl .gv-pm-item-compact .gv-pm-bottom {
   background: oklch(0.14 0.004 285 / 0.06);
 }
 
+/* ----- Template variables -----
+ * A prompt is a template only when it carries `{{name}}` placeholders. Two
+ * surfaces: a chip that advertises them wherever a body is rendered, and the
+ * fill card that collects their values before the text reaches the composer. */
+
+.gv-pm-var {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--gv-pm-brand-soft);
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  /* The underline is what reads as "a blank to fill", not just "code". */
+  box-shadow: inset 0 -1.5px 0 var(--gv-pm-brand, var(--gv-pm-brand-default));
+  white-space: nowrap;
+}
+
+.gv-pm-fill {
+  position: fixed;
+  z-index: 2147483646;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(460px, calc(100vw - 24px));
+  max-height: 60vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px 14px;
+  border-radius: 14px;
+  /* Same pinned stack as the panel: the host page's font must not leak in. */
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji';
+  font-size: 13px;
+  background: oklch(0.2 0.008 285);
+  color: oklch(0.92 0.004 250);
+  border: 1px solid oklch(0.3 0.008 285 / 0.7);
+  box-shadow: 0 8px 26px oklch(0 0 0 / 0.32);
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.92 0.004 250 / 0.22) transparent;
+}
+
+.gv-pm-fill[data-gv-theme='light'] {
+  background: oklch(0.995 0.002 250);
+  color: oklch(0.14 0.004 285);
+  border-color: oklch(0.92 0.004 250 / 0.7);
+  box-shadow: 0 8px 26px oklch(0 0 0 / 0.12);
+  scrollbar-color: oklch(0.14 0.004 285 / 0.22) transparent;
+}
+
+.gv-pm-fill-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.gv-pm-fill-doc {
+  /* Prompt bodies carry their own line breaks, and the text runs are inserted
+     as raw text nodes around the slots. */
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* Loose enough that an inline input never crowds the line above it. */
+  line-height: 2.1;
+  color: inherit;
+}
+
+/* The slot is a blank in a sentence, so it is drawn as a rule under the words
+   rather than as another boxed field. */
+.gv-pm-slot {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid var(--gv-pm-brand, var(--gv-pm-brand-default));
+  border-radius: 0;
+  padding: 0 5px 1px;
+  margin: 0 1px;
+  text-align: center;
+  min-width: 4.5em;
+  outline: none;
+}
+
+.gv-pm-slot::placeholder {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  opacity: 0.75;
+}
+
+.gv-pm-slot:focus {
+  background: var(--gv-pm-brand-soft);
+}
+
+.gv-pm-fill-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+body.gv-rtl .gv-pm-fill-doc {
+  direction: rtl;
+}
+
+/* Offered only while the body would actually change under the rewrite, so the
+   form carries no permanent chrome for a one-off migration. */
+.gv-pm-convert-braces {
+  justify-self: start;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+  background: var(--gv-pm-brand-soft);
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.gv-pm-convert-braces:hover {
+  border-color: var(--gv-pm-brand, var(--gv-pm-brand-default));
+}
+
 /* ----- Slash prompt completion ----- */
 .gv-pm-slash-root {
   position: fixed;

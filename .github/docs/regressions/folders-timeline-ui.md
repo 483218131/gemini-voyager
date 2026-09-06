@@ -268,6 +268,21 @@ drop, or hover layout.
 - **Guard:** `src/pages/content/chatWidth/__tests__/chatWidth.test.ts` and
   `src/pages/content/editInputWidth/__tests__/editInputWidth.test.ts`.
 
+## Template placeholders must stay on double braces
+
+- **Trap:** Prompt bodies render through `marked` with `marked-katex-extension`, so a single-brace
+  placeholder syntax would claim `{a}` and `{b}` out of `\frac{a}{b}`, and the `{` in any JSON
+  snippet a prompt happens to quote. Widening the syntax looks like a small convenience and
+  silently corrupts every maths and code prompt in the library.
+- **Rule:** Only `{{name}}` is a placeholder, and a prompt is a template only when it contains one,
+  so a body without them keeps exactly its previous behaviour. `\{{` escapes a literal opener.
+  Migration from single braces is an explicit author action (`convertLegacyBraces` behind the
+  form's button), never inferred: only the author knows whether a given `{x}` is a placeholder or
+  prose. Anything that has to find placeholders in already-rendered text builds its matcher from
+  `TEMPLATE_VARIABLE_SOURCE` rather than copying the character class.
+- **Guard:** `src/features/prompt/model/__tests__/promptTemplate.test.ts` asserts that
+  `\frac{a}{b}` and `{"role": "user"}` yield no variables, and that the escape survives parsing.
+
 ## Prompt panel accent must come from the brand token, not a rebuilt hue
 
 - **Trap:** The prompt panel's form controls are themed in three parallel layers: the base rules, a
