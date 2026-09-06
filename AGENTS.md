@@ -20,6 +20,7 @@ Read matching rules before editing; do not assume the client auto-loaded `.claud
 | Storage, backup, account isolation, Drive sync, folder or export modules | [.claude/rules/high-complexity.md](.claude/rules/high-complexity.md), including full-file reads and full-suite verification |
 | Non-trivial feature, fix or refactor                                     | Search [.github/docs/REGRESSION_NOTES.md](.github/docs/REGRESSION_NOTES.md), then read matching topics                      |
 | Contribution or release                                                  | [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md); matching workflows in [.agents/skills/](.agents/skills/)                |
+| Content-script or injected-CSS behavior that tests cannot settle         | [.agents/skills/verify-in-browser/SKILL.md](.agents/skills/verify-in-browser/SKILL.md)                                      |
 
 Use `package.json`, build configs, manifests and CI to verify command names and current wiring. Keep `CLAUDE.md` as a pointer here.
 

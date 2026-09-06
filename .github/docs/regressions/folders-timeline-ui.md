@@ -399,3 +399,55 @@ drop, or hover layout.
 - **Guard:** `src/pages/content/prompt/__tests__/promptFormStyle.test.ts`
   (`keeps the slot sizer out of the fill surface scroll region`), which also pins the
   no-transform premise on `.gv-pm-fill`.
+
+## A Gemini user turn's `textContent` is not the message
+
+- **Trap:** `SentPromptChips` read the whole bubble to decide which saved prompt a turn came from, and
+  nothing ever matched. Read off gemini.google.com, `.user-query-bubble-with-background.textContent`
+  is `"You said 给出 md 版本的本文  给出 md 版本的本文 "` — a `cdk-visually-hidden` screen-reader
+  prefix, then the text again. The bubble also holds the copy, edit and expand controls, which render
+  through a Material Symbols icon font whose glyph _is_ the element's text, so the string gains
+  literal words like `content_copy` and `expand_more`. The same effect shows in sidebar titles, which
+  read `chat_bubble请求 Markdown 格式转换`.
+- **Rule:** Read a user turn through `.query-text-line` (then `.query-text`), as
+  `DOMContentExtractor` already does. Only fall back to the bubble with the controls stripped from a
+  clone, never from the live node.
+- **Guard:** `src/pages/content/prompt/__tests__/SentPromptChips.test.ts`
+  (`ignores the icon-font controls beside the message`), whose fixture carries the same controls.
+
+## A long Gemini turn is clamped, not truncated
+
+- **Trap:** A long user message shows a few lines and an expand chevron, which reads as Gemini having
+  dropped the rest. It has not: measured on two real turns, all 62 `.query-text-line` elements and
+  all 956 characters are in the DOM, with `scrollHeight === clientHeight === 62` because
+  `.query-text.collapsed` clamps the height. Designing around recovering text that is already there
+  wastes a fix.
+- **Rule:** Read the text regardless of the clamp. To reveal it, press Gemini's own
+  `[data-test-id="luminous-expand-button"]` rather than removing `.collapsed`: Gemini owns that state
+  and re-applies it, which shows up as a grow-then-shrink flicker.
+- **Guard:** `src/pages/content/prompt/__tests__/SentPromptChips.test.ts`
+  (`presses Gemini's own button instead of stripping its clamp`).
+
+## Pressing Gemini's expand button re-renders the whole turn
+
+- **Trap:** With the clamp no longer being fought, expanding still flickered. Sampling the bubble
+  across the click showed its height going to `0` at +600 ms: Angular replaces the turn's nodes, so
+  the element reference, the inserted chip and every class on it are gone. The observer then sees a
+  fresh matching turn and collapses it again — the reader's expand undone by our own code.
+- **Rule:** Any per-turn state a content module keeps must be keyed on something that survives a
+  re-render, such as the message text. An element reference, a class or a dataset flag on a Gemini
+  node cannot be.
+- **Guard:** `src/pages/content/prompt/__tests__/SentPromptChips.test.ts`
+  (`stays open on a turn the reader opened, even after the nodes are replaced`).
+
+## Text typed after a slash token lands on the prompt's own last line
+
+- **Trap:** Matching a sent turn against its saved prompt was anchored at both ends, so a turn where
+  the person kept typing never matched. Measured on a real send: the prompt normalised to 749
+  characters, the message to 751, diverging at 749 with `大大` appended — on the prompt's final line,
+  with no newline between them. Splitting only on line boundaries missed it too.
+- **Rule:** Measure how far the prompt reaches in characters (`^pattern` with lazy wildcards, then
+  the match length), map that back to a line and an offset, and render the remainder as the feature's
+  own element. Collapsing the whole turn would hide the sentence the person actually wrote.
+- **Guard:** `src/features/prompt/model/__tests__/promptTextMatch.test.ts`
+  (`finds the boundary inside a line when the person typed straight on`).
